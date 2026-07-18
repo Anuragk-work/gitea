@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_DeleteOrphanedIssueLabels/issue_label.yml",
+  "format": "yml",
+  "size_bytes": 344,
+  "source_modified": "2026-07-18T06:05:26.816525+00:00",
+  "indexed_at": "2026-07-18T07:39:39.885163+00:00",
+  "text_length": 344,
+  "line_count": 29
+}

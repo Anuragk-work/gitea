@@ -1,0 +1,628 @@
+# DB Engine and Drivers
+
+Gitea's data layer is built on top of [XORM](https://xorm.io), a Go ORM. All engine setup,
+connection string construction, transaction handling, pagination and consistency checking
+lives in the `models/db` package. This page walks through how the engine is created, how
+drivers are selected, how transactions/contexts work, and the supporting utilities for
+pagination and consistency checks.
+
+> Source of truth for this page: `models/db/engine.go`, `models/db/engine_init.go`,
+> `models/db/engine_hook.go`, `models/db/conn.go`, `models/db/context.go`,
+> `models/db/context_committer_test.go`, `models/db/list.go`, `models/db/paginator/`,
+> and `models/db/consistency.go`.
+
+## Overview
+
+The `db` package wraps an `xorm.Engine` behind a small set of Go interfaces so that the rest
+of the codebase (`models/*`, `services/*`, `routers/*`) never imports `xorm.io/xorm` directly.
+This keeps the ORM as an implementation detail and makes it possible to swap the session for
+a transaction (or vice versa) transparently.
+
+```mermaid
+graph TD
+    A["setting.Database (app.ini)"] --> B["db.GlobalConnOptions()"]
+    B --> C["db.ConnStr(opts)"]
+    C -->|"driver name + DSN"| D["xorm.NewEngine(driver, dsn)"]
+    D --> E["newXORMEngine()"]
+    E --> F["InitEngine(ctx)"]
+    F --> G["SetMapper(GonicMapper)"]
+    F --> H["SetLogger / ShowSQL"]
+    F --> I["Pool settings: MaxOpenConns, MaxIdleConns, ConnMaxLifetime"]
+    F --> J["AddHook(EngineHook) if SlowQueryThreshold > 0"]
+    F --> K["SetDefaultEngine(ctx, engine)"]
+    K --> L["xormEngine (package-level singleton)"]
+```
+
+## Engine Interfaces (`engine.go`)
+
+`models/db/engine.go` defines a small hierarchy of interfaces that abstract over `*xorm.Engine`
+and `*xorm.Session`:
+
+| Interface | Purpose |
+|---|---|
+| `SQLSession` | Common CRUD/query methods shared by an engine and a session (`Find`, `Get`, `Insert`, `Where`, `Limit`, `Iterate`, etc.) |
+| `Engine` | `SQLSession` + `Sync(...)` + `Ping()` — what most model code receives from `db.GetEngine(ctx)` |
+| `Session` | `Engine` + transaction control (`Begin`, `Commit`, `Rollback`, `IsInTx`, `Close`) |
+| `EngineMigration` | `Engine` + extra methods only available on `*xorm.Engine` (`DropTables`, `DBMetas`, `SetMapper`, `SyncWithOptions`, `TableInfo`, ...) — used exclusively by the migration framework |
+
+These are enforced with compile-time assertions:
+
+```go
+var (
+    _ Engine          = (*xorm.Engine)(nil)
+    _ Engine          = (*xorm.Session)(nil)
+    _ Session         = (*xorm.Session)(nil)
+    _ EngineMigration = (*xorm.Engine)(nil)
+)
+```
+
+Model registration also happens in this file. Every model package calls `db.RegisterModel`
+in its `init()` function, for example in `models/organization/team.go`:
+
+```go
+func init() {
+    db.RegisterModel(new(Team))
+    db.RegisterModel(new(TeamUser))
+    db.RegisterModel(new(TeamRepo))
+    db.RegisterModel(new(TeamUnit))
+    db.RegisterModel(new(TeamInvite))
+}
+```
+
+`RegisterModel` accumulates beans into the package-level `registeredModels` slice, plus
+optional post-sync `initFunc`s (`registeredInitFuncs`) that run once tables have been
+synced (e.g., to seed default rows). `SyncAllTables()` calls
+`xormEngine.StoreEngine("InnoDB").SyncWithOptions(...)` against every registered bean — this
+is what creates/updates tables from Go struct tags and is also used heavily by the test suite.
+
+Other engine-level helpers worth knowing:
+
+- `NamesToBean(names ...string)` — resolves table/struct names to registered beans (used by `dump`/`restore` commands to select a subset of tables).
+- `MaxBatchInsertSize(bean)` — computes a safe batch insert size based on column count (SQLite's `999` variable limit).
+- `IsTableNotEmpty`, `DeleteAllRecords`, `GetMaxID` — small raw-SQL helpers used by doctor checks and migrations.
+- `SetLogSQL(ctx, on)` — toggles `ShowSQL` on the underlying `*xorm.Engine`/`*xorm.Session` at runtime.
+
+## Engine Initialization (`engine_init.go`)
+
+`newXORMEngine()` is the low-level constructor:
+
+```go
+func newXORMEngine() (*xorm.Engine, error) {
+    connOpts := GlobalConnOptions()
+    driver, connStr, err := ConnStr(connOpts)
+    ...
+    engine, err := xorm.NewEngine(driver, connStr)
+    ...
+    switch {
+    case connOpts.Type.IsMySQL():
+        engine.Dialect().SetParams(map[string]string{"rowFormat": "DYNAMIC"})
+    case connOpts.Type.IsMSSQL():
+        engine.Dialect().SetParams(map[string]string{"DEFAULT_VARCHAR": "nvarchar"})
+    }
+    engine.SetSchema(connOpts.Schema)
+    return engine, nil
+}
+```
+
+`InitEngine(ctx)` builds on this and wires the engine into the rest of the process:
+
+1. Creates the engine via `newXORMEngine()`.
+2. Sets the struct-to-table-name mapper to `names.GonicMapper{}` (so `UserID` maps to
+   `user_id`, not `user_i_d`); `LintGonicMapper` is patched in `init()` to also treat `SSL`
+   and `UID` as recognized acronyms.
+3. Installs the XORM logger (`NewXORMLogger`, see `models/db/xorm_logger.go` conceptually) and
+   toggles `ShowSQL` based on `setting.Database.LogSQL`.
+4. Applies connection pool settings: `MaxOpenConns`, `MaxIdleConns`, `ConnMaxLifetime`.
+5. If `setting.Database.SlowQueryThreshold > 0`, attaches an `EngineHook` (see below) that
+   logs slow queries and records tracing spans.
+6. Calls `SetDefaultEngine(ctx, xe)`, which stores the engine in the package-level `xormEngine`
+   variable and calls `xormEngine.SetDefaultContext(ctx)`.
+
+```go
+func InitEngine(ctx context.Context) error {
+    xe, err := newXORMEngine()
+    ...
+    xe.SetMapper(names.GonicMapper{})
+    xe.SetLogger(NewXORMLogger(setting.Database.LogSQL))
+    xe.ShowSQL(setting.Database.LogSQL)
+    xe.SetMaxOpenConns(setting.Database.MaxOpenConns)
+    xe.SetMaxIdleConns(setting.Database.MaxIdleConns)
+    xe.SetConnMaxLifetime(setting.Database.ConnMaxLifetime)
+
+    if setting.Database.SlowQueryThreshold > 0 {
+        xe.AddHook(&EngineHook{
+            Threshold: setting.Database.SlowQueryThreshold,
+            Logger:    log.GetLogger("xorm"),
+        })
+    }
+
+    SetDefaultEngine(ctx, xe)
+    return nil
+}
+```
+
+`InitEngineWithMigration(ctx, migrateFunc)` is the entry point used by the actual server
+startup path and CLI commands. It:
+
+1. Calls `InitEngine(ctx)`.
+2. `Ping()`s the database to fail fast on bad connection settings.
+3. Calls `preprocessDatabaseCollation(xormEngine)` (see `models/db/collation.go`) to normalize
+   MySQL/MariaDB charset/collation before schema sync.
+4. Invokes the supplied `migrateFunc(ctx, xormEngine)` — this is where the migration framework
+   (documented in [migrations.md](migrations.md)) actually runs.
+5. Calls `SyncAllTables()` to sync every registered model's schema.
+6. Runs every registered `initFunc` (from `RegisterModel`).
+
+> **Important:** `InitEngineWithMigration` must never call `Sync()` before `migrateFunc`
+> succeeds — otherwise XORM would alter table schemas ahead of the migration logic, which
+> would corrupt version tracking or produce column mismatches.
+
+`UnsetDefaultEngine()` closes and nils out `xormEngine`; it's primarily used by tests to reset
+state between engine re-initializations, since `SetDefaultEngine`/`UnsetDefaultEngine` aren't
+strictly paired everywhere in the codebase yet (documented as a known rough edge in the code
+comments).
+
+### Call sites
+
+`InitEngine`/`InitEngineWithMigration` are called from several entry points:
+
+| Caller | Function | Purpose |
+|---|---|---|
+| `routers/common/db.go` | `InitDBEngine` | Main server startup, with retry/backoff loop (`DBConnectRetries`, `DBConnectBackoff`) |
+| `routers/install/install.go` | `db.InitEngine` / `db.InitEngineWithMigration` | Web installer flow |
+| `cmd/migrate.go`, `cmd/migrate_storage.go` | `db.InitEngineWithMigration` | `gitea migrate` CLI command |
+| `cmd/doctor.go`, `services/doctor/doctor.go` | `db.InitEngine` / `db.InitEngineWithMigration` | `gitea doctor` diagnostics (uses `migrations.EnsureUpToDate` instead of running migrations) |
+| `cmd/dump.go`, `cmd/helper.go` | `db.InitEngine` | Dump/restore and other CLI helpers |
+| `models/migrations/migrationtest` | `db.InitEngine` | Migration test harness (see [migrations.md](migrations.md)) |
+
+`routers/common/db.go`'s `InitDBEngine` retries connecting up to `Database.DBConnectRetries`
+times with `Database.DBConnectBackoff` sleep between attempts — useful when the database
+container isn't ready yet (e.g., Docker Compose startup ordering):
+
+```go
+func InitDBEngine(ctx context.Context) (err error) {
+    for i := 0; i < setting.Database.DBConnectRetries; i++ {
+        if err = db.InitEngineWithMigration(ctx, migrateWithSetting); err == nil {
+            break
+        } else if i == setting.Database.DBConnectRetries-1 {
+            return err
+        }
+        time.Sleep(setting.Database.DBConnectBackoff)
+    }
+    config.SetDynGetter(system_model.NewDatabaseDynKeyGetter())
+    return nil
+}
+```
+
+`migrateWithSetting` decides whether to actually run migrations based on
+`setting.Database.AutoMigration`: if disabled, it still runs migrations on a fresh/uninitialized
+database, but otherwise just verifies the DB version matches what the binary expects
+and calls `log.Fatal` if not.
+
+## Slow Query & Tracing Hook (`engine_hook.go`)
+
+`EngineHook` implements XORM's `contexts.Hook` interface and is attached whenever
+`Database.SlowQueryThreshold > 0`:
+
+```go
+func (*EngineHook) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
+    ctx, _ := gtprof.GetTracer().Start(c.Ctx, gtprof.TraceSpanDatabase)
+    return ctx, nil
+}
+
+func (h *EngineHook) AfterProcess(c *contexts.ContextHook) error {
+    span := gtprof.GetContextSpan(c.Ctx)
+    if span != nil {
+        span.SetAttributeString(gtprof.TraceAttrDbSQL, c.SQL)
+        span.End()
+    }
+    if c.ExecuteTime >= h.Threshold {
+        h.Logger.Log(8, &log.Event{Level: log.WARN}, "[Slow SQL Query] %s %v - %v", c.SQL, c.Args, c.ExecuteTime)
+    }
+    return nil
+}
+```
+
+Every SQL statement is wrapped with a tracing span (integrating with Gitea's `gtprof` module)
+and, if execution time exceeds the threshold, a warning is logged with the offending SQL,
+arguments and duration. Test fixture loading (`ContextKeyTestFixtures` in context) skips the
+tracing/logging path to avoid noise during unit tests.
+
+## Connection Strings & Driver Selection (`conn.go`)
+
+`ConnOptions` captures all connection parameters read from configuration
+(`GlobalConnOptions()` copies them from `setting.Database`):
+
+```go
+type ConnOptions struct {
+    Type     setting.DatabaseType
+    Host     string
+    Database string
+    User     string
+    Passwd   string
+    Schema   string
+    SSLMode  string
+
+    SQLitePath        string
+    SQLiteBusyTimeout int
+    SQLiteJournalMode string
+}
+```
+
+`ConnStr(opts)` returns `(driverName, dataSourceName, error)` based on `opts.Type`:
+
+| Database | Driver name | Notes |
+|---|---|---|
+| MySQL | `mysql` | Uses `github.com/go-sql-driver/mysql`; builds `user:pass@tcp(host)/db?parseTime=true&tls=...`; auto-detects Unix socket vs TCP by checking if `Host` starts with `/` |
+| PostgreSQL | `postgres` or `postgresschema` | Uses `github.com/lib/pq`; if a non-empty `Schema` is set, registers and uses a special `postgresschema` driver wrapper (`registerPostgresSchemaDriver()`) so that `search_path` is set per-connection |
+| MSSQL | `mssql` | Uses `github.com/microsoft/go-mssqldb`; host/port parsed via `parseMSSQLHostPort` (supports `host:port` and `host,port` syntaxes) |
+| SQLite3 | `sqlite3` | Delegated to a build-tag-selected driver (see below); requires `SQLitePath` to be non-empty, and creates parent directories via `os.MkdirAll` |
+
+```go
+func ConnStr(opts ConnOptions) (string, string, error) {
+    switch {
+    case opts.Type.IsMySQL():
+        ...
+        return "mysql", connStr, nil
+    case opts.Type.IsPostgreSQL():
+        ...
+        return driver, connStr, nil
+    case opts.Type.IsMSSQL():
+        ...
+        return "mssql", connStr, nil
+    case opts.Type.IsSQLite3():
+        ...
+        return makeSQLiteConnStr(SQLiteConnStrOptions{...})
+    }
+    return "", "", fmt.Errorf("unknown database type: %s", opts.Type)
+}
+```
+
+`ConnStrDefaultDatabase(opts)` is a convenience wrapper that blanks out `Database`/`Schema`
+before building the string — used when Gitea needs to connect to the server itself (e.g., to
+create the target database during install) rather than to a specific database/schema.
+
+### SQLite Drivers: mattn vs modernc (pluggable via build tags)
+
+Gitea supports two interchangeable pure driver implementations for SQLite, selected at
+**compile time** via Go build tags, both registering themselves through
+`registerSQLiteConnStrMaker`:
+
+```mermaid
+graph LR
+    A["conn.go: makeSQLiteConnStr (default: unsupported)"] -->|"build tag: !sqlite_mattn"| B["driver_sqlite_modernc.go<br/>modernc.org/sqlite (pure Go, default)"]
+    A -->|"build tag: sqlite_mattn && sqlite_unlock_notify"| C["driver_sqlite_mattn.go<br/>github.com/mattn/go-sqlite3 (CGO)"]
+    B --> D["registerSQLiteConnStrMaker()"]
+    C --> D
+    D --> E["setting.SupportedDatabaseTypes += sqlite3"]
+```
+
+- **`models/db/driver_sqlite_modernc.go`** (`//go:build !sqlite_mattn`) — the *default* driver.
+  Uses `modernc.org/sqlite`, a pure-Go SQLite implementation (no CGO required). Registers itself
+  as the `sqlite3` SQL driver via `sql.Register(sqlDriverSQLite3, &sqlite.Driver{})`. Connection
+  string uses `_pragma=busy_timeout(...)` and `_pragma=journal_mode(...)` query parameters and
+  `_txlock=immediate`.
+
+  ```go
+  func makeSQLiteConnStrModerncCCGO(opts SQLiteConnStrOptions) (string, string, error) {
+      var params []string
+      params = append(params, fmt.Sprintf("_pragma=busy_timeout(%d)", opts.BusyTimeout))
+      params = append(params, "_txlock=immediate")
+      if opts.JournalMode != "" {
+          params = append(params, fmt.Sprintf("_pragma=journal_mode(%s)", opts.JournalMode))
+      }
+      connStr := fmt.Sprintf("file:%s?%s", opts.FilePath, strings.Join(params, "&"))
+      return sqlDriverSQLite3, connStr, nil
+  }
+  ```
+
+- **`models/db/driver_sqlite_mattn.go`** (`//go:build sqlite_mattn && sqlite_unlock_notify`) —
+  the CGO-based driver using `github.com/mattn/go-sqlite3`, historically the default before the
+  modernc driver matured. Requires `-tags sqlite_mattn,sqlite_unlock_notify` at build time.
+  Connection string uses `cache=shared`, `mode=rwc`, `_busy_timeout=...`, and `_txlock=immediate`.
+
+Both drivers are functionally interchangeable from the application's perspective — they only
+differ in binary size, build requirements (CGO vs none), and CI/build time, as documented
+directly in the source comments of `driver_sqlite_modernc.go`.
+
+If neither build tag applies and SQLite support isn't compiled in at all, `makeSQLiteConnStr`
+keeps its default value which always errors:
+
+```go
+var makeSQLiteConnStr = func(opts SQLiteConnStrOptions) (string, string, error) {
+    return "", "", errors.New(`this Gitea binary was not built with SQLite3 support, get an official release or rebuild with correct "-tags"`)
+}
+```
+
+### PostgreSQL connection string & host/port parsing
+
+`makePgSQLConnStr` builds a `net/url.URL` for `postgres://user:pass@host:port/dbname?params`,
+supporting Unix sockets (detected via a leading `/` in the host) by putting the socket
+directory into the `host` query parameter (libpq convention) instead of the URL host segment.
+`parsePgSQLHostPort` handles `host:port`, bare host (falls back to port `5432`), and IPv6
+bracket-stripping.
+
+### MSSQL host/port parsing
+
+`parseMSSQLHostPort` accepts both `host:port` and `host,port` (SQL Server's native connection
+string convention), defaulting host to `127.0.0.1` and port to `"0"` (dynamic port) if unset.
+
+## Sessions, Transactions & Context (`context.go`)
+
+The `db` package threads the "current" `Engine` (which may be a plain engine session, or an
+active transaction session) through `context.Context`, using an unexported context key:
+
+```go
+var contextKeyEngine = contextKey{"engine"}
+
+func GetEngine(ctx context.Context) Engine {
+    if engine, ok := ctx.Value(contextKeyEngine).(Engine); ok {
+        contextSafetyCheck(engine)
+        return engine
+    }
+    return xormEngine.Context(ctx)
+}
+```
+
+Any model/service function that needs to run a query calls `db.GetEngine(ctx)` — if the
+context already carries a transaction (because the caller wrapped it in `db.WithTx`), the
+same transaction is reused; otherwise a lightweight non-transactional session bound to `ctx`
+is created from the global `xormEngine`.
+
+### `contextSafetyCheck`
+
+In non-production or testing builds, `GetEngine` calls `contextSafetyCheck`, which uses
+`runtime.Callers` to detect a dangerous pattern: reusing a context-bound engine **inside**
+an `Iterate` callback, which XORM implements with `autoResetStatement=false` sessions —
+calling `GetEngine(ctx)` again inside such an iterator would corrupt query results. This
+lookup table of "denied" caller program counters is computed once via `sync.Once` and then
+checked on every call, cheaply, for the lifetime of the process.
+
+### Transactions: `TxContext` and `WithTx`
+
+Two APIs exist for running code within a transaction:
+
+- **`WithTx` (recommended for new code)** — automatically begins a transaction (or reuses an
+  existing one from the parent context), runs the callback, and commits/rolls back for you:
+
+  ```go
+  func WithTx(parentCtx context.Context, f func(ctx context.Context) error) error {
+      if sess := getTransactionSession(parentCtx); sess != nil {
+          err := f(withContextEngine(parentCtx, sess))
+          if err != nil {
+              _ = sess.Close() // rollback immediately
+          }
+          return err
+      }
+      return txWithNoCheck(parentCtx, f)
+  }
+  ```
+
+  `txWithNoCheck` begins a brand-new session, runs `f`, and calls `sess.Commit()` if `f`
+  returned no error (deferring `sess.Close()` regardless).
+
+- **`TxContext` (legacy pattern, still used in older code)** — returns a `context.Context`
+  plus a `Committer` that the caller must explicitly `Commit()`/`Close()`:
+
+  ```go
+  ctx, committer, err := db.TxContext(parentCtx)
+  if err != nil { return err }
+  defer committer.Close()
+  // ... perform DB operations using ctx ...
+  return committer.Commit()
+  ```
+
+  If a transaction is already active in `parentCtx`, `TxContext` returns a `*halfCommitter`
+  wrapping the existing session's committer: calling `Commit()` on it is a no-op (the *outer*
+  transaction owner is responsible for the real commit), but calling `Close()` without a prior
+  `Commit()` immediately rolls back the **entire** outer transaction — this "poison the whole
+  transaction on error" behavior is intentional and documented at length in the code comments.
+
+`WithTx2[T]` is a generic variant of `WithTx` that also returns a typed value alongside the
+error, useful for functions that both mutate and return data within one transaction.
+
+`InTransaction(ctx)` reports whether the current context is inside an active transaction, by
+checking whether the context-bound engine is a `*xorm.Session` with `IsInTx() == true`.
+
+### `context_committer_test.go` — testing `halfCommitter`
+
+Because `halfCommitter` is unexported, its behavior is tested from within the `db` package
+itself (`package db`, not `db_test`) using a `MockCommitter` that records the sequence of
+`Commit`/`Close` calls. Three scenarios are verified:
+
+| Scenario | Expected call sequence |
+|---|---|
+| Success: `f` returns nil, caller commits then closes | `commit`, `close` |
+| Failure: `f` returns an error, caller only closes | `close`, `close` (rollback then defer-close) |
+| Caller commits explicitly then closes redundantly | `close`, `close` |
+
+```go
+testWithCommitter := func(committer Committer, f func(committer Committer) error) {
+    if err := f(&halfCommitter{committer: committer}); err == nil {
+        committer.Commit()
+    }
+    committer.Close()
+}
+```
+
+### Generic CRUD helpers
+
+`context.go` also exposes a set of small generic helper functions built on top of `GetEngine`,
+used pervasively across `models/*` to avoid writing repetitive XORM session code:
+
+| Function | Signature | Behavior |
+|---|---|---|
+| `Insert` | `Insert(ctx, beans ...any) error` | Inserts one or more beans |
+| `Exec` | `Exec(ctx, sqlAndArgs ...any) (sql.Result, error)` | Raw SQL execution |
+| `Get[T]` | `Get[T](ctx, cond builder.Cond) (*T, bool, error)` | Fetch one row matching a condition |
+| `GetByID[T]` | `GetByID[T](ctx, id int64) (*T, bool, error)` | Fetch by primary key |
+| `Exist[T]` / `ExistByID[T]` | — | Existence checks |
+| `DeleteByID[T]` / `DeleteByIDs[T]` | — | Delete by primary key(s), skipping auto-time columns |
+| `Delete[T]` | `Delete[T](ctx, opts FindOptions) (int64, error)` | Delete matching a `FindOptions` condition |
+| `DeleteByBean` | `DeleteByBean(ctx, bean any) (int64, error)` | Delete using non-zero fields of a bean as the condition |
+| `FindIDs` | `FindIDs(ctx, tableName, idCol string, cond builder.Cond) ([]int64, error)` | Fetch a column of IDs |
+| `DecrByIDs` | — | Atomically decrement a column for a set of IDs |
+| `DeleteBeans` / `TruncateBeans` | — | Batch delete/truncate for multiple bean types |
+| `CountByBean` | `CountByBean(ctx, bean any) (int64, error)` | Count rows matching bean's non-zero fields |
+
+`Get`/`GetByID`/`Exist`/`ExistByID`/`Delete*` all `panic` if given an invalid/empty condition
+— this is a deliberate guard against accidentally deleting or matching an entire table due to
+a programming mistake (an empty `builder.Cond` matches everything).
+
+## Pagination (`models/db/list.go` and `models/db/paginator/`)
+
+Pagination is modeled through a small `Paginator` interface:
+
+```go
+type Paginator interface {
+    GetSkipTake() (skip, take int)
+    IsListAll() bool
+}
+```
+
+`ListOptions` is the standard page/pageSize implementation used throughout the REST API and
+web UI:
+
+```go
+type ListOptions struct {
+    PageSize int
+    Page     int  // start from 1
+    ListAll  bool // if true, then PageSize and Page will not be taken
+}
+
+func (opts *ListOptions) GetSkipTake() (skip, take int) {
+    opts.SetDefaultValues()
+    return (opts.Page - 1) * opts.PageSize, opts.PageSize
+}
+
+func (opts *ListOptions) SetDefaultValues() {
+    if opts.PageSize <= 0 {
+        opts.PageSize = setting.API.DefaultPagingNum
+    }
+    if opts.PageSize > setting.API.MaxResponseItems {
+        opts.PageSize = setting.API.MaxResponseItems
+    }
+    if opts.Page <= 0 {
+        opts.Page = 1
+    }
+}
+```
+
+`ListOptionsAll = ListOptions{ListAll: true}` is a convenient shared sentinel for "fetch
+everything." `AbsoluteListOptions` is a variant that takes pre-clamped `skip`/`take` values
+directly (used, for example, for internal APIs that need explicit offsets rather than
+page numbers):
+
+```go
+func NewAbsoluteListOptions(skip, take int) *AbsoluteListOptions {
+    if skip < 0 { skip = 0 }
+    if take <= 0 { take = setting.API.DefaultPagingNum }
+    if take > setting.API.MaxResponseItems { take = setting.API.MaxResponseItems }
+    return &AbsoluteListOptions{skip, take}
+}
+```
+
+`SetSessionPagination(sess, p)` applies `p.GetSkipTake()` directly to an XORM session's
+`Limit(...)` call — the lowest-level plumbing point most list queries eventually go through.
+
+### `FindOptions` and the generic `Find`/`Count`/`FindAndCount`
+
+Beyond plain pagination, `list.go` defines a richer `FindOptions` interface that most
+model-level "list criteria" structs implement:
+
+```go
+type FindOptions interface {
+    GetPage() int
+    GetPageSize() int
+    IsListAll() bool
+    ToConds() builder.Cond
+}
+```
+
+Optional extension interfaces let a caller's options struct also contribute joins
+(`FindOptionsJoin.ToJoins() []JoinFunc`) or ordering (`FindOptionsOrder.ToOrders() string`).
+The generic functions `Find[T]`, `Count[T]`, and `FindAndCount[T]` compose all of this
+automatically:
+
+```go
+func Find[T any](ctx context.Context, opts FindOptions) ([]*T, error) {
+    sess := GetEngine(ctx).Where(opts.ToConds())
+    // ... apply joins if FindOptionsJoin ...
+    // ... apply order if FindOptionsOrder ...
+    // ... apply Limit(pageSize, offset) unless IsListAll() ...
+    objects := make([]*T, 0, findPageSize)
+    return objects, sess.Find(&objects)
+}
+```
+
+This pattern lets each model package define a small, self-contained "options" struct (e.g.
+`repo_search.SearchRepoOptions`) that implements `ToConds()`/`ToOrders()`/`ToJoins()`, and get
+consistent, safe pagination for free.
+
+### `models/db/paginator/`
+
+The `paginator` sub-package is currently a placeholder (`paginator.go` contains only a comment)
+whose stated purpose is to eventually host the pagination types from `models/db/list.go`
+without creating an import cycle:
+
+```go
+package paginator
+
+// dummy only. in the future, the models/db/list_options.go should be moved here to decouple from db package
+// otherwise the unit test will cause cycle import
+```
+
+Its tests (`paginator_test.go`, `main_test.go`) already exercise `db.ListOptions` and
+`db.NewAbsoluteListOptions` from outside the `db` package (via `import "gitea.dev/models/db"`),
+validating `GetSkipTake()` behavior for both positive and non-positive (defaulted) inputs — this
+external test package is exactly why the migration to `paginator` is planned, to avoid pulling
+`db` (and its many transitive dependencies) into pagination-only consumers.
+
+## Consistency Checks (`consistency.go`)
+
+`models/db/consistency.go` provides two generic helpers for finding and removing "orphaned"
+rows — rows in a `subject` table whose referenced row in a `refObject` table no longer exists:
+
+```go
+func CountOrphanedObjects(ctx context.Context, subject, refObject, joinCond string) (int64, error) {
+    return GetEngine(ctx).
+        Table("`"+subject+"`").
+        Join("LEFT", "`"+refObject+"`", joinCond).
+        Where(builder.IsNull{"`" + refObject + "`.id"}).
+        Select("COUNT(`" + subject + "`.`id`)").
+        Count()
+}
+
+func DeleteOrphanedObjects(ctx context.Context, subject, refObject, joinCond string) error {
+    subQuery := builder.Select("`"+subject+"`.id").
+        From("`" + subject + "`").
+        Join("LEFT", "`"+refObject+"`", joinCond).
+        Where(builder.IsNull{"`" + refObject + "`.id"})
+    b := builder.Delete(builder.In("id", subQuery)).From("`" + subject + "`")
+    _, err := GetEngine(ctx).Exec(b)
+    return err
+}
+```
+
+Both use a `LEFT JOIN ... WHERE ref.id IS NULL` pattern to identify rows in `subject` that no
+longer have a matching row in `refObject`. These are consumed by:
+
+- **`services/doctor/dbconsistency.go`** — the `gitea doctor` command's generic "check for
+  orphaned rows" logic across dozens of table pairs (e.g., `action` orphaned from `repository`,
+  `attachment` orphaned from `issue`, etc.), driven by a declarative list of
+  `(subject, refObject, joinCond)` tuples.
+- **`services/doctor/repository.go`** — specifically checks for repositories whose owning user
+  no longer exists: `db.CountOrphanedObjects(ctx, "repository", "user", "repository.owner_id=`user`.id")`.
+- Unit tests such as `models/db/engine_test.go`'s `TestDeleteOrphanedObjects` and
+  `models/issues/pull_test.go`'s `testDeleteOrphanedObjects`, which validate the pull-request/
+  issue relationship stays consistent.
+
+> **Note:** table/column names are directly interpolated into the SQL string (wrapped in
+> backticks) rather than parameterized, because table/column identifiers cannot be bound as
+> SQL parameters. Callers must only pass trusted, hard-coded identifiers — never user input —
+> to these functions.
+
+## Related Pages
+
+- [Migrations](migrations.md) — how schema changes are applied on top of the engine described here.
+- [Database & Models overview](README.md) — high-level orientation for the `models/` package.

@@ -1,0 +1,89 @@
+=== FILE: docs/03-getting-started/overview.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Overview Gitea is a self-hosted, all-in-one software development platform written in [Go](https://go.dev/). It provides Git repository hosting alongside the collaboration tools that teams typically expect from a forge: code review, issue tracking, project management, a wiki, package registry, and CI/CD through Actions. Gitea is designed to be lightweight, fast to install, and easy to operate — a single static binary (plus an optional database) is enough to run a full instance.
+
+# Overview
+
+Gitea is a self-hosted, all-in-one software development platform written in [Go](https://go.dev/). It provides Git repository hosting alongside the collaboration tools that teams typically expect from a forge: code review, issue tracking, project management, a wiki, package registry, and CI/CD through Actions. Gitea is designed to be lightweight, fast to install, and easy to operate — a single static binary (plus an optional database) is enough to run a full instance.
+
+> The project's own description, from the repository [`README.md`](https://github.com/go-gitea/gitea/blob/main/README.md):
+> "The goal of Gitea is to make the easiest, fastest, and most painless way of setting up a self-hosted all-in-one software development service, including Git hosting, code management, code review, issue tracking, project kanban, wiki, team collaboration, package registry and CI/CD which can reuse GitHub Actions."
+
+## Core Features
+
+| Area | Description |
+|------|--------------|
+| **Git hosting** | Full Git repository hosting over HTTP(S) and SSH, including the built-in SSH server (`START_SSH_SERVER`), mirrors, LFS, submodules, and Git hooks. See `modules/git/`, `routers/private/`, and `cmd/hook.go`. |
+| **Pull requests & code review** | Fork- and branch-based pull requests, diff review, inline comments, review requests, status checks, branch protection, and auto-merge. Implemented under `routers/web/repo/pull*.go` and `services/pull/`. |
+| **Issue tracking** | Issues, labels, milestones, assignees, time tracking, and dependencies. See `routers/web/repo/issue*.go` and `models/issues/`. |
+| **Wiki** | Per-repository wiki backed by its own Git repository, editable via web UI or a normal Git clone. See `routers/web/repo/wiki.go`. |
+| **Projects** | Kanban-style project boards for organizing issues and pull requests at the repository or organization level. See `routers/web/repo/projects.go`. |
+| **Packages** | A built-in package registry supporting many ecosystems (npm, Maven, NuGet, PyPI, Docker/OCI, Cargo, Composer, Conda, Debian, RPM, Helm, Go, and more). See `routers/api/packages/` and `modules/packages/`. |
+| **Actions** | A CI/CD system compatible with a large subset of GitHub Actions workflow syntax, executed by external `act_runner` agents that connect back to Gitea. See `routers/api/actions/`, `services/actions/`, and `models/actions/`. |
+| **Organizations & teams** | Group repositories under organizations with team-based permissions. |
+| **Authentication** | Local accounts, SMTP/LDAP/PAM, OAuth2 (as provider and consumer), OpenID Connect, two-factor authentication, and WebAuthn. |
+| **Administration** | Web-based admin panel, `gitea admin` / `gitea doctor` CLI subcommands, webhooks, and notifications. |
+
+## High-Level Architecture
+
+Gitea is a monolithic Go application: the web server, Git smart-HTTP/SSH backends, background job queues, and (optionally) the database are all part of one binary. There is no separate frontend server — static assets are built once with Vite and served (or embedded) by the same process that serves the API and web UI.
+
+```mermaid
+graph TD
+  Browser[Web Browser] -->|HTTP/S| Router[Chi HTTP Router]
+  GitClient[git CLI / SSH client] -->|SSH & smart HTTP| GitBackend[Git Smart Backend]
+  Router --> WebRoutes[Web UI Routers]
+  Router --> APIRoutes[REST / Swagger API]
+  Router --> ActionsAPI[Actions API]
+  WebRoutes --> Services[Service Layer]
+  APIRoutes --> Services
+  ActionsAPI --> Services
+  GitBackend --> Services
+  Services --> Models[Models / ORM - xorm]
+  Models --> DB[(SQLite / MySQL / PostgreSQL / MSSQL)]
+  Services --> Queue[Queue & Workers]
+  Services --> Storage[(Local disk / S3 / MinIO / Azure)]
+```
+
+## Supported Platforms and Architectures
+
+Because Gitea is written in Go, it inherits Go's broad cross-compilation support. Official binaries and Docker images are published for:
+
+- **Operating systems**: Linux, macOS, FreeBSD/OpenBSD, and Windows.
+- **Architectures**: x86 (386), amd64, ARM (v5/v6/v7), ARM64, RISC-V 64, and (for some targets) PowerPC.
+
+The `Makefile` defines the official release matrix via `LINUX_ARCHS`:
+
+```makefile
+LINUX_ARCHS ?= linux/amd64,linux/386,linux/arm-5,linux/arm-6,linux/arm64,linux/riscv64
+```
+
+macOS/Darwin, Windows, and FreeBSD builds are cross-compiled with [`xgo`](https://github.com/techknowlogick/xgo) via the `release-darwin`, `release-windows`, and `release-freebsd` Make targets. CGO is disabled by default (`CGO_ENABLED ?= 0`); it is only required when building with the `sqlite_mattn` or `pam` build tags.
+
+## Deployment Options
+
+Gitea can be deployed in several ways, all built from the same source tree:
+
+- **Single binary** — copy the compiled `gitea` executable plus a `custom/` directory to a server and run `./gitea web`.
+- **Official Docker image** (`gitea/gitea`) — container-based deployment, including root-less variants.
+- **Package manager** — distro packages maintained by the community (deb/rpm, Homebrew, etc.).
+- **Kubernetes / Helm** — via the community-maintained Helm chart.
+- **Gitea Cloud** — a hosted/managed offering at [cloud.gitea.com](https://cloud.gitea.com).
+
+This documentation set focuses on running Gitea from source. See [Installation and Build](installation-and-build.md) for the build process, [Configuration](configuration-app-ini.md) for `app.ini`, and [Running Gitea](running-gitea.md) for starting the server and completing first-run setup.
+
+## Where to Look in the Source Tree
+
+| Path | Purpose |
+|------|---------|
+| `main.go`, `cmd/` | CLI entry point and subcommands (`web`, `admin`, `doctor`, `dump`, `migrate`, ...). |
+| `routers/` | HTTP route registration: `routers/web` (UI), `routers/api` (REST API), `routers/private` (internal RPC used by Git hooks/SSH), `routers/install` (setup wizard). |
+| `services/` | Business logic shared by routers (pull requests, issues, mailer, actions, packages, etc.). |
+| `models/` | Database schema and query layer built on [xorm](https://xorm.io/). |
+| `modules/` | Reusable, mostly self-contained packages (`setting`, `git`, `log`, `storage`, `queue`, `markup`, ...). |
+| `templates/` | Go `html/template` files rendered by the web UI. |
+| `web_src/` | Frontend source (Vue components, TypeScript, CSS) built by Vite. |
+| `public/` | Static assets output by the frontend build (or embedded into the binary with `bindata`). |
+| `custom/conf/app.example.ini` | Reference configuration with every option and its default/commented value. |
+
+Continue with [Installation and Build](installation-and-build.md) to set up a development or production build.

@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backup, Restore & Doctor</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../18-admin-guide/README.html">Admin Guide</a> &rsaquo; Backup, Restore & Doctor</div>
+<h1>Backup, Restore & Doctor</h1>
+<h1 id="backup-restore-doctor">Backup, Restore &amp; Doctor</h1>
+<p>Gitea ships two CLI subcommand families dedicated to instance
+maintenance: <code>gitea dump</code> (backup) and <code>gitea doctor</code> (diagnose/fix/
+recreate/convert). Both are plain <code>github.com/urfave/cli/v3</code> commands
+defined in <code>cmd/dump.go</code> and <code>cmd/doctor.go</code>, and both operate directly
+against the configured database and storage backends — they must be run
+on a host that can reach the same <code>app.ini</code>, database, and repository
+storage as the running server (or against a copy of them).</p>
+<h2 id="gitea-dump-creating-a-backup"><code>gitea dump</code> — Creating a Backup<a href="#gitea-dump-creating-a-backup" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="command-shape">Command Shape<a href="#command-shape" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">func newDumpCommand() *cli.Command {
+    return &amp;cli.Command{
+        Name:   "dump",
+        Usage:  "Dump Gitea files and database",
+        Action: runDump,
+        Flags: []cli.Flag{ /* --file, --verbose, --quiet, --tempdir, --database, ... */ },
+    }
+}</code></pre>
+<p>Full flag reference (<code>cmd/dump.go</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Alias</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--file &lt;path&gt;</code></td>
+<td><code>-f</code></td>
+<td>Output file name; default <code>gitea-dump-{unix-timestamp}.zip</code>. <code>-</code> streams to stdout.</td>
+</tr>
+<tr>
+<td><code>--type &lt;fmt&gt;</code></td>
+<td></td>
+<td>Archive format; overrides the extension-derived default.</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-V</code></td>
+<td>Log every file added to the archive.</td>
+</tr>
+<tr>
+<td><code>--quiet</code></td>
+<td><code>-q</code></td>
+<td>Only log warnings/errors (mutually exclusive with <code>--verbose</code>).</td>
+</tr>
+<tr>
+<td><code>--tempdir &lt;path&gt;</code></td>
+<td><code>-t</code></td>
+<td>Directory for the temporary DB dump file; defaults to <code>os.TempDir()</code>.</td>
+</tr>
+<tr>
+<td><code>--database &lt;type&gt;</code></td>
+<td><code>-d</code></td>
+<td>Cross-dump target SQL dialect (<code>sqlite3</code>/<code>mysql</code>/<code>mssql</code>/<code>postgres</code>), for migrating between database engines.</td>
+</tr>
+<tr>
+<td><code>--skip-repository</code></td>
+<td><code>-R</code></td>
+<td>Omit <code>RepoRootPath</code> (and LFS data) entirely.</td>
+</tr>
+<tr>
+<td><code>--skip-log</code></td>
+<td><code>-L</code></td>
+<td>Omit <code>Log.RootPath</code>.</td>
+</tr>
+<tr>
+<td><code>--skip-custom-dir</code></td>
+<td></td>
+<td>Omit the <code>custom/</code> directory.</td>
+</tr>
+<tr>
+<td><code>--skip-lfs-data</code></td>
+<td></td>
+<td>Omit LFS object blobs (repository Git data is still included).</td>
+</tr>
+<tr>
+<td><code>--skip-attachment-data</code></td>
+<td></td>
+<td>Omit issue/PR/release attachment blobs.</td>
+</tr>
+<tr>
+<td><code>--skip-package-data</code></td>
+<td></td>
+<td>Omit package registry blobs.</td>
+</tr>
+<tr>
+<td><code>--skip-index</code></td>
+<td></td>
+<td>Omit the Bleve full-text search index directories.</td>
+</tr>
+<tr>
+<td><code>--skip-db</code></td>
+<td></td>
+<td>Omit the database dump entirely.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="supported-archive-formats">Supported Archive Formats<a href="#supported-archive-formats" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/dump/dumper.go</code> defines:</p>
+<pre class="highlight"><code class="language-go">var SupportedOutputTypes = []string{"zip", "tar", "tar.sz", "tar.gz", "tar.xz", "tar.bz2", "tar.br", "tar.lz4", "tar.zst"}</code></pre>
+<p><code>PrepareFileNameAndType(argFile, argType)</code> resolves the final output name
+and type from whatever combination of <code>--file</code>/<code>--type</code> was given: if
+neither is set, it defaults to <code>zip</code> with a timestamped name; if only
+<code>--file</code> is given and its extension matches one of the supported suffixes,
+that suffix determines the type; an unrecognized combination returns an
+empty type, which <code>runDump</code> treats as fatal. <code>NewDumper</code> maps each type to
+a <code>mholt/archives</code> <code>ArchiverAsync</code> implementation (<code>archives.Zip</code>,
+<code>archives.Tar</code>, or a <code>CompressedArchive</code> wrapping <code>Tar</code> with the
+appropriate <code>Compression</code> codec) and runs the archive writer
+asynchronously against a channel of <code>ArchiveAsyncJob</code>s (<code>Dumper.jobs</code>), so
+files are compressed and written as they're discovered rather than being
+buffered entirely in memory first.</p>
+<h3 id="what-gets-dumped-in-order">What Gets Dumped, in Order<a href="#what-gets-dumped-in-order" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>runDump</code> (<code>cmd/dump.go</code>) assembles the archive in a fixed sequence:</p>
+<ol>
+<li><strong><code>setting.MustInstalled()</code></strong> — refuses to run against an
+   uninitialized instance (no completed <code>/install</code> flow).</li>
+<li><strong>Repositories</strong> (<code>repos/</code>) — the entire <code>setting.RepoRootPath</code> tree via
+   <code>dumper.AddRecursiveExclude</code>, unless <code>--skip-repository</code>.</li>
+<li><strong>LFS objects</strong> (<code>data/lfs/</code>) — iterated object-by-object from
+   <code>storage.LFS</code> via <code>IterateObjects</code>, skipped automatically if
+   <code>setting.LFS.StartServer</code> is false, and independently skippable with
+   <code>--skip-lfs-data</code> even when LFS is enabled.</li>
+<li><strong>Database</strong> (<code>gitea-db.sql</code>) — dumped to a temporary file with
+   <code>db.DumpDatabase(path, targetDBType)</code>, then added to the archive and
+   the temp file removed; <code>--database</code> lets you dump into a <em>different</em>
+   SQL dialect than the one currently configured, which is the supported
+   path for <strong>migrating between database engines</strong> (e.g. SQLite → MySQL):
+   restore the resulting SQL into the target engine, point a fresh
+   <code>app.ini</code> at it, then run <code>gitea doctor check</code> before going live. If
+   <code>--skip-db</code> is set, the dumper additionally calls
+   <code>GlobalExcludeAbsPath(setting.Database.Path)</code> so an on-disk SQLite file
+   living under <code>AppDataPath</code> isn't accidentally captured by the later
+   data-directory pass.</li>
+<li><strong><code>app.ini</code></strong> (<code>app.ini</code>) — always included via <code>AddFileByPath</code>,
+   copied from <code>setting.CustomConf</code> (the actual config file that was
+   loaded, respecting <code>--config</code>/<code>GITEA_CUSTOM</code> overrides).</li>
+<li><strong>Custom directory</strong> (<code>custom/</code>) — the whole <code>setting.CustomPath</code> tree
+   (templates overrides, custom locales, <code>public/</code> assets), unless
+   <code>--skip-custom-dir</code>; skipped automatically (with a log message, not an
+   error) if <code>CustomPath</code> happens to live <em>inside</em> <code>AppDataPath</code>, since
+   step 7 would otherwise duplicate it.</li>
+<li><strong>Application data directory</strong> (<code>data/</code>) — <code>setting.AppDataPath</code>,
+   excluding whatever is dumped by more specific steps: the session
+   provider's file-store path (parsed out of
+   <code>setting.SessionConfig.ProviderConfig</code> when using the <code>file</code> session
+   provider), the search-index directories (if <code>--skip-index</code>),
+   <code>RepoRootPath</code>, LFS/Attachment/Packages/RepoArchive storage paths, and
+   <code>Log.RootPath</code> — each excluded here specifically so it isn't
+   double-counted against the dedicated steps above/below.</li>
+<li><strong>Attachments</strong> (<code>data/attachments/</code>) — iterated from
+   <code>storage.Attachments</code>, unless <code>--skip-attachment-data</code>.</li>
+<li><strong>Packages</strong> (<code>data/packages/</code>) — iterated from <code>storage.Packages</code>,
+   unless <code>--skip-package-data</code> or <code>setting.Packages.Enabled</code> is false.</li>
+<li><strong>Logs</strong> (<code>log/</code>) — <code>setting.Log.RootPath</code>, unless <code>--skip-log</code>; this
+    step deliberately does not pre-check whether the directory exists so
+    that a genuinely-skipped dump is unambiguous in the log output either
+    way.</li>
+</ol>
+<p>Finally, unless the output was streamed to stdout (<code>--file -</code>), the
+archive file's permissions are tightened to <code>0600</code> — dumps routinely
+contain secrets (<code>app.ini</code>'s <code>SECRET_KEY</code>/<code>INTERNAL_TOKEN</code>, the database
+dump, LFS/attachment contents) and must not be left world-readable.</p>
+<blockquote>
+<p><strong>External storage caveat</strong>: if LFS/Attachments/Packages are configured
+to use MinIO/S3 rather than local disk (see
+<a href="../03-getting-started/README.html">Getting Started &amp; Configuration</a>),
+<code>dump</code> still iterates and embeds every object's bytes through
+<code>storage.Object.Stat()</code>/<code>AddFileByReader</code> — the dump remains
+self-contained, but can become very large and slow for buckets with a
+lot of data. Use the granular <code>--skip-*-data</code> flags to produce a
+"config + database only" dump when object storage is backed up
+separately (e.g. via the storage provider's own snapshot/replication
+tooling).</p>
+</blockquote>
+<h3 id="restoring-from-a-dump">Restoring from a Dump<a href="#restoring-from-a-dump" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>There is no single <code>gitea restore</code> command — restoration is the dump
+process run in reverse, manually:</p>
+<ol>
+<li>Stop the Gitea service.</li>
+<li>Unpack the archive to a scratch location.</li>
+<li>Restore <code>repos/</code> to the (new) <code>RepoRootPath</code>.</li>
+<li>Restore <code>data/lfs</code>, <code>data/attachments</code>, <code>data/packages</code> to their
+   respective storage backends (local paths or object storage, matching
+   whatever <code>app.ini</code> will point at).</li>
+<li>Import <code>gitea-db.sql</code> into a fresh, empty database of the target
+   engine (<code>mysql</code>/<code>psql</code>/<code>sqlite3 &lt; gitea-db.sql</code>, per the dialect it was
+   dumped with).</li>
+<li>Restore <code>custom/</code> and the remainder of <code>data/</code> (minus the pieces
+   already restored in steps 3–4) to <code>CustomPath</code>/<code>AppDataPath</code>.</li>
+<li>Restore (or hand-merge) <code>app.ini</code> to the config path, updating any
+   paths/credentials that differ in the new environment (data directory
+   location, DB host, storage endpoint, <code>ROOT_URL</code>, etc.).</li>
+<li>Run <code>gitea doctor check --all</code> before starting the service, to catch
+   anything the manual restore missed.</li>
+<li>Start Gitea and confirm via <code>/-/admin</code> → <em>Self Check</em> and, ideally, the
+   <a href="monitoring-and-observability.html">Monitoring &amp; Observability</a> <code>/metrics</code>
+   endpoint.</li>
+</ol>
+<h2 id="gitea-doctor-diagnose-fix-recreate-convert"><code>gitea doctor</code> — Diagnose, Fix, Recreate, Convert<a href="#gitea-doctor-diagnose-fix-recreate-convert" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/doctor.go</code>'s <code>newDoctorCommand()</code> is a parent command with three
+children:</p>
+<pre class="highlight"><code class="language-go">Commands: []*cli.Command{
+    newDoctorCheckCommand(),   // "check": the diagnostics engine
+    newRecreateTableCommand(), // "recreate-table"
+    newDoctorConvertCommand(), // "convert"
+}</code></pre>
+<h3 id="gitea-doctor-check-the-checks-engine"><code>gitea doctor check</code> — the Checks Engine<a href="#gitea-doctor-check-the-checks-engine" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The check registry lives in <code>services/doctor</code> (package <code>doctor</code>), not
+<code>cmd</code>. Each check is a <code>*doctor.Check</code>:</p>
+<pre class="highlight"><code class="language-go">type Check struct {
+    Title                      string
+    Name                       string
+    IsDefault                  bool
+    Run                        func(ctx context.Context, logger log.Logger, autofix bool) error
+    AbortIfFailed              bool
+    SkipDatabaseInitialization bool
+    Priority                   int
+    InitStorage                bool
+}</code></pre>
+<p>Checks self-register at package-init time via <code>doctor.Register(&amp;Check{...})</code>
+in <code>init()</code> functions spread across several files, and <code>doctor.Checks</code> is
+the resulting global slice. <code>runDoctorCheck</code> (<code>cmd/doctor.go</code>) resolves
+which checks to actually run from three flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--list</code></td>
+<td>Print a table of every registered check (name, title, whether it's a default) and exit — no checks are run.</td>
+</tr>
+<tr>
+<td><em>(no flag)</em></td>
+<td>Run only checks with <code>IsDefault: true</code>.</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td>Run every registered check, default or not.</td>
+</tr>
+<tr>
+<td><code>--run &lt;name&gt;[,&lt;name&gt;...]</code></td>
+<td>Run exactly the named checks; combine with <code>--default</code> to also include the defaults.</td>
+</tr>
+<tr>
+<td><code>--fix</code></td>
+<td>Pass <code>autofix: true</code> into every selected check's <code>Run</code>, letting checks that support remediation actually modify data/storage instead of only reporting.</td>
+</tr>
+<tr>
+<td><code>--log-file &lt;path&gt;</code> / <code>-</code> / <em>(unset)</em></td>
+<td>Redirect verbose per-check logging to a file, stdout, or nowhere (default), independent of the summary output which always goes to stdout.</td>
+</tr>
+<tr>
+<td><code>--color</code> / <code>-H</code></td>
+<td>Force-enable/disable ANSI color in the summary output.</td>
+</tr>
+</tbody>
+</table>
+<p><code>RunChecks</code> (<code>services/doctor/doctor.go</code>) sorts the selected checks by
+<code>Priority</code> (lower runs first; zero-priority checks sort last, after all
+explicitly-prioritized ones) via <code>SortChecks</code>, then runs them in order,
+lazily calling <code>db.InitEngine</code> before the first check that doesn't set
+<code>SkipDatabaseInitialization</code> and <code>storage.Init()</code> before the first check
+that sets <code>InitStorage</code> — so a purely filesystem-oriented check never pays
+the cost of opening a DB connection it doesn't need. If a check sets
+<code>AbortIfFailed</code> and returns an error, the whole run stops immediately
+instead of continuing to the next check.</p>
+<h3 id="the-full-check-catalog">The Full Check Catalog<a href="#the-full-check-catalog" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Title</th>
+<th>Default</th>
+<th>Fixable</th>
+<th>Priority</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>check-db-consistency</code></td>
+<td>Check consistency of database</td>
+<td>No</td>
+<td>Yes</td>
+<td>3</td>
+<td>Umbrella check running ~25 orphan-record sub-checks (below)</td>
+</tr>
+<tr>
+<td><code>gc-lfs</code></td>
+<td>Garbage collect LFS</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td>Fails fast with an error if LFS isn't enabled</td>
+</tr>
+<tr>
+<td><code>storages</code></td>
+<td>Check if there are orphaned storage files</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td>Runs all five storage sub-checks below via <code>All: true</code></td>
+</tr>
+<tr>
+<td><code>storage-attachments</code></td>
+<td>orphaned attachments in storage</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>storage-lfs</code></td>
+<td>orphaned lfs files in storage</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>storage-avatars</code></td>
+<td>orphaned avatars in storage</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td>Covers both user avatars and repo avatars</td>
+</tr>
+<tr>
+<td><code>storage-archives</code></td>
+<td>orphaned archives in storage</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td>Repo <code>.zip</code>/<code>.tar.gz</code> download-archive cache</td>
+</tr>
+<tr>
+<td><code>storage-packages</code></td>
+<td>orphaned package blobs in storage</td>
+<td>No</td>
+<td>Yes</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>delete-orphaned-repos</code></td>
+<td>Repos with no existing owner</td>
+<td>No</td>
+<td>Yes</td>
+<td>4</td>
+<td>Deletes on-disk repo data too, via <code>repo_service.DeleteRepositoryDirectly</code></td>
+</tr>
+<tr>
+<td><code>hooks</code></td>
+<td>Check if hook files are up-to-date and executable</td>
+<td>No</td>
+<td>Yes</td>
+<td>6</td>
+<td>Regenerates Gitea's delegate hook scripts (see <a href="../10-git-integration/git-operations-and-hooks.html">Git Operations &amp; Hooks</a>)</td>
+</tr>
+<tr>
+<td><code>recalculate-stars-number</code></td>
+<td>Recalculate Stars number for all user</td>
+<td>No</td>
+<td>Yes (fix-only)</td>
+<td>6</td>
+<td>No-op without <code>--fix</code>; always logs "no check available" otherwise</td>
+</tr>
+<tr>
+<td><code>check-git-daemon-export-ok</code></td>
+<td>Check <code>git-daemon-export-ok</code> files</td>
+<td>No</td>
+<td>Yes</td>
+<td>8</td>
+<td>Keeps the anonymous <code>git://</code> export marker file in sync with repo visibility</td>
+</tr>
+<tr>
+<td><code>check-commit-graphs</code></td>
+<td>Check commit-graphs</td>
+<td>No</td>
+<td>Yes</td>
+<td>9</td>
+<td>Writes missing <code>objects/info/commit-graph</code> files to speed up git operations</td>
+</tr>
+</tbody>
+</table>
+<p><code>check-db-consistency</code> (<code>services/doctor/dbconsistency.go</code>) is itself a
+list of ~25 <code>consistencyCheck</code> entries — each a <code>{Name, Counter, Fixer}</code>
+triple that counts orphaned rows with a <code>db.CountOrphanedObjects(subject,
+refObject, joinCond)</code> LEFT JOIN query and, when <code>--fix</code> is set, deletes
+them with <code>db.DeleteOrphanedObjects</code>. Covered relationships include
+labels/issue-labels without a repo, issues without a repo, pull requests
+without an issue or base repo, tracked time without an issue, attachments
+without an issue/release, <code>is_archived IS NULL</code> repositories, label
+comments referencing deleted/foreign labels, Actions runners/variables/
+secrets with an inconsistent <code>owner_id</code>, protected branches/branches/LFS
+locks/collaborations/access rows without a repo or user, OAuth2 grants/
+applications/authorization codes without an owning user/grant, stopwatches
+without a user or issue, and user redirects pointing at a deleted user.
+On PostgreSQL specifically, an extra <code>db.CountBadSequences</code> check detects
+sequence values that have drifted behind the actual max row ID (a known
+failure mode after certain restore/migration paths) and
+<code>db.FixBadSequences</code> realigns them.</p>
+<p>Note that many of the most fundamental checks — is the app installed, is
+the configured Git binary version supported, are required directories
+writable — are performed automatically by <code>setting.LoadSettings()</code>/
+<code>git.InitFull()</code> during normal startup and surfaced as
+<code>setting.StartupProblems</code>, which is why they show up on the <em>Admin Panel</em>
+dashboard and self-check page (see
+<a href="admin-panel-and-operations.html#self-check-selfcheck--selfcheckpost">Admin Panel &amp; Operations</a>)
+rather than as separate named <code>doctor</code> checks.</p>
+<h3 id="gitea-doctor-recreate-table"><code>gitea doctor recreate-table</code><a href="#gitea-doctor-recreate-table" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code>gitea doctor recreate-table [TABLE]...</code></pre>
+<p>Forces Xorm to drop and recreate the named table(s) (or every table, if
+none are named) from their current Go struct definitions, copying
+existing data across in the process. This repairs schema drift caused by
+manual database edits or interrupted migrations — column defaults,
+types, and indexes end up exactly matching what the running Gitea version
+expects. <code>runRecreateTable</code> first runs <code>migrations.EnsureUpToDate</code> to
+guarantee the migration version table itself is current before touching
+any table structure, and accepts a <code>--debug</code> flag to echo every SQL
+statement it issues. <strong>Always back up the database with <code>gitea dump</code>
+first</strong> — this is a structural, in-place operation with no automatic undo.</p>
+<h3 id="gitea-doctor-convert"><code>gitea doctor convert</code><a href="#gitea-doctor-convert" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Converts the database's charset/collation in place (implemented in
+<code>cmd/doctor_convert.go</code>) — primarily used for MySQL installations created
+with an incorrect or legacy charset that need to move to
+<code>utf8mb4</code>/<code>utf8mb4_general_ci</code> (or another target collation) without a
+full dump/restore cycle. As with <code>recreate-table</code>, take a backup first.</p>
+<h2 id="recommended-operational-cadence">Recommended Operational Cadence<a href="#recommended-operational-cadence" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Suggested frequency</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full backup</td>
+<td>Daily (or per your RPO) before any maintenance window</td>
+<td><code>gitea dump --tempdir /fast/local/disk</code></td>
+</tr>
+<tr>
+<td>Default doctor checks</td>
+<td>After every upgrade, before returning to production</td>
+<td><code>gitea doctor check</code></td>
+</tr>
+<tr>
+<td>Storage orphan checks</td>
+<td>Periodically (they can be slow on large object stores)</td>
+<td><code>gitea doctor check --run storages</code></td>
+</tr>
+<tr>
+<td>DB consistency check</td>
+<td>After any manual DB edit, restore, or suspected data corruption</td>
+<td><code>gitea doctor check --run check-db-consistency --fix</code></td>
+</tr>
+<tr>
+<td>Hook regeneration</td>
+<td>After any Gitea binary upgrade that changes hook script templates</td>
+<td><code>gitea doctor check --run hooks --fix</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="where-to-go-next">Where to Go Next<a href="#where-to-go-next" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>If you want to...</th>
+<th>Go to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trigger the same sync/cron tasks from a browser instead of the CLI</td>
+<td><a href="admin-panel-and-operations.html">Admin Panel &amp; Operations</a></td>
+</tr>
+<tr>
+<td>Watch instance health continuously rather than one-shot checking it</td>
+<td><a href="monitoring-and-observability.html">Monitoring &amp; Observability</a></td>
+</tr>
+<tr>
+<td>See the full CLI subcommand tree (<code>admin</code>, <code>web</code>, <code>serv</code>, etc.)</td>
+<td><a href="../16-cli-admin/cli-commands.html">CLI &amp; Admin Operations</a></td>
+</tr>
+<tr>
+<td>Understand storage backend configuration (local vs. S3/MinIO)</td>
+<td><a href="../04-configuration/settings-catalog.html">Settings Catalog</a></td>
+</tr>
+</tbody>
+</table>
+<div class="page-nav">
+<a href="admin-panel-and-operations.html"><div class="nav-label">← Previous</div><div class="nav-title">Admin Panel & Operations</div></a>
+<a href="monitoring-and-observability.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Monitoring & Observability</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#gitea-dump-creating-a-backup" class="" data-anchor="gitea-dump-creating-a-backup">gitea dump — Creating a Backup</a>
+<a href="#command-shape" class="toc-h3" data-anchor="command-shape">Command Shape</a>
+<a href="#supported-archive-formats" class="toc-h3" data-anchor="supported-archive-formats">Supported Archive Formats</a>
+<a href="#what-gets-dumped-in-order" class="toc-h3" data-anchor="what-gets-dumped-in-order">What Gets Dumped, in Order</a>
+<a href="#restoring-from-a-dump" class="toc-h3" data-anchor="restoring-from-a-dump">Restoring from a Dump</a>
+<a href="#gitea-doctor-diagnose-fix-recreate-convert" class="" data-anchor="gitea-doctor-diagnose-fix-recreate-convert">gitea doctor — Diagnose, Fix, Recreate, Convert</a>
+<a href="#gitea-doctor-check-the-checks-engine" class="toc-h3" data-anchor="gitea-doctor-check-the-checks-engine">gitea doctor check — the Checks Engine</a>
+<a href="#the-full-check-catalog" class="toc-h3" data-anchor="the-full-check-catalog">The Full Check Catalog</a>
+<a href="#gitea-doctor-recreate-table" class="toc-h3" data-anchor="gitea-doctor-recreate-table">gitea doctor recreate-table</a>
+<a href="#gitea-doctor-convert" class="toc-h3" data-anchor="gitea-doctor-convert">gitea doctor convert</a>
+<a href="#recommended-operational-cadence" class="" data-anchor="recommended-operational-cadence">Recommended Operational Cadence</a>
+<a href="#where-to-go-next" class="" data-anchor="where-to-go-next">Where to Go Next</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

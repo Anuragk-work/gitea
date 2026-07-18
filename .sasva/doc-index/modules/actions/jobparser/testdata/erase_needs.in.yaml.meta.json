@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/erase_needs.in.yaml",
+  "format": "yaml",
+  "size_bytes": 237,
+  "source_modified": "2026-07-18T06:05:26.860129+00:00",
+  "indexed_at": "2026-07-18T07:39:40.086383+00:00",
+  "text_length": 237,
+  "line_count": 17
+}

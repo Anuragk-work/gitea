@@ -1,0 +1,9 @@
+{
+  "source": "modules/migration/schemas/issue.json",
+  "format": "json",
+  "size_bytes": 2525,
+  "source_modified": "2026-07-18T06:05:26.924989+00:00",
+  "indexed_at": "2026-07-18T07:39:40.096353+00:00",
+  "text_length": 2525,
+  "line_count": 115
+}

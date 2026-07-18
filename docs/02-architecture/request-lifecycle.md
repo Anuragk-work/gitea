@@ -1,0 +1,242 @@
+# Request Lifecycle
+
+This page traces a single HTTP request from the moment it hits the listening
+socket in `cmd/web.go` to the moment a rendered template or JSON body is written
+back to the client. It focuses on the **web UI** path, whose route table lives
+in `routers/web/web.go` (a single ~78 KB file registering hundreds of routes via
+nested `m.Group(...)` calls), and calls out where the **REST API** path
+(`routers/api/v1`) and **internal API** path (`routers/private`) diverge.
+
+## Overview
+
+```mermaid
+sequenceDiagram
+    participant Client as Browser / git client
+    participant Listener as cmd/web.go (net/http listener)
+    participant Chi as modules/web.Router (chi)
+    participant Proto as routers/common.ProtocolMiddlewares
+    participant Ctx as services/context.Contexter
+    participant Auth as services/auth (AuthMiddleware)
+    participant Verify as verifyAuthWithOptions (CSRF/permissions)
+    participant Handler as routers/web/* handler
+    participant Svc as services/* business logic
+    participant Model as models/* (XORM)
+    participant DB as Database
+    participant Git as modules/git, gitrepo
+    participant Repo as Git repository (disk)
+    participant Tmpl as modules/templates renderer
+
+    Client->>Listener: HTTP request (TCP/Unix/FCGI)
+    Listener->>Chi: ServeHTTP(w, r)
+    Chi->>Proto: BeforeRouting middlewares
+    Note over Proto: ChiRoutePathHandler, RequestContextHandler<br/>(reqctx + panic recovery), SecurityHeadersHandler,<br/>ForwardedHeadersHandler, AccessLogger
+    Proto->>Ctx: AfterRouting: MustInitSessioner, Contexter()
+    Ctx->>Ctx: NewBaseContext + NewWebContext<br/>(Locale via i18n cookie/header, Flash, Session, Data)
+    Ctx->>Auth: webAuth.MiddlewareHandler
+    Auth->>Auth: auth_service.NewGroup()<br/>(OAuth2, Basic, ReverseProxy, Session, SSPI)
+    Auth->>Ctx: ctx.Doer, ctx.IsSigned, ctx.IsBasicAuth
+    Ctx->>Verify: verifyAuthWithOptions(opts)
+    Verify->>Verify: CrossOriginProtection.Check(req)<br/>(Fetch-Metadata based CSRF)
+    Verify->>Verify: SignInRequired / AdminRequired / MustChangePassword checks
+    Verify->>Handler: next.ServeHTTP (route matched)
+    Handler->>Svc: call services/* (e.g. repo_service, issue_service)
+    Svc->>Model: models/* queries (XORM)
+    Model->>DB: SQL via XORM engine
+    DB-->>Model: rows
+    Svc->>Git: modules/git / gitrepo (shell out to git binary)
+    Git->>Repo: read/write objects, refs, hooks
+    Repo-->>Git: git command output
+    Git-->>Svc: parsed result
+    Svc-->>Handler: domain result / error
+    Handler->>Ctx: ctx.Data[...] = value
+    Handler->>Tmpl: ctx.HTML(status, tplName) or ctx.JSON(status, obj)
+    Tmpl-->>Client: rendered HTML page or JSON body
+```
+
+## Step-by-Step
+
+### 1. Process entry and listener setup
+
+`cmd/web.go`'s `runWeb` initializes the graceful manager, loads/renders the
+template set once via `templates.PageRenderer()`, and (once installed) calls
+`routers.InitWebInstalled(ctx)` followed by `routers.NormalRoutes()` to build the
+final `*web.Router`. `listen()` then chooses the transport (`tcp`, `unix`, `fcgi`,
+optionally TLS/ACME) and starts serving with `net/http`.
+
+### 2. Chi routing and "before routing" middleware
+
+`modules/web.Router` wraps `chi.Mux`. Global middlewares registered with
+`BeforeRouting()` run for **every** request before the URL is matched to a
+route, because at that point the request method/path might still need to be
+normalized. `routers/common.ProtocolMiddlewares()` (see `routers/common/middleware.go`)
+returns, in order:
+
+1. `ChiRoutePathHandler()` — ensures chi uses the escaped path so `%2f` is
+   handled correctly.
+2. `RequestContextHandler()` — creates the `reqctx.RequestContext` (the root
+   `context.Context` carried through the whole request), wraps the
+   `http.ResponseWriter`, starts a profiling span (`gtprof`), and installs a
+   `defer recover()` so a panic anywhere downstream is converted into a proper
+   error page instead of crashing the process.
+3. `SecurityHeadersHandler()` — sets `X-Content-Type-Options` /
+   `X-Frame-Options`.
+4. `ForwardedHeadersHandler()` — parses `X-Forwarded-For`/`X-Forwarded-Proto`
+   when `REVERSE_PROXY_LIMIT` and `REVERSE_PROXY_TRUSTED_PROXIES` are configured.
+5. `routing.NewRequestInfoHandler()` — records route info for the `/-/manager`
+   introspection endpoints.
+6. `context.AccessLogger()` (if `ACCESS_LOG` is enabled) and, in dev mode,
+   `public.ViteDevMiddleware` (proxies asset requests to the Vite dev server).
+
+`routers.NormalRoutes()` then mounts three route trees under this shared
+pipeline: `web_routers.Routes()` at `/`, `apiv1.Routes()` at `/api/v1`, and
+`private.Routes()` at `/api/internal`.
+
+### 3. Context construction (`services/context`)
+
+Once chi has matched a route, `routers/web/web.go`'s `Routes()` appends a second
+batch of middleware via `AfterRouting()`, which by this point can see the
+matched route pattern and path parameters:
+
+```go
+mid = append(mid, common.MustInitSessioner(), context.Contexter())
+webAuth := newWebAuthMiddleware()
+mid = append(mid, webAuth.MiddlewareHandler)
+mid = append(mid, goGet)
+mid = append(mid, common.PageGlobalData)
+mid = append(mid, common.BlockExpensive(), common.QoS(), ...)
+```
+
+- **`common.MustInitSessioner()`** installs the `go-chi/session` middleware,
+  backed by whichever `[session] PROVIDER` is configured (`memory`, `file`,
+  `db`, `redis`, ...).
+- **`context.Contexter()`** (in `services/context/context.go`) builds a
+  `*context.Context` for the request:
+  - `NewBaseContext(resp, req)` resolves the **i18n locale** via
+    `modules/web/middleware.Locale()` — checking the `?lang=` query parameter,
+    then the `lang` cookie, then the `Accept-Language` header, in that order,
+    and persists a changed language back to a cookie.
+  - `NewWebContext(base, renderer, session)` attaches the page `Render`er,
+    `Cache`, `Flash` message store, and initializes `ctx.Repo`/`ctx.Org` value
+    holders used later by repository/organization-scoped routes.
+  - Common template data (`middleware.CommonTemplateContextData()`), the flash
+    cookie, `SystemConfig`, and various feature flags are merged into
+    `ctx.Data`, which is what templates ultimately render from.
+
+### 4. Authentication middleware
+
+`newWebAuthMiddleware()` (in `routers/web/web.go`) builds an `auth_service.Group`
+of pluggable authenticators — `services/auth`'s `OAuth2`, `Basic`,
+`ReverseProxy`, `Session`, and (on Windows) `SSPI` — and calls
+`common.AuthShared(ctx.Base, ctx.Session, group)`. Each method's `Verify()` is
+tried until one returns a `*user_model.User` or all fail. On success:
+
+- `ctx.Doer`, `ctx.IsSigned`, `ctx.IsBasicAuth` are populated.
+- If the resolved user's language differs from the request locale, the locale
+  is re-resolved for that user.
+- `ctx.Data["IsSigned"]`, `SignedUserID`, `IsAdmin` are set for templates.
+
+Routes that must run without a session (e.g., `git clone` over HTTP, RSS feeds)
+opt into `AllowBasic`/`AllowOAuth2` via `webAuth.AllowBasic` /
+`webAuth.AllowOAuth2` pre-middlewares so the `Session` authenticator does not
+force a cookie to be created.
+
+### 5. Authorization / CSRF / feature checks
+
+Per-route (or per-group) handlers wrap the final handler with
+`verifyAuthWithOptions(&common.VerifyOptions{...})`, defined in
+`routers/web/web.go`. This single function is responsible for:
+
+- **Account state checks**: inactive accounts see the "activate your account"
+  page; accounts with `ProhibitLogin` are blocked; accounts with
+  `MustChangePassword` are forced to `/user/settings/change_password`.
+- **Sign-in / sign-out requirements**: `SignInRequired` redirects anonymous
+  users to the login page; `SignOutRequired` redirects already-authenticated
+  users away from pages like `/user/login`.
+- **Cross-origin / CSRF protection**: unless `SignOutRequired` or
+  `DisableCrossOriginProtection` is set, Gitea calls Go's standard-library
+  `http.NewCrossOriginProtection().Check(ctx.Req)` — a **Fetch Metadata**
+  (`Sec-Fetch-Site`) based cross-site request check that replaces the classic
+  CSRF-token pattern for same-site browser navigations. Routes that must accept
+  requests from other origins by design (`git` smart-HTTP, API access via
+  personal access tokens, OAuth2 flows) explicitly disable it via
+  `optSignInFromAnyOrigin` or per-route options.
+- **Admin-only pages**: `AdminRequired` returns `403 Forbidden` for non-admins
+  and sets `ctx.Data["PageIsAdmin"]`.
+
+Additional per-feature gate functions declared in `registerWebRoutes`
+(`webhooksEnabled`, `starsEnabled`, `lfsServerEnabled`, `packagesEnabled`,
+`federationEnabled`, `dlSourceEnabled`, `sitemapEnabled`, ...) short-circuit with
+`403`/`404` when the corresponding `app.ini` feature flag is disabled.
+
+For **repository-scoped** routes, a further layer of context enrichment happens
+via `services/context/repo.go`'s repository assignment middleware, which loads
+the `*repo_model.Repository`, resolves permissions
+(`services/context/permission.go`), and opens the underlying git repository
+object used by handlers (`ctx.Repo.GitRepo`).
+
+### 6. Handler execution — business logic, models, and git
+
+The matched handler function (e.g. `routers/web/repo/*.go`,
+`routers/web/user/*.go`) typically:
+
+1. Parses/validates form input (`services/forms`, `modules/web.Bind[T]`).
+2. Calls one or more `services/*` functions to perform the actual work — for
+   example `services/issue`, `services/pull`, `services/repository`,
+   `services/mailer`.
+3. Those service functions read/write through `models/*` (XORM queries against
+   the configured database), often wrapped in `db.WithTx()` for atomicity.
+4. When Git data is involved, services call into `modules/git` /
+   `modules/gitrepo` (which shell out to the `git` CLI, or use the embedded
+   gogit implementation) to read commits, trees, refs, or write new objects and
+   update refs on disk.
+5. Side effects that should not block the response (webhooks, mail, indexing,
+   mirror sync) are pushed onto a `modules/queue`-backed worker rather than
+   executed synchronously.
+
+### 7. Response: template render or JSON
+
+Handlers finish by calling one of:
+
+- **`ctx.HTML(status, tplName)`** — (`services/context/context_response.go`)
+  looks up the template in `templates/`, executes it with `ctx.Data` and
+  `ctx.TemplateContext`, and streams the result to `ctx.Resp`. On error, a
+  `status/500` fallback template is rendered.
+- **`ctx.JSON(status, obj)`** / **`ctx.JSONError(msg)`** /
+  **`ctx.JSONRedirect(url)`** — (`services/context/base.go`,
+  `services/context/context.go`) writes `application/json` directly, used by
+  AJAX/fetch-based frontend interactions (`data-global-fetch-action`, etc.).
+- **`ctx.Redirect(location)`** — issues an HTTP redirect, with special handling
+  for the `X-Gitea-Fetch-Action` header (used by the frontend's fetch helper) to
+  avoid the JS `fetch()` API silently following a redirect into a login page.
+
+### 8. Cleanup
+
+Because `RequestContextHandler` registered a cleanup callback and a
+`defer finished()` for the profiling span, once the handler returns: temp files
+from multipart uploads are removed, the profiling span is closed with the
+resolved chi route pattern attached, and (via `chi_middleware`/session
+middleware) the session store is persisted if it was modified.
+
+## Divergence: REST API and Internal API
+
+- **`routers/api/v1`** (`apiv1.Routes()`) builds an analogous but separate
+  pipeline using `services/context.APIContext` (`services/context/api.go`)
+  instead of `context.Context` — no HTML rendering, no Flash/cookie/session UI
+  concerns by default, and it uses `ctx.APIError()`/`ctx.JSON()` for all
+  responses. It reuses the same `services/auth` group of authenticators
+  (session, basic auth, OAuth2 token, HTTP token) but is primarily driven by
+  personal access tokens and OAuth2 bearer tokens.
+- **`routers/private`** (`private.Routes()`) is only reachable from `localhost`
+  (or the configured internal listener) and is used by `cmd/serv.go` (SSH) and
+  `cmd/hook.go` (git hooks) to ask the running `gitea web` process to perform
+  permission checks, LFS authorization, and push notifications — it uses
+  `services/context.PrivateContext` (`services/context/private.go`) and skips
+  browser-oriented concerns like CSRF and locale entirely.
+
+## Related Pages
+
+- [System Architecture](system-architecture.md)
+- [Module Dependency Map](module-dependency-map.md)
+- [Web Routers](../06-web-routers/README.md)
+- [Services](../08-services/README.md)
+- [Authentication](../11-authentication/README.md)

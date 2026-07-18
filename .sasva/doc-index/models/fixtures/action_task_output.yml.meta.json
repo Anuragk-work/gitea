@@ -1,0 +1,9 @@
+{
+  "source": "models/fixtures/action_task_output.yml",
+  "format": "yml",
+  "size_bytes": 380,
+  "source_modified": "2026-07-18T06:05:26.801957+00:00",
+  "indexed_at": "2026-07-18T07:39:39.902074+00:00",
+  "text_length": 380,
+  "line_count": 23
+}

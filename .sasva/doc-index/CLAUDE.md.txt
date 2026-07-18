@@ -1,0 +1,5 @@
+=== FILE: CLAUDE.md ===
+=== METADATA: format=md ===
+[SUMMARY] @AGENTS.md
+
+@AGENTS.md

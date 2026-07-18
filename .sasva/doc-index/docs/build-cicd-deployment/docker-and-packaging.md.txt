@@ -1,0 +1,344 @@
+=== FILE: docs/build-cicd-deployment/docker-and-packaging.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Docker & Packaging Gitea ships as multi-arch Docker images (rootful and rootless variants), a Snapcraft snap, and a Nix flake dev shell, in addition to traditional distro-level service unit files. This page walks through each packaging mechanism, starting with the Docker multi-stage build.
+
+# Docker & Packaging
+
+Gitea ships as multi-arch Docker images (rootful and rootless variants), a Snapcraft snap, and a Nix flake dev shell, in addition to traditional distro-level service unit files. This page walks through each packaging mechanism, starting with the Docker multi-stage build.
+
+## Dockerfile Overview
+
+There are two Dockerfiles at the repository root:
+
+| File | Image | Purpose |
+|---|---|---|
+| `Dockerfile` | `gitea/gitea` (rootful) | Traditional container: runs as root, spawns an internal `sshd`, uses `s6` process supervision |
+| `Dockerfile.rootless` | `gitea/gitea:*-rootless` | Runs entirely as the unprivileged `git` (UID 1000) user, no built-in SSH daemon, no s6 — a single foreground process managed by `dumb-init` |
+
+Both share the same **frontend-build → build-env → runtime** three-stage shape, differing mainly in the final runtime stage's packages, users, and entrypoint.
+
+### Multi-Stage Build Diagram
+
+```mermaid
+graph TD
+  subgraph "Stage 1: frontend-build (native platform)"
+    A["golang:1.26-alpine3.24<br/>+ build-base git nodejs pnpm"] --> A1["pnpm install --frozen-lockfile<br/>(cached via BuildKit mount)"]
+    A1 --> A2["COPY source (excl. .git)"]
+    A2 --> A3["make frontend<br/>→ /src/public/assets"]
+  end
+
+  subgraph "Stage 2: build-env (per target platform)"
+    B["golang:1.26-alpine3.24<br/>+ build-base git"] --> B1["go mod download"]
+    B1 --> B2["COPY source (excl. .git)"]
+    B2 --> B3["COPY --from=frontend-build<br/>public/assets"]
+    B3 --> B4["make backend<br/>(.git bind-mounted for version info)"]
+    B4 --> B5["COPY docker/root|rootless → /tmp/local<br/>chmod entrypoint/scripts"]
+  end
+
+  subgraph "Stage 3: runtime (alpine:3.24)"
+    C["FROM alpine:3.24 AS gitea[-rootless]"] --> C1["apk add runtime deps<br/>(bash, git, openssh, s6, sqlite, ...)"]
+    C1 --> C2["create git user/group"]
+    C2 --> C3["COPY --from=build-env /tmp/local /"]
+    C3 --> C4["COPY --from=build-env .../gitea /app/gitea/gitea"]
+    C4 --> C5["ENTRYPOINT + CMD"]
+  end
+
+  A3 -->|"public/assets"| B3
+  B5 -->|"binary + root overlay"| C3
+```
+
+### Stage 1 — `frontend-build`
+
+```dockerfile
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26-alpine3.24 AS frontend-build
+RUN apk --no-cache add build-base git nodejs pnpm
+WORKDIR /src
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+COPY --exclude=.git/ . .
+RUN make frontend
+```
+
+Key details:
+
+- **`--platform=$BUILDPLATFORM`** pins this stage to the *build* machine's native architecture (not the target), avoiding slow QEMU emulation for the Node.js/pnpm toolchain during multi-arch builds.
+- A BuildKit cache mount (`--mount=type=cache,target=/root/.local/share/pnpm/store`) persists the pnpm store between builds.
+- `.git/` is explicitly excluded from the `COPY` (`--exclude=.git/`) since the frontend build doesn't need version metadata.
+- `make frontend` invokes the Vite build described in [Makefile & Build System](makefile-and-build.md#core-build-targets), producing `public/assets/`.
+
+### Stage 2 — `build-env`
+
+```dockerfile
+FROM docker.io/library/golang:1.26-alpine3.24 AS build-env
+ARG GITEA_VERSION
+ARG TAGS=""
+ENV TAGS="bindata timetzdata $TAGS"
+ARG CGO_EXTRA_CFLAGS
+
+RUN apk --no-cache add build-base git
+WORKDIR ${GOPATH}/src/gitea.dev
+COPY go.mod go.sum ./
+RUN go mod download
+COPY --exclude=.git/ . .
+COPY --from=frontend-build /src/public/assets public/assets
+
+RUN --mount=type=cache,target="/root/.cache/go-build" \
+    --mount=type=bind,source=".git/",target=".git/" \
+    make backend
+
+COPY docker/root /tmp/local          # docker/rootless/ for the rootless variant
+RUN chmod 755 /tmp/local/usr/bin/entrypoint \
+              /tmp/local/usr/local/bin/* \
+              /tmp/local/etc/s6/gitea/* \
+              /tmp/local/etc/s6/openssh/* \
+              /tmp/local/etc/s6/.s6-svscan/* \
+              /go/src/gitea.dev/gitea
+```
+
+Important build-time behaviors:
+
+- This stage runs **per target platform** (no `--platform=$BUILDPLATFORM` pin), so this is where cross-architecture Go compilation happens.
+- `TAGS` always includes `bindata timetzdata` at minimum — `bindata` embeds all frontend/template/locale assets (required for a self-contained image), `timetzdata` embeds the IANA timezone database so the container doesn't depend on the host having `tzdata` installed.
+- The `.git/` directory is **not** copied into the image layer at all — it is only *bind-mounted* during the `make backend` step so that `git describe` can compute `GITEA_VERSION`, then discarded. A BuildKit cache mount for `/root/.cache/go-build` speeds up repeat builds.
+- The comment in the Dockerfile explains why `COPY` is used instead of a bind mount for the full source tree: a read-only bind breaks Makefile timestamp-based state tracking, and a read-write bind would require moving the binary out afterward since bind mount contents are discarded.
+- `docker/root` (or `docker/rootless`) — the container root-filesystem overlay containing `s6` service definitions, the entrypoint script, and config templates — is copied into `/tmp/local`, and executable bits are explicitly restored with `chmod 755` (necessary because binaries built under Windows can lose the executable bit).
+
+### Stage 3 — Runtime (`gitea` / `gitea-rootless`)
+
+**Rootful (`Dockerfile`):**
+
+```dockerfile
+FROM docker.io/library/alpine:3.24 AS gitea
+EXPOSE 22 3000
+RUN apk --no-cache add bash ca-certificates curl gettext git linux-pam openssh s6 sqlite su-exec gnupg
+RUN addgroup -S -g 1000 git && adduser -S -H -D -h /data/git -s /bin/bash -u 1000 -G git git && \
+    echo "git:*" | chpasswd -e
+COPY --from=build-env /tmp/local /
+COPY --from=build-env /go/src/gitea.dev/gitea /app/gitea/gitea
+ENV USER=git
+ENV GITEA_CUSTOM=/data/gitea
+VOLUME ["/data"]
+ENTRYPOINT ["/usr/bin/entrypoint"]
+CMD ["/usr/bin/s6-svscan", "/etc/s6"]
+```
+
+**Rootless (`Dockerfile.rootless`):**
+
+```dockerfile
+FROM docker.io/library/alpine:3.24 AS gitea-rootless
+EXPOSE 2222 3000
+RUN apk --no-cache add bash ca-certificates dumb-init gettext git curl gnupg openssh-keygen
+RUN addgroup -S -g 1000 git && adduser -S -H -D -h /var/lib/gitea/git -s /bin/bash -u 1000 -G git git
+RUN mkdir -p /var/lib/gitea /etc/gitea && chown git:git /var/lib/gitea /etc/gitea
+COPY --from=build-env /tmp/local /
+COPY --from=build-env --chown=root:root /go/src/gitea.dev/gitea /app/gitea/gitea
+USER 1000:1000
+ENV GITEA_WORK_DIR=/var/lib/gitea GITEA_CUSTOM=/var/lib/gitea/custom GITEA_TEMP=/tmp/gitea TMPDIR=/tmp/gitea
+ENV GITEA_APP_INI=/etc/gitea/app.ini HOME="/var/lib/gitea/git"
+VOLUME ["/var/lib/gitea", "/etc/gitea"]
+WORKDIR /var/lib/gitea
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD []
+```
+
+## Rootless vs. Rootful — Key Differences
+
+| Aspect | Rootful (`Dockerfile`) | Rootless (`Dockerfile.rootless`) |
+|---|---|---|
+| Runtime user | Container starts as **root**, then drops to `git` via `su-exec` per-process | Container runs as `USER 1000:1000` (`git`) from the start — no root process ever runs |
+| SSH server | Built-in `openssh` daemon supervised by `s6` (port 22, remapped via `EXPOSE 22 3000`) | No SSH daemon shipped at all; port `2222` is exposed as a placeholder for external SSH proxying but Gitea itself doesn't run `sshd` |
+| Process supervisor | `s6` (`s6-svscan /etc/s6`) manages the `gitea` and `openssh` services as separate long-running processes with restart semantics | `dumb-init` — a single-purpose init wrapping the sole foreground `gitea web` process; simpler because there's no second daemon to supervise |
+| Entrypoint | `/usr/bin/entrypoint` — handles `USER`/`USER_UID`/`USER_GID` remapping via `sed` on `/etc/passwd`/`/etc/group`, then execs `s6-svscan` | `/usr/local/bin/docker-entrypoint.sh` — runs `docker-setup.sh` (prepares dirs/config, applies `environment-to-ini`), then execs `gitea ... web` directly |
+| Data paths | `/data` (single volume: `gitea`, `git`, `ssh` subfolders) | `/var/lib/gitea` and `/etc/gitea` (two volumes: state vs. config) |
+| Config location | `${GITEA_CUSTOM}/conf/app.ini` under `/data/gitea` | `${GITEA_APP_INI}` = `/etc/gitea/app.ini` |
+| UID/GID remap support | Supported at runtime via `USER_UID` / `USER_GID` env vars (entrypoint rewrites `/etc/passwd`) | Not supported — UID/GID are fixed to `1000:1000` since the container never runs as root |
+
+## s6-overlay Process Supervision (Rootful Only)
+
+The rootful image uses [`s6`](https://skarnet.org/software/s6/) as an init/supervisor so that both the Gitea web/SSH server *and* an OpenSSH daemon can run as independent, restart-on-crash services inside a single container. Service definitions live under `docker/root/etc/s6/`:
+
+```
+docker/root/etc/s6/
+├── gitea/
+│   ├── run      # exec su-exec $USER /usr/local/bin/gitea web
+│   ├── setup    # per-boot prep: ssh dirs, app.ini generation, ownership fixups
+│   └── finish   # invoked when the service exits
+└── openssh/
+    ├── run      # exec su-exec root /usr/sbin/sshd -D -e
+    ├── setup    # host key generation, sshd_config templating
+    └── finish
+```
+
+The `gitea` service's `run` script:
+
+```bash
+#!/bin/bash
+[[ -f ./setup ]] && source ./setup
+
+pushd /app/gitea >/dev/null
+exec su-exec $USER /usr/local/bin/gitea web
+popd
+```
+
+Its `setup` script is where most of the "first boot" magic happens: it creates `/data/git/.ssh`, fixes permissions (`chmod 700`/`600`), templates `app.ini` from `docker/root/etc/templates/app.ini` via `envsubst` using `RUN_MODE`, `DOMAIN`, `DB_TYPE`, etc. environment variables (only if `app.ini` doesn't already exist), calls `environment-to-ini` to apply `GITEA__SECTION__KEY`-style overrides, and finally `chown`s `/data/gitea`, `/app/gitea`, `/data/git` to the `git` user only if ownership doesn't already match (avoiding an expensive recursive chown on every restart).
+
+The top-level `/usr/bin/entrypoint` script (invoked before `s6-svscan`) handles UID/GID remapping and creates required data directories:
+
+```sh
+if [ -n "${USER_GID}" ] && [ "${USER_GID}" != "`id -g ${USER}`" ]; then
+    sed -i -e "s/^${USER}:\([^:]*\):[0-9]*/${USER}:\1:${USER_GID}/" /etc/group
+    ...
+fi
+for FOLDER in /data/gitea/conf /data/gitea/log /data/git /data/ssh; do
+    mkdir -p ${FOLDER}
+done
+...
+exec /usr/bin/s6-svscan /etc/s6
+```
+
+> **HEALTHCHECK note:** Neither Dockerfile defines a `HEALTHCHECK` instruction — a code comment (`HINT: HEALTH-CHECK-ENDPOINT`) marks this intentionally; health checks are left to the orchestrator (Kubernetes probes, Compose `healthcheck:`, etc.) rather than baked into the image.
+
+## Rootless Entrypoint Flow
+
+The rootless image's `docker-entrypoint.sh` is much simpler since there's no second daemon or privilege drop to manage:
+
+```sh
+#!/bin/sh
+if [ -x /usr/local/bin/docker-setup.sh ]; then
+    /usr/local/bin/docker-setup.sh || { echo 'docker setup failed' ; exit 1; }
+fi
+
+if [ $# -gt 0 ]; then
+    exec "$@"
+else
+    exec /usr/local/bin/gitea -c "${GITEA_APP_INI}" web
+fi
+```
+
+`docker-setup.sh` prepares `${HOME}`, `${GITEA_CUSTOM}`, `${GITEA_TEMP}` with `chmod 0700`, templates `app.ini` from `docker/rootless/etc/templates/app.ini` if it doesn't exist yet, then applies `environment-to-ini` — the same INI-override mechanism used by the rootful image.
+
+## Distro Service Unit Files (`contrib/service/`)
+
+For users who install the Gitea binary directly on a host (outside Docker), `contrib/service/` ships init/service definitions for every major init system:
+
+| Path | Init system / OS |
+|---|---|
+| `contrib/service/systemd/gitea.service` | systemd (most modern Linux distros) |
+| `contrib/service/sysvinit/gitea` | System V init (`/etc/init.d`, legacy distros) |
+| `contrib/service/openwrt/gitea` | OpenWrt `/etc/init.d` (procd-based) |
+| `contrib/service/gentoo/gitea` | Gentoo OpenRC |
+| `contrib/service/supervisor/gitea` | [Supervisor](http://supervisord.org/) process manager |
+| `contrib/service/freebsd/gitea` | FreeBSD `rc.d` |
+| `contrib/service/openbsd/gitea` | OpenBSD `rc.d` |
+| `contrib/service/launchd/io.gitea.web.plist` | macOS `launchd` |
+| `contrib/service/sunos/gitea.xml` | Solaris/illumos SMF (Service Management Facility) |
+| `contrib/fhs-compliant-script/gitea` | Generic FHS-compliant wrapper script |
+
+The `systemd` unit is the most commonly referenced example. Key excerpt:
+
+```ini
+[Unit]
+Description=Gitea (Git with a cup of tea)
+After=network.target
+
+[Service]
+RestartSec=2s
+Type=simple
+User=git
+Group=git
+WorkingDirectory=/var/lib/gitea/
+ExecStart=/usr/local/bin/gitea web --config /etc/gitea/app.ini
+Restart=always
+Environment=USER=git HOME=/home/git GITEA_WORK_DIR=/var/lib/gitea
+
+[Install]
+WantedBy=multi-user.target
+```
+
+It ships heavily commented-out sections for optional database service dependencies (`mysql.service`, `postgresql.service`, `redis.service`, …) and for socket activation (binding privileged ports via a companion `.socket` unit plus `CapabilityBoundingSet=CAP_NET_BIND_SERVICE`). The `sysvinit` script similarly defines `DAEMON`, `DAEMON_ARGS="web -c /etc/$NAME/app.ini"`, and a configurable `STOP_SCHEDULE` for graceful shutdown signaling.
+
+> All of these unit files assume the operator has already produced a `gitea` binary via `make build` (see [Makefile & Build System](makefile-and-build.md)) and placed it at `/usr/local/bin/gitea`.
+
+## Snapcraft Packaging
+
+`snap/snapcraft.yaml` defines the Ubuntu/Snap Store packaging for Gitea:
+
+```yaml
+name: gitea
+confinement: strict
+base: core24
+
+platforms:
+  amd64: { build-on: [amd64], build-for: [amd64] }
+  arm64: { build-on: [arm64], build-for: [arm64] }
+
+environment:
+  GITEA_CUSTOM: "$SNAP_COMMON"
+  GITEA_WORK_DIR: "$SNAP_COMMON"
+  GIT_TEMPLATE_DIR: "$SNAP/usr/share/git-core/templates"
+  GIT_EXEC_PATH: "$SNAP/usr/lib/git-core"
+
+apps:
+  gitea:  { command: gitea }
+  web:    { command: gitea web, daemon: simple, plugs: [network, network-bind, removable-media] }
+  dump:   { command: gitea dump, plugs: [home, removable-media] }
+  version:{ command: gitea --version }
+  sqlite: { command: usr/bin/sqlite3 }
+
+parts:
+  gitea:
+    plugin: make
+    source: .
+    stage-packages: [git, sqlite3, openssh-client]
+    build-packages: [git, libpam0g-dev, libsqlite3-dev, build-essential]
+    build-snaps: [go/1.26/stable, node/24/stable]
+    override-pull: craftctl default && ./snap/part-gitea-pull.sh
+    override-build: ./snap/part-gitea-build.sh
+```
+
+Notable points:
+
+- Uses `confinement: strict` — the snap runs in a tight sandbox and only gets access to explicitly declared `plugs` (`network`, `network-bind`, `home`, `removable-media`).
+- Declares five separate apps under one snap: `gitea` (raw CLI), `web` (the long-running daemon, registered via `daemon: simple`), `dump`, `version`, and a bundled `sqlite` CLI.
+- The `gitea` part uses the `make` plugin, pulling in pinned `go` and `node` toolchains as **snaps themselves** (`build-snaps: [go/1.26/stable, node/24/stable]`) rather than relying on the base image's toolchain — this keeps the snap build reproducible.
+- Custom `override-pull` / `override-build` hooks (`snap/part-gitea-pull.sh`, `snap/part-gitea-build.sh`) wrap the standard `make` invocation with Snapcraft-specific version/craftctl bookkeeping.
+- The `prime` filter strips systemd units, man pages, and various dev-only files (`-etc`, `-usr/lib/systemd`, `-usr/share/man`, etc.) to keep the final snap small.
+- Published via the `release-nightly-snapcraft.yml` GitHub Actions workflow (see [GitHub Workflows](github-workflows.md#other-release--maintenance-workflows)), which builds on both `ubuntu-24.04` (amd64) and `ubuntu-24.04-arm` runners and publishes to the `latest/edge` channel using `snapcore/action-build` and `snapcore/action-publish`.
+
+## Nix Flake Dev Shell
+
+`flake.nix` provides a reproducible development environment via [Nix flakes](https://nixos.wiki/wiki/Flakes), targeting `aarch64-darwin`, `aarch64-linux`, `x86_64-darwin`, and `x86_64-linux`:
+
+```nix
+devShells = forEachSupportedSystem ({ pkgs, ... }: {
+  default = pkgs.mkShell {
+    packages = with pkgs; [
+      git git-lfs gnumake gnused gnutar gzip zip   # generic
+      nodejs pnpm cairo pixman pkg-config          # frontend
+      python3 uv                                    # linting (djlint, yamllint, zizmor)
+      go gofumpt sqlite                             # backend
+    ] ++ linuxOnlyInputs;
+
+    env = {
+      GO = "${go}/bin/go";
+      GOROOT = "${go}/share/go";
+      TAGS = "";
+      STATIC = "true";
+    } // linuxOnlyEnv;
+  };
+});
+```
+
+Key points:
+
+- Toolchain versions are centralized at the top of the file (`go = pkgs.go_1_26`, `nodejs = pkgs.nodejs_26`, `python3 = pkgs.python314`, `pnpm = pkgs.pnpm_10`) — bumping the dev environment only requires editing these four lines.
+- On Linux, `linuxOnlyInputs` adds `pkgs.glibc.static` and sets `CFLAGS`/`LDFLAGS` to point at the static glibc, enabling fully static CGO builds (needed for `sqlite_mattn`/`pam` support without runtime glibc dependencies).
+- `STATIC = "true"` is set by default in the shell environment, mirroring the `Makefile`'s `STATIC` variable (see [Build Tag System](makefile-and-build.md#build-tag-system)).
+- Entering the shell (`nix develop`) gives a contributor everything needed to run `make build`, `make lint`, `make test-backend`, etc. without installing Go, Node, or Python globally.
+
+## Related Pages
+
+- [Makefile & Build System](makefile-and-build.md) — the `make frontend` / `make backend` targets invoked inside these Docker/Snapcraft builds
+- [GitHub Workflows](github-workflows.md) — CI jobs that build, dry-run, and publish these Docker images and the Snapcraft package
+- [Deployment Topologies](../02-architecture/deployment-topologies.md) — how these packaging artifacts map onto real-world deployment patterns
+- [Installation & Build](../03-getting-started/installation-and-build.md) — building Gitea from source without containers

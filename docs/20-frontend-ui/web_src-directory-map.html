@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>`web_src/` Directory Map</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../20-frontend-ui/README.html">Frontend Ui</a> &rsaquo; `web_src/` Directory Map</div>
+<h1>`web_src/` Directory Map</h1>
+<h1 id="web_src-directory-map"><code>web_src/</code> Directory Map</h1>
+<p>This page is a comprehensive, file-level reference for everything under <code>web_src/</code> — the source
+tree that <a href="../09-core-modules/frontend-build.html">Vite compiles</a> into <code>public/assets/</code>. It
+complements <a href="../09-core-modules/frontend-features.html">Frontend Features &amp; the "Islands of Interactivity" Pattern</a>
+(which explains <em>how</em> these modules get wired up) by giving a directory-by-directory,
+representative-file-by-file index of <em>what lives where</em>. See
+<a href="go-templates.html">Go Templates &amp; Views</a> for the server-rendered HTML that these assets enhance.</p>
+<h2 id="top-level-layout">Top-Level Layout<a href="#top-level-layout" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="highlight"><code class="language-text">web_src/
+├── js/            TypeScript + Vue sources (this page's main focus)
+├── css/           Plain CSS, consumed via Tailwind/PostCSS pipeline
+├── fomantic/      Prebuilt Fomantic UI theme sources (Less-based, built separately from Vite)
+└── svg/           Custom hand-authored SVG icon sources (merged with @primer/octicons)</code></pre>
+<p>Only <code>js/</code> and <code>css/</code> are inputs to the Vite build declared in <code>vite.config.ts</code>
+(<code>rolldownOptions.input</code>); <code>fomantic/</code> is compiled by Fomantic UI's own Gulp-based build tool
+(configured by <code>web_src/fomantic/semantic.json</code>, which points <code>base</code> at
+<code>node_modules/fomantic-ui</code> and restricts <code>components</code> to just the handful Gitea actually uses —
+currently <code>api</code> and <code>tab</code>, since Gitea's own <code>modules/fomantic/*.ts</code> reimplements <code>dropdown</code>,
+<code>modal</code>, <code>dimmer</code>, and <code>transition</code> natively) into <code>web_src/fomantic/build/</code>, whose output
+(<code>fomantic.js</code>, theme CSS) is then imported by <code>index.ts</code>/<code>index.css</code> like any other pre-built
+dependency; <code>svg/</code> is consumed by the <code>tools/generate-svg.ts</code> build script (see
+<a href="#web_srcsvg-custom-icon-sources">SVG Icon System</a> below), not by Vite directly.</p>
+<h2 id="web_srcjs-typescript-vue-source-tree"><code>web_src/js/</code> — TypeScript &amp; Vue Source Tree<a href="#web_srcjs-typescript-vue-source-tree" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="mermaid">flowchart TD
+    subgraph Entry["Bundle entry points (top-level web_src/js/*.ts)"]
+        INDEX["index.ts<br/>(main bundle, every page)"]
+        IIFE["iife.ts<br/>(blocking IIFE, head-of-page)"]
+        SWAG["swagger.ts<br/>(API docs page)"]
+        ERF["external-render-frontend.ts<br/>(sandboxed render iframe)"]
+        ERH["external-render-helper.ts<br/>(IIFE helper for the iframe)"]
+        ESW["eventsource.sharedworker.ts<br/>(SharedWorker, SSE de-dup)"]
+    end
+    subgraph Shared["Shared top-level modules"]
+        UTILS["utils.ts"]
+        SVGTS["svg.ts"]
+        GLOBALS["globals.ts"]
+        TYPES["types.ts"]
+        BOOT["bootstrap.ts"]
+    end
+    subgraph Dirs["Subdirectories"]
+        COMPONENTS["components/ (Vue SFCs + islands helpers)"]
+        FEATURES["features/ (~70 init* modules)"]
+        MARKUP["markup/ (rendered-content enhancers)"]
+        MODULES["modules/ (cross-cutting infrastructure)"]
+        RENDER["render/ (external-viewer plugin system)"]
+        UTILDIR["utils/ (pure helper functions)"]
+        VENDOR["vendor/ (patched third-party snippets)"]
+        WEBCOMP["webcomponents/ (native Custom Elements)"]
+    end
+    INDEX --> FEATURES
+    INDEX --> MODULES
+    IIFE --> BOOT
+    IIFE --> GLOBALS
+    IIFE --> WEBCOMP
+    FEATURES --> COMPONENTS
+    FEATURES --> MARKUP
+    FEATURES --> UTILDIR
+    COMPONENTS --> SVGTS
+    MARKUP --> RENDER
+    ERF --> RENDER</pre>
+<h3 id="top-level-entry-shared-files-web_srcjsts">Top-level entry &amp; shared files (<code>web_src/js/*.ts</code>)<a href="#top-level-entry-shared-files-web_srcjsts" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.ts</code></td>
+<td>The single main bundle loaded on every server-rendered page. Imports Fomantic UI's prebuilt JS (<code>../fomantic/build/fomantic.js</code>) and the aggregated <code>../css/index.css</code>, then imports and registers ~70 <code>init*</code> functions from <code>features/*.ts</code>/<code>modules/*.ts</code>, calling <code>callInitFunctions()</code> (<code>modules/init.ts</code>) followed by <code>initGlobalSelectorObserver()</code> (<code>modules/observer.ts</code>), and finally sets <code>window.config.frontendInited = true</code>. See <a href="../09-core-modules/frontend-features.html#1-global-init-functions-called-once-at-page-load">Frontend Features</a>.</td>
+</tr>
+<tr>
+<td><code>iife.ts</code></td>
+<td>A tiny script built in IIFE format (not an ES module) by <code>vite.config.ts</code>'s custom <code>iifePlugin()</code>, so it can run synchronously from a blocking <code>&lt;script&gt;</code> tag in <code>&lt;head&gt;</code> before the DOM/module graph is ready. It imports (in this exact order, each with an inline comment explaining why) <code>bootstrap.ts</code> (global error handler, must be first), <code>globals.ts</code> (jQuery on <code>window</code>, "as early as possible" for custom user scripts), <code>webcomponents/index.ts</code> (custom element registration), and <code>modules/user-settings.ts</code> (so inline <code>&lt;script&gt;</code> blocks in templates can call <code>localUserSettings</code> immediately).</td>
+</tr>
+<tr>
+<td><code>bootstrap.ts</code></td>
+<td>Imported first by <code>iife.ts</code>. Deliberately never imports <code>window.config</code> (a comment warns against it, since broken custom templates could break <code>window.config</code> itself) and instead installs a global <code>window.onerror</code>/<code>unhandledrejection</code>-backed error collector (<code>processWindowErrorEvent</code>, <code>showGlobalErrorMessage</code> from <code>modules/errors.ts</code>), replaying any errors that occurred before this module loaded (buffered on <code>window._globalHandlerErrors</code> by an inline <code>&lt;script&gt;</code> in the page <code>&lt;head&gt;</code>) so failures are visible instead of silently swallowed.</td>
+</tr>
+<tr>
+<td><code>swagger.ts</code></td>
+<td>A separate Vite entry for the <code>/api/swagger</code> page. Imports <code>../css/swagger-standalone.css</code> and <code>render/swagger.ts</code>'s <code>initSwaggerUI()</code>, fetching the OpenAPI spec text and mounting <code>swagger-ui-dist</code>. Kept out of <code>index.ts</code> so the large <code>swagger-ui-dist</code> dependency is not shipped to every page.</td>
+</tr>
+<tr>
+<td><code>external-render-frontend.ts</code></td>
+<td>The JS injected into the sandboxed <code>&lt;iframe&gt;</code> used to render externally-rendered content (rich file previews needing script isolation — 3D models, PDFs, asciicasts, embedded Swagger docs). Delegates to the <code>render/plugins/*</code> registry.</td>
+</tr>
+<tr>
+<td><code>external-render-helper.ts</code></td>
+<td>A second IIFE-mode bundle (built the same way as <code>iife.ts</code>) that runs <em>inside</em> the sandboxed iframe itself, providing minimal helper glue before the full <code>external-render-frontend.ts</code> module graph loads.</td>
+</tr>
+<tr>
+<td><code>eventsource.sharedworker.ts</code></td>
+<td>Built as a browser <code>SharedWorker</code> script. De-duplicates Server-Sent-Events connections used for notification-count polling across multiple open browser tabs of the same origin, so the backend only sees one <code>EventSource</code> connection per browser instance rather than one per tab.</td>
+</tr>
+<tr>
+<td><code>globals.ts</code></td>
+<td>Assigns <code>window.$ = window.jQuery = jquery</code> — the only place jQuery is put on the global object (with an ESLint exception for <code>no-restricted-imports</code>), preserved for legacy inline <code>&lt;script&gt;</code> blocks and custom user plugins that expect global jQuery.</td>
+</tr>
+<tr>
+<td><code>svg.ts</code></td>
+<td>The tree-shakeable, statically-imported icon module. Imports every SVG source file individually (<code>import octiconCheck from '../../public/assets/img/svg/octicon-check.svg'</code>, etc. — note the path resolves into the <em>build output</em>, letting Vite's asset pipeline inline/optimize each SVG), exposes <code>svg(name, size, classNames)</code> (returns an HTML string), <code>svgRaw()</code>, <code>svgParseOuterInner()</code>, and the Vue component <code>SvgIcon</code> (<code>defineComponent({name: 'SvgIcon', ...})</code>) used inside <code>.vue</code> templates as <code>&lt;SvgIcon name="octicon-check"/&gt;</code>. See <a href="#svg-icon-system">SVG Icon System</a> below.</td>
+</tr>
+<tr>
+<td><code>types.ts</code></td>
+<td>Shared ambient TypeScript types used across the codebase: <code>IntervalId</code>, <code>Intent</code>, <code>Mention</code>, <code>RequestData</code>/<code>RequestOpts</code> (used by <code>modules/fetch.ts</code>), <code>RepoOwnerPathInfo</code>, <code>IssuePathInfo</code>/<code>IssuePageInfo</code>, <code>Issue</code>, <code>FomanticInitFunction</code>, <code>GitRefType</code>, and the <code>Promisable&lt;T&gt;</code> utility type.</td>
+</tr>
+<tr>
+<td><code>globals.d.ts</code></td>
+<td>Ambient <em>declaration-only</em> file (no runtime code) describing <code>window.config</code> (<code>pageData</code>, <code>frontendInited</code>, <code>csrfToken</code>, etc.) so every feature module gets type-checked access to server-injected page data without importing anything.</td>
+</tr>
+<tr>
+<td><code>svg.test.ts</code>, <code>utils.test.ts</code>, <code>external-render-helper.test.ts</code></td>
+<td>Vitest unit tests colocated with their source file (see <a href="../21-testing-quality/README.html">Testing &amp; Quality</a>).</td>
+</tr>
+<tr>
+<td><code>vitest.setup.ts</code></td>
+<td>Global Vitest setup (registers <code>happy-dom</code> globals, silences expected console noise) loaded by <code>vitest.config.ts</code> for every test file.</td>
+</tr>
+<tr>
+<td><code>utils.ts</code></td>
+<td>General-purpose helpers used everywhere: DOM-agnostic string/array/object utilities, <code>parseDom</code>/<code>serializeXml</code> (used by <code>svg.ts</code> to manipulate parsed SVG markup), URL/query helpers not specific enough to live in <code>utils/url.ts</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjscomponents-vue-single-file-components"><code>web_src/js/components/</code> — Vue Single-File Components<a href="#web_srcjscomponents-vue-single-file-components" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Every <code>.vue</code> file here is a self-contained Vue 3 SFC (Options or Composition API, per-component)
+mounted as an independent app instance onto a single placeholder element by a <code>features/*.ts</code>
+module — never as part of one page-wide Vue tree (see
+<a href="../09-core-modules/frontend-features.html#3-vue-components-mounted-onto-specific-elements-islands">Islands of Interactivity</a>).
+A handful of <code>.ts</code> files alongside the <code>.vue</code> files are non-Vue helpers used by their
+same-named component.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Mounted by / used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ActivityHeatmap.vue</code></td>
+<td><code>features/heatmap.ts</code> — the contribution/activity heatmap on user/repo dashboards.</td>
+</tr>
+<tr>
+<td><code>ContextPopup.vue</code></td>
+<td><code>features/ref-issue.ts</code> — the hover popup showing issue/PR summary when hovering a <code>#123</code> reference.</td>
+</tr>
+<tr>
+<td><code>DashboardRepoList.vue</code></td>
+<td><code>features/dashboard.ts</code> — the repo list widget on the user/org dashboard (search, filter, sort).</td>
+</tr>
+<tr>
+<td><code>DiffCommitSelector.vue</code></td>
+<td><code>features/repo-diff-commitselect.ts</code> — the commit-range dropdown on PR/compare diff views.</td>
+</tr>
+<tr>
+<td><code>DiffFileTree.vue</code> / <code>DiffFileTreeItem.vue</code></td>
+<td><code>features/repo-diff-filetree.ts</code> — the collapsible changed-files sidebar tree on diff views.</td>
+</tr>
+<tr>
+<td><code>PullRequestMergeForm.vue</code></td>
+<td><code>features/repo-issue-pull.ts</code> — the PR merge box (merge-style choice, auto-merge, delete-branch-after-merge).</td>
+</tr>
+<tr>
+<td><code>RepoActivityTopAuthors.vue</code></td>
+<td>Repo "Activity" page — top-contributors chart (<code>vue-chartjs</code>).</td>
+</tr>
+<tr>
+<td><code>RepoBranchTagSelector.vue</code></td>
+<td>Branch/tag dropdown used on the repo code browser and elsewhere refs need picking.</td>
+</tr>
+<tr>
+<td><code>RepoCodeFrequency.vue</code></td>
+<td><code>features/code-frequency.ts</code> — code-frequency chart on the repo Activity page.</td>
+</tr>
+<tr>
+<td><code>RepoContributors.vue</code></td>
+<td><code>features/contributors.ts</code> — contributors graph on the repo Activity page.</td>
+</tr>
+<tr>
+<td><code>RepoFileSearch.vue</code></td>
+<td><code>features/repo-findfile.ts</code> — the fuzzy "Go to file" finder modal.</td>
+</tr>
+<tr>
+<td><code>RepoRecentCommits.vue</code></td>
+<td><code>features/recent-commits.ts</code> — recent-commits sparkline on the Activity page.</td>
+</tr>
+<tr>
+<td><code>ViewFileTree.vue</code> / <code>ViewFileTreeItem.vue</code> / <code>ViewFileTreeStore.ts</code></td>
+<td><code>features/repo-view-file-tree.ts</code> — the sidebar file tree on repo code/blob pages; <code>ViewFileTreeStore.ts</code> is a plain reactive store (not a component) shared by the tree items.</td>
+</tr>
+<tr>
+<td><code>WorkflowGraph.vue</code> / <code>WorkflowGraph.utils.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Actions run view — renders the job-dependency graph for a workflow run; <code>.utils.ts</code> holds the pure graph-layout math, unit-tested separately from the Vue rendering.</td>
+</tr>
+<tr>
+<td><code>ActionRunJobView.vue</code> / <code>ActionRunSummaryView.vue</code></td>
+<td>Actions run detail page — per-job log viewer and the overall run summary panel.</td>
+</tr>
+<tr>
+<td><code>ActionStatusIcon.vue</code></td>
+<td>Small colored status-icon component reused across Actions UI (queued/running/success/failure).</td>
+</tr>
+<tr>
+<td><code>ActionRunArtifacts.ts</code> / <code>ActionRunView.ts</code></td>
+<td>Non-Vue TypeScript helpers for the Actions run page (artifact list fetch/download wiring, top-level view bootstrapping that mounts the <code>.vue</code> components above).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsfeatures-progressive-enhancement-init-modules"><code>web_src/js/features/</code> — Progressive-Enhancement Init Modules<a href="#web_srcjsfeatures-progressive-enhancement-init-modules" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>~70 modules, one <code>init*</code> (or several) exported function(s) per file, each responsible for
+finding its own root element via <code>document.querySelector</code> and no-op'ing if absent — see
+<a href="../09-core-modules/frontend-features.html#feature-module-catalog-web_srcjsfeaturests">Frontend Features</a>
+for the full catalog grouped by area (repo code/diff/issue/PR, org/admin/user settings, install
+wizard, notifications, etc.). Two notable non-<code>.ts</code> artifacts live alongside the modules:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>features/comp/</code></td>
+<td>Small shared building blocks used by <em>multiple</em> feature modules (e.g. reusable combo-box/dropdown wiring) that don't warrant their own top-level <code>modules/</code> entry.</td>
+</tr>
+<tr>
+<td><code>features/admin/</code></td>
+<td>Admin-panel-specific feature modules (config editing, cron task triggers, etc.), split out because they only load on <code>/-/admin/*</code> pages.</td>
+</tr>
+<tr>
+<td><code>repo-issue-sidebar.md</code></td>
+<td>A design-rationale note (not code) explaining why the issue/PR sidebar's label/assignee/milestone pickers were rewritten as vanilla combo-lists (<code>repo-issue-sidebar-combolist.ts</code>) instead of Fomantic dropdowns or Vue components.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsmarkup-rendered-content-enhancers"><code>web_src/js/markup/</code> — Rendered-Content Enhancers<a href="#web_srcjsmarkup-rendered-content-enhancers" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>These modules progressively enhance <strong>already server-rendered</strong> Markdown/AsciiDoc/reStructuredText
+HTML output (produced server-side by <code>modules/markup</code> + <code>services/markup</code>, see
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>) — they never render markup
+from scratch client-side; they only attach behavior to the resulting static HTML.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>content.ts</code></td>
+<td>Entry point called once per rendered-content container (<code>initMarkupContent()</code>); dispatches to the other modules below (math, mermaid, anchors, code-copy, task lists) based on what's present in the container.</td>
+</tr>
+<tr>
+<td><code>anchors.ts</code></td>
+<td>Adds clickable <code>#</code>-permalink anchors next to rendered headings (mirrors GitHub's heading-link UX), computing slugs consistent with the server-side heading-ID generator.</td>
+</tr>
+<tr>
+<td><code>codecopy.ts</code></td>
+<td>Adds a "copy" button overlay to rendered <code>&lt;pre&gt;&lt;code&gt;</code> blocks.</td>
+</tr>
+<tr>
+<td><code>tasklist.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Makes rendered Markdown task-list checkboxes (<code>- [ ] foo</code>) interactive, <code>PATCH</code>-ing the source file/comment body via the API when checked/unchecked (only where the user has edit permission — the server still authoritatively validates).</td>
+</tr>
+<tr>
+<td><code>math.ts</code></td>
+<td>Client-side KaTeX rendering of <code>$...$</code> / <code>$$...$$</code> math blocks emitted by the server as <code>&lt;span class="math"&gt;</code> placeholders (server does not render LaTeX to avoid a heavy dependency in the Go binary).</td>
+</tr>
+<tr>
+<td><code>mermaid.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Client-side Mermaid.js rendering of <code>```mermaid</code> code fences into diagrams, with pan/zoom controls and a loading spinner; uses <code>@mermaid-js/layout-elk</code> for ELK-based diagram layout.</td>
+</tr>
+<tr>
+<td><code>html2markdown.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Converts pasted rich-text/HTML clipboard content back into Markdown source (used by <code>@github/paste-markdown</code> integration in the comment editor) so pasting from a web page doesn't inject raw HTML into a Markdown textarea.</td>
+</tr>
+<tr>
+<td><code>render-iframe.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Builds/manages the sandboxed <code>&lt;iframe&gt;</code> (<code>sandbox="allow-scripts"</code>, no <code>allow-same-origin</code>) that <code>external-render-frontend.ts</code> runs inside, used for externally-rendered content that needs script execution (3D model viewer, PDF viewer, asciicast player) isolated from the parent page's cookies/CSRF token.</td>
+</tr>
+<tr>
+<td><code>common.ts</code></td>
+<td>Small shared constants/helpers used by more than one of the above (e.g. the CSS selector used to find "already rendered, not yet enhanced" markup containers, guarded with a <code>data-*</code> marker attribute to avoid double-processing on AJAX partial reloads).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsmodules-cross-cutting-infrastructure"><code>web_src/js/modules/</code> — Cross-Cutting Infrastructure<a href="#web_srcjsmodules-cross-cutting-infrastructure" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Framework-agnostic building blocks consumed by many <code>features/*</code> and <code>components/*</code> modules —
+none of these are page-specific; they are the "standard library" of Gitea's frontend.</p>
+<table>
+<thead>
+<tr>
+<th>File / dir</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init.ts</code></td>
+<td><code>callInitFunctions()</code> and <code>InitPerformanceTracer</code> — runs the array of <code>init*</code> functions passed from <code>index.ts</code>, times each one, and exposes the slowest 20 via <code>?_ui_performance_trace=1</code>.</td>
+</tr>
+<tr>
+<td><code>observer.ts</code></td>
+<td><code>registerGlobalInitFunc</code> / <code>registerGlobalSelectorFunc</code> / <code>registerGlobalEventFunc</code> / <code>initGlobalSelectorObserver</code> — the <code>data-global-init</code>/<code>data-global-click</code> <code>MutationObserver</code>-backed dispatch registry described in <a href="../09-core-modules/frontend-features.html#2-declarative-data-global-init--data-global-click-attributes">Frontend Features</a>.</td>
+</tr>
+<tr>
+<td><code>fetch.ts</code></td>
+<td>Thin <code>fetch()</code> wrapper (<code>GET</code>/<code>POST</code>/<code>PATCH</code>/<code>DELETE</code>/etc.) that automatically attaches Gitea's CSRF token header and JSON-encodes <code>RequestData</code> (<code>types.ts</code>); used by nearly every feature that talks to the backend API.</td>
+</tr>
+<tr>
+<td><code>fomantic.ts</code> + <code>fomantic/</code> (subdir)</td>
+<td><code>fomantic.ts</code> is the aggregator that re-exports the native TypeScript reimplementations under <code>fomantic/</code> of Fomantic UI's <code>dropdown</code>, <code>modal</code>, <code>dimmer</code>, <code>tab</code>, and <code>transition</code> widgets — replacing the original jQuery-based Fomantic JS behaviors for these specific components while keeping the CSS. <code>fomantic/aria.md</code> documents the accessibility rationale for the rewrite.</td>
+</tr>
+<tr>
+<td><code>tippy.ts</code></td>
+<td>Centralized <code>tippy.js</code> tooltip/popover factory (<code>initGlobalTooltips()</code>), shared default styling/positioning/theme options so every tooltip in the app looks consistent.</td>
+</tr>
+<tr>
+<td><code>shortcut.ts</code></td>
+<td>Global keyboard-shortcut registry (<code>initGlobalShortcut()</code>) — e.g. <code>g</code> <code>h</code> navigates home, <code>/</code> focuses search.</td>
+</tr>
+<tr>
+<td><code>toast.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Toast/flash notification helper wrapping <code>toastify-js</code>, used for transient success/error messages after AJAX actions.</td>
+</tr>
+<tr>
+<td><code>errors.ts</code> (+ <code>.test.ts</code>)</td>
+<td><code>errorMessage()</code> — consistent error formatting/logging used in most <code>catch</code> blocks across feature modules; also backs the global <code>window.onerror</code> handler wired up in <code>bootstrap.ts</code>.</td>
+</tr>
+<tr>
+<td><code>user-settings.ts</code></td>
+<td><code>localUserSettings</code> — a typed <code>localStorage</code> wrapper for client-only preferences (citation format choice, remembered UI toggles) that don't need a server round-trip.</td>
+</tr>
+<tr>
+<td><code>clipboard.ts</code></td>
+<td>Generic "copy to clipboard" helper (feature-detects the Clipboard API, falls back to a hidden-textarea <code>execCommand</code> shim) backing both <code>features/copycontent.ts</code> and <code>markup/codecopy.ts</code>.</td>
+</tr>
+<tr>
+<td><code>sortable.ts</code></td>
+<td>Thin wrapper around <code>sortablejs</code> used for drag-to-reorder lists (label ordering, milestone ordering, etc.).</td>
+</tr>
+<tr>
+<td><code>search.ts</code></td>
+<td>Debounced search-input wiring shared by several list/filter pages.</td>
+</tr>
+<tr>
+<td><code>worker.ts</code></td>
+<td>Helpers for spawning/communicating with dedicated Web Workers (distinct from the <code>SharedWorker</code> in <code>eventsource.sharedworker.ts</code>).</td>
+</tr>
+<tr>
+<td><code>gitea-actions.ts</code></td>
+<td>Shared helpers specific to the Actions/CI UI (status label formatting, log-line utilities) used by both <code>features/repo-actions.ts</code> and the <code>components/ActionRun*</code> Vue components.</td>
+</tr>
+<tr>
+<td><code>favicon-status.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Dynamically swaps the browser tab's <code>&lt;link rel="icon"&gt;</code> to reflect the current Actions run's CI status (success/failure/running), so a background tab shows build status at a glance.</td>
+</tr>
+<tr>
+<td><code>action-status-icon.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Non-Vue counterpart to <code>components/ActionStatusIcon.vue</code> — maps a status string to an icon name/class for use outside Vue-rendered contexts.</td>
+</tr>
+<tr>
+<td><code>diff-file.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Shared per-file diff state helpers (expand/collapse, viewed-state) used by <code>features/repo-diff.ts</code> and <code>features/pull-view-file.ts</code>.</td>
+</tr>
+<tr>
+<td><code>i18n.ts</code> (+ <code>.test.ts</code>)</td>
+<td>Minimal client-side i18n string lookup for the handful of strings that must be formatted in JS (falls back to server-rendered <code>data-locale-*</code> attributes for everything else — Gitea does not ship a full client-side translation catalog).</td>
+</tr>
+<tr>
+<td><code>devtest.ts</code></td>
+<td>Powers the internal <code>/-/devtest</code> component gallery page (<code>templates/devtest/</code>, Vite's <code>devtest</code> CSS entry) used to visually inspect UI components/themes in isolation during development.</td>
+</tr>
+<tr>
+<td><code>codeeditor/</code></td>
+<td>Shared CodeMirror 6 setup (language packs, themes, keymaps, lint integration) reused by both the full-page repo file editor (<code>features/repo-editor.ts</code>) and the Markdown/comment editor's code-block mode.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsrender-external-content-viewer-plugin-system"><code>web_src/js/render/</code> — External Content Viewer Plugin System<a href="#web_srcjsrender-external-content-viewer-plugin-system" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Backs the sandboxed <code>&lt;iframe&gt;</code> rendering path (<code>markup/render-iframe.ts</code> +
+<code>external-render-frontend.ts</code>) with a small plugin registry for content types that need a real
+browser rendering context rather than server-generated HTML.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plugin.ts</code></td>
+<td>Defines the plugin interface/registry that <code>external-render-frontend.ts</code> iterates over to find a handler for the iframe's requested content type.</td>
+</tr>
+<tr>
+<td><code>ansi.ts</code> (+ <code>.test.ts</code>)</td>
+<td>ANSI-escape-code-to-HTML renderer (via <code>ansi_up</code>) for colorized log/text file previews.</td>
+</tr>
+<tr>
+<td><code>swagger.ts</code></td>
+<td><code>initSwaggerUI()</code> — mounts <code>swagger-ui-dist</code> against a given OpenAPI spec string; shared by both <code>swagger.ts</code> (top-level, the standalone <code>/api/swagger</code> page) and <code>render/plugins/frontend-openapi-swagger.ts</code> (embedded OpenAPI file preview inside a repo).</td>
+</tr>
+<tr>
+<td><code>plugins/frontend-asciicast.ts</code></td>
+<td>Renders <code>.cast</code> files with <code>asciinema-player</code>.</td>
+</tr>
+<tr>
+<td><code>plugins/frontend-openapi-swagger.ts</code></td>
+<td>Renders <code>.yaml</code>/<code>.json</code> OpenAPI spec files found in a repo using the shared <code>render/swagger.ts</code> mounting logic.</td>
+</tr>
+<tr>
+<td><code>plugins/frontend-viewer-3d.ts</code></td>
+<td>Renders 3D model files (<code>.glb</code>/<code>.gltf</code>/etc.) using <code>online-3d-viewer</code>.</td>
+</tr>
+<tr>
+<td><code>plugins/inplace-pdf-viewer.ts</code></td>
+<td>Renders <code>.pdf</code> files in-browser using <code>pdfobject</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsutils-pure-helper-functions"><code>web_src/js/utils/</code> — Pure Helper Functions<a href="#web_srcjsutils-pure-helper-functions" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Small, dependency-light, individually unit-tested (<code>*.test.ts</code> sibling for every file) pure
+functions — deliberately kept free of DOM/Vue/fetch dependencies so they're trivially testable
+and tree-shakeable.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dom.ts</code></td>
+<td>DOM query/manipulation helpers not tied to any specific feature (class toggling, <code>data-*</code> attribute parsing helpers, focus-trap utilities).</td>
+</tr>
+<tr>
+<td><code>html.ts</code></td>
+<td><code>html</code>/<code>htmlRaw</code> tagged-template helpers for building small HTML strings safely (auto-escaping interpolated values), used by <code>svg.ts</code> and elsewhere instead of raw string concatenation.</td>
+</tr>
+<tr>
+<td><code>url.ts</code></td>
+<td>URL/query-string parsing and building helpers.</td>
+</tr>
+<tr>
+<td><code>time.ts</code></td>
+<td>Date/time formatting helpers layered on <code>dayjs</code> (relative-time strings, duration formatting) shared by <code>webcomponents/relative-time.ts</code> and Actions run-duration displays.</td>
+</tr>
+<tr>
+<td><code>string.ts</code></td>
+<td>Tiny string utilities (e.g. truncation, case conversion) too generic to belong in a feature file.</td>
+</tr>
+<tr>
+<td><code>color.ts</code></td>
+<td>Color parsing/contrast helpers (via <code>colord</code>) used for label-color picking (<code>features/colorpicker.ts</code>) and ensuring readable text-on-label contrast.</td>
+</tr>
+<tr>
+<td><code>image.ts</code></td>
+<td>Image-loading/dimension helpers used by the image-diff viewer (<code>features/imagediff.ts</code>) and avatar-crop flows (<code>cropperjs</code> integration).</td>
+</tr>
+<tr>
+<td><code>glob.ts</code></td>
+<td>A minimal glob-pattern matcher (mirrors a subset of <code>.gitignore</code>-style globbing) used client-side for things like file-tree filtering; <code>glob.test.txt</code> is fixture data for its test suite.</td>
+</tr>
+<tr>
+<td><code>match.ts</code></td>
+<td>Fuzzy string matching/scoring (powers the "Go to file" finder in <code>RepoFileSearch.vue</code> and similar quick-filter UIs).</td>
+</tr>
+<tr>
+<td><code>testhelper.ts</code></td>
+<td>Shared Vitest test utilities (DOM fixture builders, mock helpers) imported only from <code>*.test.ts</code> files, not shipped in production bundles.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjsvendor-patched-third-party-snippets"><code>web_src/js/vendor/</code> — Patched Third-Party Snippets<a href="#web_srcjsvendor-patched-third-party-snippets" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jquery.are-you-sure.ts</code></td>
+<td>An in-repo, TypeScript-ported/patched copy of the <code>jquery.are-you-sure</code> plugin (unsaved-form-changes confirmation dialog), kept here because upstream is unmaintained and Gitea needs small behavior fixes that can't wait on an upstream release.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_srcjswebcomponents-native-custom-elements"><code>web_src/js/webcomponents/</code> — Native Custom Elements<a href="#web_srcjswebcomponents-native-custom-elements" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Unlike <code>components/*.vue</code> (mounted imperatively by feature modules), these are true browser
+<a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_components">Custom Elements</a> registered
+once via <code>customElements.define(...)</code> and then usable directly as HTML tags from Go templates
+with zero JS glue per usage — see <code>webcomponents/README.md</code> for the design rationale on why
+these specific widgets use Custom Elements instead of Vue.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.ts</code></td>
+<td>Registers all custom elements (imports and calls <code>customElements.define()</code> for each) and is imported once from <code>index.ts</code>; also the file referenced by <code>vite.config.ts</code>'s <code>webComponents</code> allowlist (<code>overflow-menu</code>, <code>relative-time</code>) so <code>@vitejs/plugin-vue</code> doesn't try to compile these tags as Vue components.</td>
+</tr>
+<tr>
+<td><code>relative-time.ts</code> (+ <code>.test.ts</code>)</td>
+<td><code>&lt;relative-time&gt;</code> — renders a live-updating "3 hours ago"-style string from a <code>datetime</code> attribute, re-rendering on an interval and respecting the user's locale/timezone settings; layers on <code>utils/time.ts</code>.</td>
+</tr>
+<tr>
+<td><code>overflow-menu.ts</code></td>
+<td><code>&lt;overflow-menu&gt;</code> — a responsive toolbar that automatically collapses overflowing child buttons/links into a "more" dropdown as the container shrinks, used in repo/issue action bars.</td>
+</tr>
+<tr>
+<td><code>polyfills.ts</code> (+ <code>polyfill.test.ts</code>)</td>
+<td>Feature-detects and conditionally loads polyfills for Custom Elements APIs (e.g. <code>ElementInternals</code>) needed by older but still-supported browsers.</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>Design note explaining when to reach for a native Custom Element here versus a Vue SFC in <code>components/</code> — the two mounting mechanisms are intentionally kept separate.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="web_srccss-stylesheets"><code>web_src/css/</code> — Stylesheets<a href="#web_srccss-stylesheets" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.css</code></td>
+<td>The main aggregator <code>@import</code>ed by <code>index.ts</code>; pulls in Fomantic UI's prebuilt CSS, <code>base.css</code>, and every other top-level <code>*.css</code> file below in a fixed order. Processed through Tailwind/PostCSS per <code>vite.config.ts</code>'s <code>css.postcss.plugins</code>.</td>
+</tr>
+<tr>
+<td><code>base.css</code></td>
+<td>Global resets, typography, color-variable definitions, and the largest single non-repo stylesheet.</td>
+</tr>
+<tr>
+<td><code>repo.css</code></td>
+<td>Repository-page-specific styles (by far the largest CSS file — code browser, diffs, issue/PR layout).</td>
+</tr>
+<tr>
+<td><code>admin.css</code>, <code>dashboard.css</code>, <code>explore.css</code>, <code>home.css</code>, <code>install.css</code>, <code>org.css</code>, <code>review.css</code>, <code>user.css</code>, <code>actions.css</code>, <code>avatar.css</code>, <code>easymde.css</code>, <code>helpers.css</code>, <code>font_i18n.css</code></td>
+<td>Page/feature-scoped stylesheets, each imported by <code>index.css</code>.</td>
+</tr>
+<tr>
+<td><code>devtest.css</code></td>
+<td>A separate Vite build entry (see <code>vite.config.ts</code> <code>rolldownOptions.input.devtest</code>) powering the <code>/-/devtest</code> component gallery, kept out of the main bundle.</td>
+</tr>
+<tr>
+<td><code>swagger-render.css</code> / <code>swagger-standalone.css</code></td>
+<td>Styles for embedded vs. standalone Swagger UI rendering, split so the embedded (in-repo file preview) variant doesn't pull in full-page chrome styles.</td>
+</tr>
+<tr>
+<td><code>themes/*.css</code></td>
+<td>One file per selectable theme (<code>theme-gitea-light.css</code>, <code>theme-gitea-dark.css</code>, <code>theme-*-auto.css</code>, colorblind variants); each is dynamically discovered via <code>globSync</code> in <code>vite.config.ts</code> and registered as its own Vite build entry so a theme switch only needs to swap one small stylesheet, not rebuild the whole bundle.</td>
+</tr>
+<tr>
+<td><code>editor/</code>, <code>features/</code>, <code>markup/</code>, <code>modules/</code>, <code>repo/</code>, <code>shared/</code></td>
+<td>Subdirectories holding further-scoped partial stylesheets <code>@import</code>ed by the top-level files above, mirroring the <code>js/features/</code>, <code>js/markup/</code>, <code>js/modules/</code> split so JS and CSS for a given feature area stay easy to locate side by side.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="web_srcfomantic-prebuilt-theme-sources"><code>web_src/fomantic/</code> — Prebuilt Theme Sources<a href="#web_srcfomantic-prebuilt-theme-sources" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>semantic.json</code></td>
+<td>Fomantic UI's build configuration (which components to include, output paths) — Gitea ships a <strong>trimmed</strong> Fomantic build containing only the components actually used, not the full upstream library.</td>
+</tr>
+<tr>
+<td><code>theme.config.less</code></td>
+<td>Selects/overrides the Less theme variables (colors, fonts, spacing) used when Fomantic's own Gulp-based build compiles its components.</td>
+</tr>
+<tr>
+<td><code>build/</code></td>
+<td>Output directory for Fomantic's own compiled CSS/JS (git-ignored except for what's checked in), consumed by <code>index.css</code>/<code>index.ts</code> via plain <code>@import</code>/<code>import</code> — Vite never recompiles Fomantic itself, only bundles its already-built output alongside everything else.</td>
+</tr>
+<tr>
+<td><code>_site/</code></td>
+<td>Fomantic's internal Gulp build workspace/cache directory.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="web_srcsvg-custom-icon-sources"><code>web_src/svg/</code> — Custom Icon Sources<a href="#web_srcsvg-custom-icon-sources" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Custom, hand-authored SVG icon sources that are <strong>not</strong> part of the <code>@primer/octicons</code> package
+(which supplies the bulk of Gitea's <code>octicon-*</code> icons via <code>node_modules</code>). <code>tools/generate-svg.ts</code>
+(<code>make svg</code>) globs three separate source sets — <code>web_src/svg/*.svg</code> (this directory, no prefix),
+<code>node_modules/@primer/octicons/build/svg/*-16.svg</code> (prefixed <code>octicon-</code>, with the <code>-16</code> size
+suffix stripped from the name), and <code>public/assets/img/gitea.svg</code> (renamed to <code>gitea-gitea.svg</code>)
+— and runs each through the same <code>svgo</code>-based optimization pass (strips default <code>preset-default</code>
+noise, removes explicit width/height in favor of <code>viewBox</code>, injects <code>xmlns</code>, <code>aria-hidden="true"</code>,
+a <code>class="svg &lt;name&gt;"</code> attribute, and prefixes internal element IDs with the icon name to avoid
+collisions when multiple inline SVGs share a page), writing every result into the single flat
+output directory <code>public/assets/img/svg/*.svg</code> — the directory that both <code>modules/svg</code> (Go,
+server-side inline <code>svg</code> template func) and <code>web_src/js/svg.ts</code> (TypeScript, per-icon static
+imports) read from. The same script also processes <code>node_modules/material-icon-theme/icons/*.svg</code>
+into <code>options/fileicon/material-icon-svgs.json</code> (used by <code>modules/fileicon</code>) — a related but
+separate output, kept as an inline JSON symbol map rather than individual files since file-icons
+are looked up by filename/extension rules rather than by a fixed icon name. See
+<a href="#svg-icon-system">SVG Icon System</a> below for the full pipeline.</p>
+<p>Representative files:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gitea-*.svg</code> (e.g. <code>gitea-git.svg</code>, <code>gitea-lock.svg</code>, <code>gitea-whitespace.svg</code>, <code>gitea-split.svg</code>, <code>gitea-double-chevron-left.svg</code>)</td>
+<td>Gitea-specific glyphs with no Octicon equivalent (diff view modes, auth-source provider logos like <code>gitea-gitlab.svg</code>/<code>gitea-bitbucket.svg</code>/<code>gitea-discord.svg</code>, package-ecosystem logos like <code>gitea-npm.svg</code>/<code>gitea-cargo.svg</code>/<code>gitea-maven.svg</code>).</td>
+</tr>
+<tr>
+<td><code>gitea-colorblind-redgreen.svg</code> / <code>gitea-colorblind-blueyellow.svg</code></td>
+<td>Icons for the colorblind-friendly diff/label-color accessibility settings.</td>
+</tr>
+<tr>
+<td><code>material-*.svg</code> (e.g. <code>material-folder-generic.svg</code>, <code>material-folder-symlink.svg</code>, <code>material-palette.svg</code>, <code>material-invert-colors.svg</code>)</td>
+<td>Material-Design-style icons used for file-tree folder icons (<code>modules/fileicon</code>) and theme-related UI controls.</td>
+</tr>
+<tr>
+<td><code>fontawesome-*.svg</code> (e.g. <code>fontawesome-openid.svg</code>, <code>fontawesome-save.svg</code>, <code>fontawesome-send.svg</code>, <code>fontawesome-windows.svg</code>)</td>
+<td>A handful of Font Awesome icons kept as static SVG sources (predates full migration to Octicons for these specific glyphs).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="svg-icon-system">SVG Icon System<a href="#svg-icon-system" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The SVG pipeline spans build tooling, Go backend, and frontend, converging on one canonical
+asset directory:</p>
+<pre class="mermaid">flowchart LR
+    subgraph Sources["Icon Sources"]
+        OCT["node_modules/@primer/octicons<br/>(bulk of octicon-* icons)"]
+        CUSTOM["web_src/svg/*.svg<br/>(gitea-*, material-*, fontawesome-*)"]
+    end
+    GEN["tools/generate-svg.ts<br/>(make svg / svg-check)"]
+    OUT["public/assets/img/svg/*.svg<br/>(normalized: viewBox, width=16, height=16, class)"]
+    OCT --> GEN
+    CUSTOM --> GEN
+    GEN --> OUT
+
+    OUT -->|"AssetFS().ReadFile at startup"| GOSVG["modules/svg (Go)<br/>svg.Init() populates svgIcons map"]
+    GOSVG -->|"{{svg \"octicon-check\" 16 \"class\"}}"| TMPL["templates/**/*.tmpl<br/>(server-rendered inline <svg>)"]
+
+    OUT -->|"per-icon static import"| JSSVG["web_src/js/svg.ts<br/>(tree-shakeable, one import per icon)"]
+    JSSVG -->|"svg(name, size, class) / <SvgIcon name=.../>"| VUEJS["Vue components & feature modules"]</pre>
+<ul>
+<li><strong>Build time</strong> — <code>tools/generate-svg.ts</code> (invoked by <code>make svg</code>; verified in CI/pre-commit by
+  <code>make svg-check</code>, which regenerates, <code>git add</code>s, and diffs the result) combines <code>@primer/octicons</code>,
+  the custom sources in <code>web_src/svg/</code>, and <code>public/assets/img/gitea.svg</code>, running each through
+  <code>svgo</code> to normalize <code>viewBox</code>/<code>aria-hidden</code>/<code>class</code> attributes and strip redundant
+  width/height so they all behave predictably regardless of source, then writes every result
+  into the single flat <code>public/assets/img/svg/</code> directory. The same script separately converts
+  <code>material-icon-theme</code>'s file-type icons into <code>options/fileicon/material-icon-svgs.json</code> and
+  <code>options/fileicon/material-icon-rules.json</code> (name/extension → icon lookup rules), consumed by
+  <code>modules/fileicon</code> rather than by <code>modules/svg</code>/<code>svg.ts</code>.</li>
+<li><strong>Go/server side</strong> (<code>modules/svg/svg.go</code>) — <code>svg.Init()</code> runs at startup, lists every <code>.svg</code>
+  file under <code>assets/img/svg</code> via the layered <code>public.AssetFS()</code>, reads and <code>Normalize()</code>s each
+  one into an in-memory <code>svgIcons map[string]svgIconItem</code>. <code>svg.RenderHTML(icon, size, class)</code>
+  (exposed to templates as the <code>svg</code> func, see <a href="go-templates.html">Go Templates</a>) looks up the
+  icon, does a string-replace for non-default size/class combinations, and caches up to 10,000
+  distinct <code>(icon, size, class)</code> render results in a <code>sync.Map</code> to avoid repeated string
+  manipulation on hot template paths. <code>MockIcon()</code> lets Go tests substitute a dummy icon without
+  needing the real asset files present. A missing icon renders a visible <code>&lt;span&gt;name(size/class)&lt;/span&gt;</code>
+  placeholder instead of failing, so a typo'd icon name degrades gracefully rather than 500ing.</li>
+<li><strong>Frontend/TypeScript side</strong> (<code>web_src/js/svg.ts</code>) — rather than a runtime lookup table, every
+  icon actually used in <code>.vue</code>/<code>.ts</code> code is a <strong>named static import</strong> from the same
+  <code>public/assets/img/svg/*.svg</code> output directory. This lets Vite's bundler tree-shake unused
+  icons out of the final JS bundle entirely (only icons an entry point actually imports end up
+  in that entry's chunk) at the cost of needing an explicit <code>import</code> line per icon used from JS —
+  this is the rationale behind the <code>frontend-features.md</code> note that small components must "not
+  import the non-tree-shakeable <code>svg.ts</code>" module wholesale if they only need one or two icons.
+  <code>svg(name, size, classNames)</code> returns a plain HTML string (for use in non-Vue contexts like
+  <code>markup/*.ts</code> or <code>modules/*.ts</code>), <code>svgRaw()</code> returns the raw markup for direct injection, and
+  the <code>SvgIcon</code> Vue component (<code>defineComponent({name: 'SvgIcon', props: {name, size, className}})</code>)
+  is the idiomatic way to render an icon inside a <code>.vue</code> template.</li>
+<li>Both the Go and TypeScript consumers read from the <strong>same</strong> generated <code>public/assets/img/svg/</code>
+  directory, so an icon added to <code>web_src/svg/</code> (or upgraded in <code>@primer/octicons</code>) becomes
+  available to both server-rendered templates and client-side Vue components after a single
+  <code>make svg</code> regeneration — there is no separate icon set to keep in sync.</li>
+</ul>
+<h2 id="frontend-build-pipeline-tsvue-viteesbuild-assets-go">Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)<a href="#frontend-build-pipeline-tsvue-viteesbuild-assets-go" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The end-to-end path from source files in this directory to what a browser actually loads is
+fully documented in <a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>; the diagram
+below is a <code>web_src/</code>-centric summary of that same pipeline, showing exactly which subdirectory
+feeds which build step.</p>
+<pre class="mermaid">flowchart LR
+    subgraph WebSrc["web_src/ (this page)"]
+        JS["js/**/*.ts, *.vue<br/>(index.ts, iife.ts, swagger.ts,<br/>eventsource.sharedworker.ts,<br/>external-render-frontend.ts)"]
+        CSS["css/**/*.css<br/>(index.css + themes/*.css)"]
+        FOM["fomantic/ → prebuilt CSS/JS<br/>(own Gulp build, @imported by index)"]
+        SVG["svg/*.svg<br/>(merged with @primer/octicons)"]
+    end
+
+    GENSVG["tools/generate-svg.ts<br/>(make svg)"] 
+    SVG --> GENSVG
+    GENSVG --> SVGOUT["public/assets/img/svg/*.svg"]
+
+    subgraph ViteBuild["Vite build (vite.config.ts)"]
+        ESBUILD["esbuild<br/>(TS transpilation, dep pre-bundling)"]
+        ROLLDOWN["Rolldown/oxc<br/>(bundling + minification)"]
+        VUEPLUGIN["@vitejs/plugin-vue<br/>(.vue SFC compilation)"]
+        POSTCSS["PostCSS + tailwindcss<br/>(css transform)"]
+    end
+
+    JS --> ESBUILD --> ROLLDOWN
+    JS -.vue files.-> VUEPLUGIN --> ROLLDOWN
+    CSS --> POSTCSS --> ROLLDOWN
+    FOM -.plain import, not recompiled.-> ROLLDOWN
+    SVGOUT -.per-icon static import via svg.ts.-> ESBUILD
+
+    ROLLDOWN --> MANIFEST["public/assets/.vite/manifest.json"]
+    ROLLDOWN --> ASSETS["public/assets/{js,css,fonts}/*.[hash].*"]
+
+    subgraph GoServe["Go serving layer"]
+        DYN["modules/public/public_dynamic.go<br/>(assetfs.Local, default dev/source build)"]
+        BIN["modules/public/public_bindata.go<br/>(assetfs.Bindata, //go:build bindata)"]
+    end
+    ASSETS --> DYN
+    ASSETS -->|"make generate-bindata"| BIN
+
+    subgraph Templates["Go html/template layer"]
+        TMPL["templates/**/*.tmpl<br/>resolves hashed filenames via manifest.json<br/>+ inlines SVGs via {{svg ...}}"]
+    end
+    MANIFEST --> TMPL
+    SVGOUT -->|"modules/svg reads at startup"| TMPL
+    DYN --> BROWSER["Browser"]
+    BIN --> BROWSER
+    TMPL --> BROWSER</pre>
+<p>Key points this diagram makes explicit that the more detailed
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a> page covers in prose:</p>
+<ol>
+<li><strong>Two independent build tools feed the same output directory.</strong> <code>tools/generate-svg.ts</code>
+   (icon normalization) and the main Vite build both write into <code>public/assets/</code>, but on
+   different schedules — SVGs are regenerated by <code>make svg</code> (occasionally, when icons change),
+   while the JS/CSS bundle is rebuilt by <code>make frontend</code>/<code>make watch-frontend</code> on every source
+   change. <code>svg-check</code> in CI ensures the checked-in <code>public/assets/img/svg/</code> output stays in
+   sync with <code>web_src/svg/</code> + the pinned <code>@primer/octicons</code> version.</li>
+<li><strong>Fomantic UI is a separate, pre-built dependency</strong>, not compiled by Vite — <code>web_src/fomantic/</code>
+   sources are built by Fomantic's own Gulp toolchain into <code>web_src/fomantic/build/</code>, and only
+   the <em>result</em> is <code>@import</code>ed/imported by <code>index.css</code>/<code>index.ts</code> like any other npm package.</li>
+<li><strong>The Go template layer is the only consumer that ties JS/CSS and SVG output back together</strong>:
+   <code>modules/templates</code> resolves hashed asset filenames via <code>manifest.json</code> for <code>&lt;script&gt;</code>/<code>&lt;link&gt;</code>
+   tags, while <code>modules/svg</code> independently reads the same <code>public/assets/img/svg/</code> directory to
+   inline icons directly into the HTML response — two separate consumption paths into one shared
+   output directory.</li>
+</ol>
+<h2 id="see-also">See Also<a href="#see-also" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a> — full detail on <code>vite.config.ts</code>,
+  entry points, sourcemap strategy, IIFE builds, and the Go-side bindata/dynamic asset serving
+  split.</li>
+<li><a href="../09-core-modules/frontend-features.html">Frontend Features &amp; the "Islands of Interactivity" Pattern</a> —
+  the init-function/observer/Vue-mount architecture that consumes everything catalogued on this
+  page.</li>
+<li><a href="go-templates.html">Go Templates &amp; Views</a> — the server-rendered HTML that <code>web_src/js/</code> enhances,
+  and the <code>svg</code> template function that inlines icons server-side.</li>
+<li><a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a> — the Go-side Markdown/AsciiDoc
+  rendering that <code>web_src/js/markup/*</code> progressively enhances client-side.</li>
+</ul>
+<div class="page-nav">
+<a href="go-templates.html"><div class="nav-label">← Previous</div><div class="nav-title">Go Templates & Views</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#top-level-layout" class="" data-anchor="top-level-layout">Top-Level Layout</a>
+<a href="#web_srcjs-typescript-vue-source-tree" class="" data-anchor="web_srcjs-typescript-vue-source-tree">web_src/js/ — TypeScript &amp; Vue Source Tree</a>
+<a href="#top-level-entry-shared-files-web_srcjsts" class="toc-h3" data-anchor="top-level-entry-shared-files-web_srcjsts">Top-level entry &amp; shared files (web_src/js/*.ts)</a>
+<a href="#web_srcjscomponents-vue-single-file-components" class="toc-h3" data-anchor="web_srcjscomponents-vue-single-file-components">web_src/js/components/ — Vue Single-File Components</a>
+<a href="#web_srcjsfeatures-progressive-enhancement-init-modules" class="toc-h3" data-anchor="web_srcjsfeatures-progressive-enhancement-init-modules">web_src/js/features/ — Progressive-Enhancement Init Modules</a>
+<a href="#web_srcjsmarkup-rendered-content-enhancers" class="toc-h3" data-anchor="web_srcjsmarkup-rendered-content-enhancers">web_src/js/markup/ — Rendered-Content Enhancers</a>
+<a href="#web_srcjsmodules-cross-cutting-infrastructure" class="toc-h3" data-anchor="web_srcjsmodules-cross-cutting-infrastructure">web_src/js/modules/ — Cross-Cutting Infrastructure</a>
+<a href="#web_srcjsrender-external-content-viewer-plugin-system" class="toc-h3" data-anchor="web_srcjsrender-external-content-viewer-plugin-system">web_src/js/render/ — External Content Viewer Plugin System</a>
+<a href="#web_srcjsutils-pure-helper-functions" class="toc-h3" data-anchor="web_srcjsutils-pure-helper-functions">web_src/js/utils/ — Pure Helper Functions</a>
+<a href="#web_srcjsvendor-patched-third-party-snippets" class="toc-h3" data-anchor="web_srcjsvendor-patched-third-party-snippets">web_src/js/vendor/ — Patched Third-Party Snippets</a>
+<a href="#web_srcjswebcomponents-native-custom-elements" class="toc-h3" data-anchor="web_srcjswebcomponents-native-custom-elements">web_src/js/webcomponents/ — Native Custom Elements</a>
+<a href="#web_srccss-stylesheets" class="" data-anchor="web_srccss-stylesheets">web_src/css/ — Stylesheets</a>
+<a href="#web_srcfomantic-prebuilt-theme-sources" class="" data-anchor="web_srcfomantic-prebuilt-theme-sources">web_src/fomantic/ — Prebuilt Theme Sources</a>
+<a href="#web_srcsvg-custom-icon-sources" class="" data-anchor="web_srcsvg-custom-icon-sources">web_src/svg/ — Custom Icon Sources</a>
+<a href="#svg-icon-system" class="" data-anchor="svg-icon-system">SVG Icon System</a>
+<a href="#frontend-build-pipeline-tsvue-viteesbuild-assets-go" class="" data-anchor="frontend-build-pipeline-tsvue-viteesbuild-assets-go">Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)</a>
+<a href="#see-also" class="" data-anchor="see-also">See Also</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

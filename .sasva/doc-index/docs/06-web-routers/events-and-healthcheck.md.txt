@@ -1,0 +1,188 @@
+=== FILE: docs/06-web-routers/events-and-healthcheck.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Events (Server-Sent Events) & Healthcheck This page documents the two small, self-contained handler packages `routers/web/events` and `routers/web/healthcheck`: the Server-Sent-Events (SSE) endpoint that pushes live notification-count/logout events to a signed-in user's browser tab(s), and the JSON health-check endpoint used by load balancers and container orchestrators.
+
+# Events (Server-Sent Events) & Healthcheck
+
+This page documents the two small, self-contained handler packages
+`routers/web/events` and `routers/web/healthcheck`: the Server-Sent-Events (SSE)
+endpoint that pushes live notification-count/logout events to a signed-in user's
+browser tab(s), and the JSON health-check endpoint used by load balancers and
+container orchestrators.
+
+## `/user/events` — live notifications via SSE (`routers/web/events`)
+
+### Route registration
+
+```go
+// routers/web/web.go
+m.Any("/user/events", routing.MarkLongPolling(), events.Events)
+```
+
+Unlike almost every other route, this one is registered with `m.Any(...)` (matches
+any HTTP method) rather than `m.Get(...)`, and it does **not** carry `reqSignIn` as a
+middleware — instead, `events.Events` itself checks `ctx.IsSigned` at the top of the
+handler and degrades gracefully (see below) rather than triggering a redirect, because
+a redirect makes no sense for a long-lived `EventSource` connection opened by
+JavaScript. `routing.MarkLongPolling()` flags the route for the request-tracing
+middleware so long-lived connections aren't misreported as "slow requests" in
+monitoring.
+
+### Handler flow (`events.go`)
+
+```go
+func Events(ctx *context.Context) {
+	ctx.Resp.Header().Set("Content-Type", "text/event-stream")
+	ctx.Resp.Header().Set("Cache-Control", "no-cache")
+	ctx.Resp.Header().Set("Connection", "keep-alive")
+	ctx.Resp.Header().Set("X-Accel-Buffering", "no") // disable nginx response buffering
+	ctx.Resp.WriteHeader(http.StatusOK)
+
+	if !ctx.IsSigned {
+		event := &eventsource.Event{Name: "close", Data: "unauthorized"}
+		_, _ = event.WriteTo(ctx)
+		ctx.Resp.Flush()
+		return
+	}
+	...
+}
+```
+
+1. **Headers**: sets the standard SSE response headers, including
+   `X-Accel-Buffering: no` so an nginx reverse proxy doesn't buffer the stream (which
+   would defeat the purpose of a live push channel).
+2. **Anonymous visitors**: if not signed in, immediately writes a single `close` event
+   with `data: unauthorized` and returns — this tells the frontend's `EventSource`
+   client to stop retrying rather than reconnecting in a loop against an endpoint that
+   will never succeed for an anonymous session.
+3. **Registration**: for a signed-in user, registers a per-user channel with the
+   process-wide `eventsource.GetManager()` (`modules/eventsource`), keyed by
+   `ctx.Doer.ID`. Multiple browser tabs/devices for the same user each get their own
+   channel registration, but events sent to that `uid` fan out to all of them.
+4. **Main loop**: a `select` over four channels:
+   - `notify := ctx.Done()` — the underlying HTTP request's context is cancelled
+     (client disconnected, e.g. closed the tab) → `unregister()` (async, so it doesn't
+     block the handler's return) and break.
+   - `shutdownCtx.Done()` (from `graceful.GetManager().ShutdownContext()`) — the
+     server is shutting down → unregister and break, allowing graceful shutdown to
+     proceed instead of waiting on an indefinite SSE stream.
+   - `timer.C` (every 30 seconds) — writes a `ping` event purely to keep intermediate
+     proxies/load balancers from timing out an apparently-idle connection.
+   - `messageChan` (the registered event channel) — the actual payload channel; a
+     closed channel (`!ok`) breaks the loop cleanly. A special case: an incoming
+     `logout` event is compared against `ctx.Session.ID()` — if it matches the
+     *current* session, the handler writes a `logout`/`"here"` event, calls
+     `auth.HandleSignOut(ctx)` to clear the session server-side, and breaks; if it's a
+     *different* session for the same user logging out elsewhere, the event is
+     rewritten to `logout`/`"elsewhere"` before being forwarded, so the frontend can
+     show "you were signed out on another device" without leaking which session ID
+     triggered it.
+5. Every write path calls `ctx.Resp.Flush()` immediately so the browser receives
+   bytes as soon as they're written rather than waiting for internal buffering.
+
+### Who publishes events
+
+`eventsource.GetManager()` is a process-wide singleton (initialized during
+`InitWebInstalled` via `eventsource.GetManager().Init()`) that various services push
+into — most commonly the notification service, when a new notification is created for
+a user, and the auth/session invalidation path, when a session is explicitly logged
+out (which is what produces the `logout` event consumed above). See
+[Notifications](../17-notifications/README.md) for the publishing side and
+`services/uinotification` for the UI-facing notification-count logic that the
+frontend's SSE client typically triggers a re-fetch from upon receiving an event.
+
+## `/api/healthz` — health check (`routers/web/healthcheck`)
+
+### Route registration
+
+The health-check endpoint is registered in **three** separate places, all pointing at
+the exact same handler, so it is reachable regardless of which server mode is
+currently running:
+
+```go
+// routers/web/web.go — normal web UI, registered on the outer `routes` router,
+// i.e. BEFORE the session/auth/gzip middleware chain runs at all
+routes.Get("/api/healthz", healthcheck.Check)
+```
+
+```go
+// routers/install/routes.go — pre-install wizard
+r.Get("/api/healthz", healthcheck.Check)
+```
+
+Because it's mounted on the outer, pre-middleware `routes` router in the normal web
+UI case (alongside `/assets/*`, `/avatars/*`, `/robots.txt`, `/metrics`, and the `HEAD
+/` health probe), a health check never has to pay the cost of session
+lookup/deserialization, CSRF/origin checks, or gzip negotiation — it's about as cheap
+as a request can be while still exercising the database/cache connectivity checks
+below.
+
+### Handler flow (`check.go`)
+
+```go
+func Check(w http.ResponseWriter, r *http.Request) {
+	rsp := response{Status: pass, Description: setting.AppName, Checks: make(checks)}
+
+	statuses := make([]status, 0)
+	if setting.InstallLock {
+		statuses = append(statuses, checkDatabase(r.Context(), rsp.Checks))
+		statuses = append(statuses, checkCache(rsp.Checks))
+	}
+	for _, s := range statuses {
+		if s != pass {
+			rsp.Status = fail
+			break
+		}
+	}
+
+	data, _ := json.MarshalIndent(rsp, "", "  ")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(rsp.Status.ToHTTPStatus())
+	_, _ = w.Write(data)
+}
+```
+
+- **Before installation** (`!setting.InstallLock`), no downstream checks are run at
+  all — the endpoint simply reports `pass` (HTTP `200`) as long as the process is up,
+  which is exactly what the install-page's own `/api/healthz` registration needs: a
+  container orchestrator waiting for the install wizard to become reachable shouldn't
+  fail liveness just because there's no database configured yet.
+- **After installation**, it runs two checks and aggregates them:
+  - `checkDatabase(ctx, checks)` — pings the DB engine (`db.GetEngine(ctx).Ping()`);
+    if the configured backend is SQLite, additionally verifies the database file
+    still exists on disk (`os.Stat(setting.Database.Path)`) since a missing file is a
+    common misconfiguration (e.g. volume not mounted) that a bare connection ping
+    might not catch depending on driver behavior.
+  - `checkCache(checks)` — pings the configured cache backend
+    (`cache.GetCache().Ping()`).
+- The response follows the [draft health-check response format](https://datatracker.ietf.org/doc/html/draft-inadarei-api-health-check#section-3.1)
+  (`status: pass|fail|warn`, a `checks` map keyed by `"<component>:<measurement>"`,
+  each entry carrying `status`, an ISO-8601 `time`, and an optional `output` string
+  for failures). `status.ToHTTPStatus()` maps `pass`/`warn` → `200` and `fail` → `424
+  Failed Dependency`.
+- The code's own doc comment is an explicit warning against mis-using this endpoint:
+  it should **not** be wired up as a container `HEALTHCHECK`/restart trigger, because
+  during a slow migration or startup sequence the endpoint may legitimately not report
+  `pass` for an extended period, and a restart-on-failure policy would just repeatedly
+  kill the process before it finishes starting. It's intended purely for dashboards
+  and manual/alerting-only monitoring — see [Admin Guide](../18-admin-guide/README.md)
+  for broader operational guidance, including `doctor` checks that are safe to run as
+  active remediation.
+
+### Relationship to `/metrics`
+
+`/api/healthz` is deliberately much narrower in scope than the separate `/metrics`
+endpoint (`routers/web/metrics.go`, Prometheus format, gated by `setting.Metrics.Enabled`
+and also registered on the pre-middleware outer router): `/metrics` exposes detailed,
+labeled counters/gauges for dashboards and alerting rules, while `/api/healthz` is a
+minimal pass/fail/warn summary intended for simple reachability probes.
+
+## Where to go next
+
+| If you want to... | Go to |
+|---|---|
+| See where these routes sit in the overall route tree | [Route Organization](route-organization.md) |
+| See the auth check these routes deliberately bypass or handle manually | [Middleware Chain](middleware-chain.md) |
+| See the pre-install variant of `/api/healthz` | [Install & Private Routers](install-and-private.md) |
+| See notification delivery that publishes SSE events | [Notifications](../17-notifications/README.md) |
+| See operational monitoring and `doctor` checks | [Admin Guide](../18-admin-guide/README.md) |

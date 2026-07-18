@@ -1,0 +1,18 @@
+=== FILE: modules/actions/jobparser/testdata/job_name_with_matrix.in.yaml ===
+=== METADATA: format=yaml ===
+[SUMMARY] name: test jobs: job1: strategy: matrix: os: [ubuntu-22.04, ubuntu-20.04] version: [1.17, 1.18, 1.19] runs-on: ${{ matrix.os }} name: test_version_${{ matrix.version }}_on_${{ matrix.os }} steps: - uses: actions/setup-go@v3 with: go-version: ${{ matrix.
+
+name: test
+jobs:
+  job1:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-20.04]
+        version: [1.17, 1.18, 1.19]
+    runs-on: ${{ matrix.os }}
+    name: test_version_${{ matrix.version }}_on_${{ matrix.os }}
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.version }}
+      - run: uname -a && go version

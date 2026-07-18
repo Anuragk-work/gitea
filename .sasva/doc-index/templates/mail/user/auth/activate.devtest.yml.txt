@@ -1,0 +1,7 @@
+=== FILE: templates/mail/user/auth/activate.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] DisplayName: User Display Name Code: The-Activation-Code ActiveCodeLives: 24h
+
+DisplayName: User Display Name
+Code: The-Activation-Code
+ActiveCodeLives: 24h

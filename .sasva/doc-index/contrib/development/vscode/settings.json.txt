@@ -1,0 +1,8 @@
+=== FILE: contrib/development/vscode/settings.json ===
+=== METADATA: format=json ===
+[SUMMARY] { "go.buildTags": "", "go.testFlags": ["-v"] }
+
+{
+    "go.buildTags": "",
+    "go.testFlags": ["-v"]
+}

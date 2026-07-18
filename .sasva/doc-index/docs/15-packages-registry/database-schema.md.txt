@@ -1,0 +1,279 @@
+=== FILE: docs/15-packages-registry/database-schema.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Package Registry Database Schema All 22+ ecosystems share five core tables defined in `models/packages/`. Ecosystem-specific tables (e.g. `models/packages/container` for image manifests, `models/packages/rpm` for repo groups, `models/packages/debian` for repository state) are thin extensions layered *on top* of this shared schema, keyed by the generic `package_id` / `version_id` / `file_id` columns.
+
+# Package Registry Database Schema
+
+All 22+ ecosystems share five core tables defined in `models/packages/`. Ecosystem-specific
+tables (e.g. `models/packages/container` for image manifests, `models/packages/rpm` for repo
+groups, `models/packages/debian` for repository state) are thin extensions layered *on top* of
+this shared schema, keyed by the generic `package_id` / `version_id` / `file_id` columns.
+
+## Entity-Relationship Overview
+
+```mermaid
+erDiagram
+    PACKAGE ||--o{ PACKAGE_VERSION : "has versions"
+    PACKAGE_VERSION ||--o{ PACKAGE_FILE : "has files"
+    PACKAGE_FILE }o--|| PACKAGE_BLOB : "references content"
+    PACKAGE ||--o{ PACKAGE_PROPERTY : "ref_type=Package"
+    PACKAGE_VERSION ||--o{ PACKAGE_PROPERTY : "ref_type=Version"
+    PACKAGE_FILE ||--o{ PACKAGE_PROPERTY : "ref_type=File"
+    PACKAGE }o--|| OWNER_USER : "owned by"
+    PACKAGE }o--o| REPOSITORY : "optionally linked to"
+    PACKAGE ||--o{ PACKAGE_CLEANUP_RULE : "cleanup policy (by owner+type)"
+    PACKAGE_BLOB ||--o| PACKAGE_BLOB_UPLOAD : "in-progress chunked upload"
+
+    PACKAGE {
+        int64 ID PK
+        int64 OwnerID FK
+        int64 RepoID FK
+        Type Type
+        string Name
+        string LowerName
+        bool SemverCompatible
+        bool IsInternal
+    }
+    PACKAGE_VERSION {
+        int64 ID PK
+        int64 PackageID FK
+        int64 CreatorID FK
+        string Version
+        string LowerVersion
+        timestamp CreatedUnix
+        bool IsInternal
+        text MetadataJSON
+        int64 DownloadCount
+    }
+    PACKAGE_FILE {
+        int64 ID PK
+        int64 VersionID FK
+        int64 BlobID FK
+        string Name
+        string LowerName
+        string CompositeKey
+        bool IsLead
+        timestamp CreatedUnix
+    }
+    PACKAGE_BLOB {
+        int64 ID PK
+        int64 Size
+        string HashMD5
+        string HashSHA1
+        string HashSHA256
+        string HashSHA512
+        timestamp CreatedUnix
+    }
+    PACKAGE_PROPERTY {
+        int64 ID PK
+        int PropertyType_RefType
+        int64 RefID
+        string Name
+        text Value
+    }
+```
+
+## Table Reference
+
+### `package` (`models/packages/package.go`)
+
+The root entity. One row per unique `(owner_id, type, lower_name)` combination.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int64` PK | |
+| `owner_id` | `int64` | User or organization that owns the package; part of the unique index `s` together with `type` + `lower_name` |
+| `repo_id` | `int64` | Optional link to a repository (e.g. packages published from a CI pipeline tied to a repo) |
+| `type` | `string` (`Type`) | One of the 22 ecosystem type constants, e.g. `npm`, `maven`, `container`, or `generic` |
+| `name` | `string` | Display name, case-preserved |
+| `lower_name` | `string` | Lowercased for case-insensitive uniqueness/lookup |
+| `semver_compatible` | `bool` | Whether versions of this package should be treated as semver (affects sorting/latest resolution) |
+| `is_internal` | `bool` | Marks system-managed packages not shown in the UI (e.g. internal container manifests) |
+
+Key functions: `TryInsertPackage` (dedupes on `owner_id`+`type`+`lower_name`, returns
+`ErrDuplicatePackage`), `GetPackageByName`, `GetPackagesByType`, `FindUnreferencedPackages`
+(packages with zero versions — cleanup candidates), `HasOwnerPackages`,
+`HasRepositoryPackages`.
+
+### `package_version` (`models/packages/package_version.go`)
+
+One row per published version of a package.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int64` PK | |
+| `package_id` | `int64` | FK to `package`; unique together with `lower_version` |
+| `creator_id` | `int64` | User who published this version |
+| `version` | `string` | Display version string |
+| `lower_version` | `string` | Lowercased, used for uniqueness |
+| `created_unix` | `timestamp` | |
+| `is_internal` | `bool` | Hides system-managed versions |
+| `metadata_json` | `LONGTEXT` | Arbitrary ecosystem-specific metadata (dependencies, description, license, etc.), marshaled JSON — deserialized on demand per ecosystem, e.g. into an `npm.Metadata` struct |
+| `download_count` | `int64` | Incremented by `IncrementDownloadCounter` on every `GET` of the lead file |
+
+`IsPrerelease()` is a convenience method that treats any version string containing a `-` as a
+semver prerelease (e.g. `1.0.0-beta.1`).
+
+Key functions: `GetOrInsertVersion` (dedupe, returns `ErrDuplicatePackageVersion`),
+`GetVersionByNameAndVersion` / `GetInternalVersionByNameAndVersion`, `SearchVersions` (backed
+by the flexible `PackageSearchOptions` query builder — supports filtering by owner, repo,
+type, name/version exact-or-LIKE match, arbitrary property key/value pairs, and sort order),
+`DeleteVersionsByPackageID`, `HasVersionFileReferences`.
+
+### `package_file` (`models/packages/package_file.go`)
+
+One row per file attached to a version. Most ecosystems attach exactly one file per version
+(the package archive itself), but some attach several — e.g. Debian attaches a `.deb` plus
+signature files, NuGet attaches the `.nupkg` plus a `.snupkg` symbol package, Conan attaches
+many files per recipe/package revision.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int64` PK | |
+| `version_id` | `int64` | FK to `package_version` |
+| `blob_id` | `int64` | FK to `package_blob` — the actual content |
+| `name` | `string` | File name as seen by the client |
+| `lower_name` | `string` | Lowercased, part of the unique index with `version_id` + `composite_key` |
+| `composite_key` | `string` | Extra disambiguator for ecosystems that need more than name+version to identify a file uniquely (e.g. Conan package/recipe revisions, Debian per-architecture files) |
+| `is_lead` | `bool` | Marks the "primary" file of a version — the one whose download increments `download_count` |
+| `created_unix` | `timestamp` | |
+
+Key functions: `TryInsertFile` (dedupe on `version_id`+`lower_name`+`composite_key`, returns
+`ErrDuplicatePackageFile`), `GetFilesByVersionID`, `GetFileForVersionByName`,
+`SearchFiles`/`HasFiles` (via `PackageFileSearchOptions`, supports filtering by owner, package
+type, composite key, name query, property key/value pairs, age (`OlderThan`), and even by
+content hash — `HashAlgorithm`/`Hash`, useful for e.g. "does a file with this SHA256 already
+exist" checks), `CalculateFileSize` (sums blob sizes for a filter set — note this does **not**
+deduplicate blobs, so it overcounts shared content), `DeleteFilesByVersionID`,
+`DeleteFilesByPackageID`.
+
+### `package_blob` (`models/packages/package_blob.go`)
+
+The deduplicated content-addressable storage record. Multiple `package_file` rows across
+different packages, versions, or even ecosystems can point at the same blob if their content
+is byte-identical.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int64` PK | |
+| `size` | `int64` | Blob size in bytes |
+| `hash_md5` | `char(32)` | Unique index `md5` |
+| `hash_sha1` | `char(40)` | Unique index `sha1` |
+| `hash_sha256` | `char(64)` | Unique index `sha256` — also the key used to address the object in `ContentStore` |
+| `hash_sha512` | `char(128)` | Unique index `sha512` |
+| `created_unix` | `timestamp` | |
+
+All four hash columns have their own unique index, but the practical dedup lookup in
+`GetOrInsertBlob` matches on **all five** of `size` + the four hashes simultaneously (belt and
+suspenders against hash collisions). If two concurrent uploads race to insert the same new
+blob, `GetOrInsertBlob` handles the resulting insert conflict by re-querying and returning the
+winner's row rather than erroring.
+
+Key functions: `GetOrInsertBlob`, `GetBlobByID`, `ExistPackageBlobWithSHA`,
+`FindExpiredUnreferencedBlobs` (blobs with no `package_file` row, older than a grace period —
+input to the cleanup cron), `GetTotalBlobSize` / `GetTotalUnreferencedBlobSize` (used for
+storage-quota reporting), `IsBlobAccessibleForUser` (permission check that joins all the way
+up from `package_blob` → `package_file` → `package_version` → `package` → `user`, checking
+direct ownership, public/limited visibility, or org team `unit.TypePackages` access).
+
+### `package_property` (`models/packages/package_property.go`)
+
+A generic key/value extension table attached to `Package`, `PackageVersion`, or `PackageFile`
+rows, used whenever an ecosystem needs to store or query on a field that isn't part of the
+shared schema (for example, npm's package `README`, or values used purely for routing lookups
+like a Conan revision identifier).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int64` PK | |
+| `ref_type` | `int64` (`PropertyType`) | `0` = `PropertyTypeVersion`, `1` = `PropertyTypeFile`, `2` = `PropertyTypePackage` |
+| `ref_id` | `int64` | The ID of the referenced `Package`/`PackageVersion`/`PackageFile` row (polymorphic — no FK constraint since it targets different tables based on `ref_type`) |
+| `name` | `string` | Property key |
+| `value` | `LONGTEXT` | Property value |
+
+Key functions: `InsertProperty`, `GetProperties`, `GetPropertiesByName`,
+`InsertOrUpdateProperty` (upsert), `DeleteAllProperties`, `DeletePropertiesByName`. The
+`PackagePropertyList` helper type (in `descriptor.go`) adds a convenience `GetByName(name)`
+accessor over a loaded slice of properties.
+
+### Supporting tables
+
+| Table | File | Purpose |
+|-------|------|---------|
+| `package_blob_upload` | `models/packages/package_blob_upload.go` | Tracks in-progress **chunked/resumable** uploads (used heavily by the OCI Container registry's `PATCH` blob-upload flow). Stores `BytesReceived` and a serialized `MultiHasher` state (`HashStateBytes`) so hashing can resume across requests without re-reading already-uploaded bytes. Rows are pruned by `FindExpiredBlobUploads` after a timeout. |
+| `package_cleanup_rule` | `models/packages/package_cleanup_rule.go` | Per-owner, per-type retention policy (`KeepCount`, `KeepPattern`, `RemoveDays`, `RemovePattern`, `MatchFullName`) consumed by the `services/packages/cleanup` cron job to automatically prune old package versions. |
+
+### Ecosystem-specific model packages
+
+A handful of ecosystems need extra tables beyond the five shared ones, because they must model
+concepts the generic schema doesn't capture (e.g. OCI manifests referencing multiple blobs, RPM
+repository "groups", Debian repository state per distribution/component/architecture). These
+live under `models/packages/<type>/`:
+
+`alpine`, `arch`, `conan`, `conda`, `container`, `cran`, `debian`, `nuget`, `rpm`.
+
+Each still stores its core content via the shared `Package`/`PackageVersion`/`PackageFile`/
+`PackageBlob` tables — the ecosystem-specific tables only add relationships or cached indexes
+on top (for example `models/packages/container` tracks manifest ↔ blob associations for
+multi-layer images; `models/packages/rpm` tracks per-repository-group signing/state).
+
+## Descriptors: The Read-Side View (`descriptor.go`)
+
+Rather than joining these five tables manually everywhere, most read paths (web UI, API
+responses) work with a `PackageDescriptor` — an in-memory struct assembled by
+`GetPackageDescriptor(ctx, pv *PackageVersion)`:
+
+```go
+// PackageDescriptor describes a package
+type PackageDescriptor struct {
+    // basic package info
+    Package *Package
+    Owner   *user_model.User
+
+    // package version info
+    Repository        *repo_model.Repository
+    Version           *PackageVersion
+    SemVer            *version.Version
+    Creator           *user_model.User
+    PackageProperties PackagePropertyList
+    VersionProperties PackagePropertyList
+    Metadata          any
+    Files             []*PackageFileDescriptor
+}
+
+// PackageFileDescriptor describes a package file
+type PackageFileDescriptor struct {
+    File       *PackageFile
+    Blob       *PackageBlob
+    Properties PackagePropertyList
+}
+```
+
+`GetPackageDescriptorWithCache` accepts an `*cache.EphemeralCache` so that when listing many
+versions of the same package (e.g. rendering a package's version history page), the shared
+`Package` and `Owner` rows are fetched once instead of once per version.
+
+`Metadata` is populated by unmarshaling `PackageVersion.MetadataJSON` into the ecosystem's
+concrete metadata struct — the switch lives in `descriptor.go` and imports every
+`modules/packages/<type>` package specifically to get access to each one's `Metadata` type
+(e.g. `npm.Metadata`, `pypi.Metadata`, `debian.Metadata`).
+
+Descriptors also provide the canonical URL builders used across the codebase:
+
+- `PackageWebLink()` / `PackageHTMLURL()` — relative/absolute link to the package's UI page
+- `VersionWebLink()` / `VersionHTMLURL()` — link to a specific version
+- `PackageSettingsLink()` — link to the package's settings page
+- `CalculateBlobSize()` — sums the size of all `Files[].Blob.Size` for this version (does not
+  dedupe across versions)
+
+## Related Pages
+
+- [Supported Ecosystems](supported-ecosystems.md)
+- [Protocol Adapters](protocol-adapters.md) — how ecosystem-specific service packages (e.g.
+  `models/packages/container`, `models/packages/debian`, `models/packages/rpm`) build on top of
+  these shared tables.
+- [Package Upload/Download Flow](package-flow.md)
+- [Shared Infrastructure](shared-infrastructure.md)
+- [Database Models Overview](../05-database-models/README.md)
+- [Packages & Actions API](../07-rest-api/packages-and-actions-api.md) — the HTTP route
+  reference for `/api/packages` and `/v2` that ultimately reads/writes these tables.

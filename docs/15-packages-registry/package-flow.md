@@ -1,0 +1,181 @@
+# Package Upload / Download Flow
+
+This page traces the full lifecycle of a package file — from a client's `PUT`/`POST` request
+all the way to bytes on disk (or object storage), and back out again on download. The flow is
+identical for every one of the [22 supported ecosystems](supported-ecosystems.md); only the
+metadata-parsing step at the router layer differs per protocol.
+
+## High-Level Architecture
+
+```mermaid
+graph TD
+    Client["Package Client<br/>(npm, cargo, docker, pip, dpkg, ...)"]
+    Router["routers/api/packages/&lt;type&gt;<br/>(protocol-specific handlers)"]
+    Module["modules/packages/&lt;type&gt;<br/>(parse archive, extract metadata)"]
+    Service["services/packages<br/>(CreatePackageAndAddFile / AddFileToExistingPackage)"]
+    Models["models/packages<br/>(Package, PackageVersion, PackageFile, PackageBlob)"]
+    ContentStore["modules/packages/content_store.go<br/>(ContentStore)"]
+    Storage["storage.ObjectStorage<br/>(Local Disk / Minio / S3 / Azure Blob)"]
+    DB[("Database<br/>package / package_version / package_file / package_blob")]
+
+    Client -->|"1. PUT/POST upload"| Router
+    Router -->|"2. wrap body in HashedBuffer"| Module
+    Module -->|"3. parsed metadata + validated archive"| Service
+    Service -->|"4. TryInsertPackage / GetOrInsertVersion"| Models
+    Models -->|"5. persist rows"| DB
+    Service -->|"6. GetOrInsertBlob (dedupe by hash)"| Models
+    Service -->|"7. Save(key, reader, size) if new blob"| ContentStore
+    ContentStore -->|"8. write content-addressed object"| Storage
+
+    Client2["Package Client"] -->|"9. GET download"| Router2["routers/api/packages/&lt;type&gt;"]
+    Router2 -->|"10. OpenFileForDownload"| Service2["services/packages"]
+    Service2 -->|"11. GetBlobByID + OpenBlob(key)"| ContentStore
+    ContentStore -->|"12. read object / or ServeDirectURL"| Storage
+    Storage -->|"13. stream bytes"| Client2
+```
+
+## Upload Sequence
+
+The sequence below follows a typical upload (e.g. `npm publish`, `cargo publish`,
+`docker push` layer, `dpkg` upload) end to end.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router (routers/api/packages/<type>)
+    participant M as Module (modules/packages/<type>)
+    participant S as Service (services/packages)
+    participant DB as Models / Database
+    participant CS as ContentStore
+    participant ST as Storage Backend
+
+    C->>R: PUT /api/packages/{owner}/<type>/... (body = archive)
+    R->>R: packages_module.CreateHashedBufferFromReader(body)
+    R->>M: ParsePackage(buffer) — extract name, version, metadata
+    M-->>R: PackageMetadata / error (invalid archive)
+    R->>S: CreatePackageAndAddFile(PackageCreationInfo, PackageFileCreationInfo)
+    S->>DB: TryInsertPackage(Package{OwnerID, Type, Name})
+    S->>DB: GetOrInsertVersion(PackageVersion{PackageID, Version, MetadataJSON})
+    S->>DB: GetOrInsertBlob(PackageBlob{Size, HashMD5, HashSHA1, HashSHA256, HashSHA512})
+    alt blob content is new
+        S->>CS: Save(BlobHash256Key, reader, size)
+        CS->>ST: store.Save(sha256[0:2]/sha256[2:4]/sha256, data)
+    else blob already exists (dedup)
+        Note over S,CS: skip storage write, reuse existing PackageBlob row
+    end
+    S->>DB: TryInsertFile(PackageFile{VersionID, BlobID, Name})
+    S->>DB: InsertProperty(...) for package/version/file metadata
+    S-->>R: PackageVersion, PackageFile
+    R-->>C: 201 Created
+```
+
+### Key steps in code
+
+1. **Router** (`routers/api/packages/<type>`) receives the raw HTTP request and, for most
+   ecosystems, immediately buffers the body with a checksum-tracking reader:
+
+   ```go
+   buf, err := packages_module.CreateHashedBufferFromReader(ctx.Req.Body)
+   ```
+
+   `CreateHashedBufferFromReader` (see `modules/packages/hashed_buffer.go`) spills to a temp
+   file once the in-memory `DefaultMemorySize` (32 MiB) is exceeded, and computes MD5/SHA1/
+   SHA256/SHA512 while copying — see [Shared Infrastructure](shared-infrastructure.md).
+
+2. **Module** parses the ecosystem's archive format (e.g. a `.tgz` for npm, a `.whl`/`.tar.gz`
+   for PyPI, a `.deb` for Debian) to pull out the package name, version, and metadata that the
+   generic models don't know about.
+
+3. **Service** (`services/packages/packages.go`) exposes three main entry points that routers
+   call once metadata has been extracted (documented in
+   [`routers/api/packages/README.md`](../../routers/api/packages/README.md)):
+
+   | Function | Behavior when version/file already exists |
+   |----------|----------------------------------------------|
+   | `CreatePackageAndAddFile` | Errors with `ErrDuplicatePackageVersion` |
+   | `CreatePackageOrAddFileToExisting` | Locked upsert — reuses existing package/version, adds file (used when multiple files share one version, e.g. Debian multi-arch) |
+   | `AddFileToExistingPackage` | Errors with `ErrPackageNotExist` if the version is missing |
+
+   `CreatePackageOrAddFileToExisting` wraps the whole operation in a `globallock.LockAndDo`
+   using a key like `pkg-upsert-<type>-<name>-<version>` to avoid races between concurrent
+   uploads of the same version.
+
+4. Inside `createPackageAndAddFile`, everything happens in a single DB transaction
+   (`db.TxContext`); if any step fails after the blob was newly created, the blob is deleted
+   from the `ContentStore` again (rollback of the storage side-effect, since blobs live outside
+   the DB transaction).
+
+5. **Content-addressable storage**: blobs are deduplicated by their SHA-256 (and other hash)
+   values via `packages_model.GetOrInsertBlob`. If an identical blob already exists (same size
+   + all four hashes), the existing `PackageBlob` row is reused and the storage write is
+   skipped entirely — this is how, e.g., the same JAR uploaded to two different Maven
+   coordinates only consumes storage once.
+
+6. On success, `notify_service.PackageCreate` fires a notification event used by webhooks and
+   the activity feed.
+
+## Download Sequence
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant S as Service (services/packages)
+    participant DB as Models
+    participant CS as ContentStore
+    participant ST as Storage Backend
+
+    C->>R: GET /api/packages/{owner}/<type>/.../<file>
+    R->>S: OpenFileForDownload(ctx, packageFile, method)
+    S->>DB: GetBlobByID(pf.BlobID)
+    S->>CS: OpenBlobForDownload(pf, pb, method)
+    alt storage supports direct serving (e.g. S3/Minio presigned URL)
+        CS->>ST: GetServeDirectURL(key, filename, method)
+        ST-->>CS: signed URL
+        CS-->>R: redirect URL
+        R-->>C: 302 Redirect to signed URL
+    else local disk / no direct serving
+        CS->>ST: store.Open(KeyToRelativePath(key))
+        ST-->>CS: io.ReadSeekCloser
+        CS-->>R: file stream
+        R-->>C: 200 OK + streamed bytes
+    end
+    S->>DB: IncrementDownloadCounter(pf.VersionID) (only for GET on lead file)
+```
+
+`OpenBlobForDownload` (in `services/packages/packages.go`) decides between **direct serving**
+(returning a redirect/presigned URL straight to the object storage backend, avoiding proxying
+bytes through Gitea) and **local streaming** (Gitea reads the object and pipes it to the
+response), based on `ContentStore.ShouldServeDirect()`, which reflects
+`setting.Packages.Storage.ServeDirect()`. Direct serving is typically only available for
+S3-compatible/Minio and Azure Blob backends, not for local disk storage.
+
+Download counting: only the file marked `IsLead` (the primary artifact of a version, as
+opposed to e.g. a `.asc` signature or `.sha256` checksum file) increments
+`PackageVersion.DownloadCount`, and only on `GET` (not `HEAD`).
+
+## Deletion Flow
+
+Deleting a package (`services.RemovePackage`) does **not** immediately delete blobs from
+storage. Instead:
+
+1. All `PackageProperty` rows for the package are deleted.
+2. All `PackageVersion` / `PackageFile` rows are deleted in a DB transaction.
+3. Blobs become "unreferenced" (no `PackageFile` points to them anymore).
+4. A separate cleanup cron task (`services/packages/cleanup`) finds
+   `FindExpiredUnreferencedBlobs` (see `models/packages/package_blob.go`) after a grace period
+   and deletes both the DB row and the underlying storage object via `ContentStore.Delete`.
+
+This deferred-delete design (marked `PACKAGE-DEFER-STORAGE-DELETE` in the code) avoids losing a
+still-referenced blob if a delete and a concurrent upload of an identical blob race each other.
+
+## Related Pages
+
+- [Supported Ecosystems](supported-ecosystems.md)
+- [Protocol Adapters](protocol-adapters.md) — how index-building ecosystems (Alpine, Arch,
+  Debian, RPM, Cargo) and the OCI container registry extend this generic flow with repository
+  regeneration, GPG signing, and chunked/manifest-graph uploads.
+- [Shared Infrastructure](shared-infrastructure.md)
+- [Database Schema](database-schema.md)
+- [Packages & Actions API](../07-rest-api/packages-and-actions-api.md) — the HTTP route layer
+  (mounting, auth middleware) that sits in front of the router step in the diagrams above.

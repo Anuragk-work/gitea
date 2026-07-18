@@ -1,0 +1,9 @@
+{
+  "source": "models/fixtures/oauth2_application.yml",
+  "format": "yml",
+  "size_bytes": 821,
+  "source_modified": "2026-07-18T06:05:26.804184+00:00",
+  "indexed_at": "2026-07-18T07:39:39.916610+00:00",
+  "text_length": 821,
+  "line_count": 23
+}

@@ -1,0 +1,13 @@
+=== FILE: models/migrations/fixtures/Test_AddUniqueIndexForProjectIssue/project_issue.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] - id: 1 project_id: 1 issue_id: 1 - id: 2 project_id: 1 issue_id: 1
+
+-
+  id: 1
+  project_id: 1
+  issue_id: 1
+
+-
+  id: 2
+  project_id: 1
+  issue_id: 1

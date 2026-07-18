@@ -1,0 +1,17 @@
+=== FILE: templates/mail/org/team_invite.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] Inviter: DisplayName: Inviter Display Name Team: Name: Team name Organization: DisplayName: Organization Display Name InviteURL: http://localhost/org/team/invite Invite: Email: invited@example.com
+
+Inviter:
+  DisplayName: Inviter Display Name
+
+Team:
+  Name: Team name
+
+Organization:
+  DisplayName: Organization Display Name
+
+InviteURL: http://localhost/org/team/invite
+
+Invite:
+  Email: invited@example.com

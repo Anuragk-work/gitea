@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_AddConfidentialClientColumnToOAuth2ApplicationTable/oauth2_application.yml",
+  "format": "yml",
+  "size_bytes": 10,
+  "source_modified": "2026-07-18T06:05:26.815688+00:00",
+  "indexed_at": "2026-07-18T07:39:39.889754+00:00",
+  "text_length": 10,
+  "line_count": 3
+}

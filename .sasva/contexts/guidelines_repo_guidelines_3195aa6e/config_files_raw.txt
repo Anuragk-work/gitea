@@ -1,0 +1,2155 @@
+=== .editorconfig ===
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+tab_width = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{go,tmpl,html}]
+indent_style = tab
+
+[go.*]
+indent_style = tab
+
+[templates/custom/*.tmpl]
+insert_final_newline = false
+
+[templates/swagger/*_json.tmpl]
+indent_style = space
+insert_final_newline = false
+
+[templates/user/auth/oidc_wellknown.tmpl]
+indent_style = space
+
+[templates/shared/actions/runner_badge_*.tmpl]
+# editconfig lint requires these XML-like files to have charset defined, but the files don't have.
+charset = unset
+
+[Makefile]
+indent_style = tab
+
+[*.svg]
+insert_final_newline = false
+
+
+=== .github/PULL_REQUEST_TEMPLATE.md ===
+<!--
+Before submitting:
+- Target the `main` branch; release branches are for backports only.
+- Use a Conventional Commits title, e.g. `fix(repo): handle empty branch names`.
+- Read the contributing guidelines: https://github.com/go-gitea/gitea/blob/main/CONTRIBUTING.md
+- Documentation changes go to https://gitea.com/gitea/docs
+
+Describe your change below and link any issue it fixes.
+-->
+
+
+=== .golangci.yml ===
+version: "2"
+output:
+  sort-order:
+    - file
+linters:
+  default: none
+  enable:
+    - bidichk
+    - bodyclose
+    - depguard
+    - dupl
+    - errcheck
+    - forbidigo
+    - gocheckcompilerdirectives
+    - gocritic
+    - govet
+    - ineffassign
+    - mirror
+    - modernize
+    - nakedret
+    - nilnil
+    - nolintlint
+    - perfsprint
+    - revive
+    - staticcheck
+    - testifylint
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: encoding/json
+              desc: use gitea's modules/json instead of encoding/json
+            - pkg: github.com/unknwon/com
+              desc: use gitea's util and replacements
+            - pkg: io/ioutil
+              desc: use os or io instead
+            - pkg: golang.org/x/exp
+              desc: it's experimental and unreliable
+            - pkg: gitea.dev/modules/git/internal
+              desc: do not use the internal package, use AddXxx function instead
+            - pkg: gopkg.in/ini.v1
+              desc: do not use the ini package, use gitea's config system instead
+            - pkg: gitea.com/go-chi/cache
+              desc: do not use the go-chi cache package, use gitea's cache system
+            - pkg: github.com/pkg/errors
+              desc: use builtin errors package instead
+        migrations:
+          files:
+            - '**/models/migrations/**/*.go'
+          deny:
+            - pkg: gitea.dev/models$
+              desc: migrations must not depend on the models package
+            - pkg: gitea.dev/modules/structs
+              desc: migrations must not depend on modules/structs (API structures change over time)
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    gocritic:
+      enabled-checks:
+        - equalFold
+      disabled-checks:
+        - ifElseChain
+        - singleCaseSwitch # Every time this occurred in the code, there was no other way.
+        - deprecatedComment # conflicts with go-swagger comments
+    revive:
+      severity: error
+      rules:
+        - name: blank-imports
+        - name: constant-logical-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-lines
+        - name: error-return
+        - name: error-strings
+        - name: exported
+        - name: identical-branches
+        - name: if-return
+        - name: increment-decrement
+        - name: modifies-value-receiver
+        - name: package-comments
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+          arguments:
+            - [] # AllowList - do not remove as args for the rule are positional and won't work without lists first
+            - [] # DenyList
+            - - skip-package-name-checks: true # supress errors from underscore in migration packages
+    staticcheck:
+      checks:
+        - all
+        - -ST1003
+        - -ST1005
+        - -QF1001
+        - -QF1006
+        - -QF1008
+    testifylint:
+      disable:
+        - empty
+        - go-require
+        - require-error
+    usetesting:
+      os-temp-dir: true
+    perfsprint:
+      concat-loop: false
+    govet:
+      enable:
+        - nilness
+        - unusedwrite
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - staticcheck
+          - unparam
+        path: _test\.go
+      - linters:
+          - dupl
+          - errcheck
+        path: models/migrations/v
+      - linters:
+          - forbidigo
+        path: cmd
+      - linters:
+          - dupl
+        text: (?i)webhook
+      - linters:
+          - gocritic
+        text: (?i)`ID' should not be capitalized
+      - linters:
+          - unused
+        text: (?i)swagger
+      - linters:
+          - gocritic
+        text: '(?i)commentFormatting: put a space between `//` and comment text'
+      - linters:
+          - gocritic
+        text: '(?i)exitAfterDefer:'
+    paths:
+      - node_modules
+      - .venv
+      - public
+      - web_src
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      custom-order: true
+      sections:
+        - standard
+        - prefix(gitea.dev)
+        - blank
+        - default
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - node_modules
+      - .venv
+      - public
+      - web_src
+
+run:
+  timeout: 10m
+
+
+=== AGENTS.md ===
+- Use `make help` to find available development targets
+- Run `make fmt` to format `.go` files, and run `make lint-go` to lint them
+- Run `make lint-js` to lint `.ts` files
+- Run `make tidy` after any `go.mod` changes
+- Run single go tests with `go test -run '^TestName$' ./modulepath/`
+- Run single js test files with `pnpm exec vitest <path-filter>`
+- Run single playwright e2e test files with `GITEA_TEST_E2E_FLAGS='<filepath>' make test-e2e`
+- Add the current year into the copyright header of new `.go` files
+- Ensure no trailing whitespace in edited files
+- Use Conventional Commits for commit messages and PR titles, e.g. `type(scope): subject`; `!` before the colon if breaking. Use `test` type for test-only changes.
+- Never force-push, amend, or squash unless asked. Use new commits and normal push for pull request updates
+- Preserve existing code comments, do not remove or rewrite comments that are still relevant
+- Keep comments short, prefer same-line, explain why, never narrate code
+- Prefer unit tests over integration tests when logic is testable in isolation
+- Aim for sub-2s local runtime for integration and e2e tests
+- In TypeScript, use `!` (non-null assertion) instead of `?.`/`??` when a value is known to always exist
+- For CSS layout, prefer `flex-*` helpers over per-child `tw-ml-*` / `tw-mr-*` margins; fall back to `tw-*` utilities when specificity requires `!important`
+- Include authorship attribution in issue and pull request comments
+- Always add `Assisted-By` trailers to commit messages in format `Assisted-by: AGENT_NAME:MODEL_VERSION`
+- Never add `Co-Authored-By` `Signed-off-by` trailer to commit messages. Sign off must be done by a human.
+
+
+=== CONTRIBUTING.md ===
+# Contribution Guidelines
+
+This document explains how to contribute changes to the Gitea project. Topic-specific guides live in separate files so the essentials are easier to find.
+
+| Topic                  | Document                                                         |
+|:-----------------------|:-----------------------------------------------------------------|
+| Setup and requirements | [docs/build-setup.md](docs/build-setup.md)                       |
+| Development workflow   | [docs/development.md](docs/development.md)                       |
+| Build from source      | [docs/build-source.md](docs/build-source.md)                     |
+| Running the tests      | [docs/testing.md](docs/testing.md)                               |
+| Frontend guidelines    | [docs/guidelines-frontend.md](docs/guidelines-frontend.md)       |
+| Backend guidelines     | [docs/guidelines-backend.md](docs/guidelines-backend.md)         |
+| Refactoring            | [docs/guidelines-refactoring.md](docs/guidelines-refactoring.md) |
+| Community Governance   | [docs/community-governance.md](docs/community-governance.md)     |
+| Release management     | [docs/release-management.md](docs/release-management.md)         |
+
+<details><summary>Table of Contents</summary>
+
+- [Contribution Guidelines](#contribution-guidelines)
+  - [Introduction](#introduction)
+  - [AI Contribution Policy](#ai-contribution-policy)
+  - [Issues](#issues)
+    - [How to report issues](#how-to-report-issues)
+    - [Types of issues](#types-of-issues)
+    - [Discuss your design before the implementation](#discuss-your-design-before-the-implementation)
+    - [Issue locking](#issue-locking)
+  - [Building Gitea](#building-gitea)
+  - [Styleguide](#styleguide)
+  - [Copyright](#copyright)
+  - [Testing](#testing)
+  - [Translation](#translation)
+  - [Code review](#code-review)
+    - [Pull request format](#pull-request-format)
+    - [PR title and summary](#pr-title-and-summary)
+    - [Breaking PRs](#breaking-prs)
+      - [What is a breaking PR?](#what-is-a-breaking-pr)
+      - [How to handle breaking PRs?](#how-to-handle-breaking-prs)
+    - [Maintaining open PRs](#maintaining-open-prs)
+    - [Reviewing PRs](#reviewing-prs)
+      - [For PR authors](#for-pr-authors)
+  - [Documentation](#documentation)
+  - [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco)
+
+</details>
+
+## Introduction
+
+It assumes you have followed the [installation instructions](https://docs.gitea.com/category/installation). \
+Sensitive security-related issues should be reported to [security@gitea.io](mailto:security@gitea.io).
+
+For configuring IDEs for Gitea development, see the [IDE setup notes](docs/development.md#ide-configuration) and the [contributed configurations](contrib/development/).
+
+## AI Contribution Policy
+
+Contributions made with the assistance of AI tools are welcome, but contributors must use them responsibly and disclose that use clearly.
+
+1. Review AI-generated code closely before marking a pull request ready for review.
+2. Manually test the changes and add appropriate automated tests where feasible.
+3. Only use AI to assist in contributions that you understand well enough to explain, defend, and revise yourself during review.
+4. Disclose AI-assisted content clearly.
+5. Do not use AI to reply to questions about your issue or pull request. The questions are for you, not an AI model.
+6. AI may be used to help draft issues and pull requests, but contributors remain responsible for the accuracy, completeness, and intent of what they submit.
+
+Maintainers reserve the right to close pull requests and issues that do not disclose AI assistance, that appear to be low-quality AI-generated content, or where the contributor cannot explain or defend the proposed changes themselves.
+
+We welcome new contributors, but cannot sustain the effort of supporting contributors who primarily defer to AI rather than engaging substantively with the review process.
+
+## Issues
+
+### How to report issues
+
+Please search the issues on the issue tracker with a variety of related keywords to ensure that your issue has not already been reported.
+
+If your issue has not been reported yet, [open an issue](https://github.com/go-gitea/gitea/issues/new)
+and answer the questions so we can understand and reproduce the problematic behavior. \
+Please write clear and concise instructions so that we can reproduce the behavior — even if it seems obvious. \
+The more detailed and specific you are, the faster we can fix the issue. \
+It is really helpful if you can reproduce your problem on a site running on the latest commits, i.e. <https://demo.gitea.com>, as perhaps your problem has already been fixed on a current version. \
+Please follow the guidelines described in [How to Report Bugs Effectively](http://www.chiark.greenend.org.uk/~sgtatham/bugs.html) for your report.
+
+Please be kind—remember that Gitea comes at no cost to you, and you're getting free help.
+
+### Types of issues
+
+Typically, issues fall in one of the following categories:
+
+- `bug`: Something in the frontend or backend behaves unexpectedly
+- `security issue`: bug that has serious implications such as leaking another users data. Please do not file such issues on the public tracker and send a mail to security@gitea.io instead
+- `feature`: Completely new functionality. You should describe this feature in enough detail that anyone who reads the issue can understand how it is supposed to be implemented
+- `enhancement`: An existing feature should get an upgrade
+- `refactoring`: Parts of the code base don't conform with other parts and should be changed to improve Gitea's maintainability
+
+### Discuss your design before the implementation
+
+We welcome submissions. \
+If you want to change or add something, please let everyone know what you're working on — [file an issue](https://github.com/go-gitea/gitea/issues/new) or comment on an existing one before starting your work!
+
+Significant changes such as new features must go through the change proposal process before they can be accepted. \
+This is mainly to save yourself the trouble of implementing it, only to find out that your proposed implementation has some potential problems. \
+Furthermore, this process gives everyone a chance to validate the design, helps prevent duplication of effort, and ensures that the idea fits inside
+the goals for the project and tools.
+
+Pull requests should not be the place for architecture discussions.
+
+### Issue locking
+
+Commenting on closed or merged issues/PRs is strongly discouraged.
+Such comments will likely be overlooked as some maintainers may not view notifications on closed issues, thinking that the item is resolved.
+As such, commenting on closed/merged issues/PRs may be disabled prior to the scheduled auto-locking if a discussion starts or if unrelated comments are posted.
+If further discussion is needed, we encourage you to open a new issue instead and we recommend linking to the issue/PR in question for context.
+
+## Building Gitea
+
+See [docs/setup.md](docs/setup.md) for prerequisites and [docs/development.md](docs/development.md)
+for building Gitea and the development workflow.
+
+## Styleguide
+
+You should always run `make fmt` before committing to conform to Gitea's styleguide.
+
+## Copyright
+
+New code files that you contribute should use the standard copyright header:
+
+```
+// Copyright <current year> The Gitea Authors. All rights reserved.
+// SPDX-License-Identifier: MIT
+```
+
+Afterwards, copyright should only be modified when the copyright author changes.
+
+## Testing
+
+Before submitting a pull request, run the linters (`make lint`, or the scoped `make lint-backend` / `make lint-frontend`) and the tests to make sure your changes don't cause a regression elsewhere. See [docs/testing.md](docs/testing.md) for how to run the unit, integration, end-to-end, and migration tests.
+
+## Translation
+
+All translation work happens on [Crowdin](https://translate.gitea.com).
+The only translation that is maintained in this repository is [the English translation](https://github.com/go-gitea/gitea/blob/main/options/locale/locale_en-US.json).
+It is synced regularly with Crowdin. \
+Other locales on main branch **should not** be updated manually as they will be overwritten with each sync. \
+Once a language has reached a **satisfactory percentage** of translated keys (~25%), it will be synced back into this repo and included in the next released version.
+
+The tool `go run build/backport-locale.go` can be used to backport locales from the main branch to release branches that were missed.
+
+## Code review
+
+How labels, milestones, and the merge queue work is documented in [docs/community-governance.md](docs/community-governance.md).
+
+### Pull request format
+
+Please try to make your pull request easy to review for us. \
+For that, please read the [*Best Practices for Faster Reviews*](https://github.com/kubernetes/community/blob/261cb0fd089b64002c91e8eddceebf032462ccd6/contributors/guide/pull-requests.md#best-practices-for-faster-reviews) guide. \
+It has lots of useful tips for any project you may want to contribute to. \
+Some of the key points:
+
+- Make small pull requests. \
+  The smaller, the faster to review and the more likely it will be merged soon.
+- Don't make changes unrelated to your PR. \
+  Maybe there are typos on some comments, maybe refactoring would be welcome on a function... \
+  but if that is not related to your PR, please make *another* PR for that.
+- Split big pull requests into multiple small ones. \
+  An incremental change will be faster to review than a huge PR.
+- Allow edits by maintainers. This way, the maintainers will take care of merging the PR later on instead of you.
+
+### PR title and summary
+
+In the PR title, describe the problem you are fixing, not how you are fixing it. \
+Use the first comment as a summary of your PR. \
+In the PR summary, you can describe exactly how you are fixing this problem.
+
+PR titles must follow the [Conventional Commits](https://www.conventionalcommits.org/) format, because PRs are squash-merged and the PR title becomes the resulting commit message:
+
+```text
+type(scope)!: subject
+```
+
+The scope in parentheses is optional. A `!` immediately before the colon marks a [breaking change](https://www.conventionalcommits.org/en/v1.0.0/#summary): either `type!:` or `type(scope)!:` (not `type!(scope):`).
+
+Use one of these types:
+
+- `build`: Changes affecting the build system, packaging, or external dependencies
+- `ci`: Changes to CI/CD configuration files and scripts
+- `chore`: Maintenance changes that do not affect production code or should not appear in the changelog
+- `docs`: Documentation-only changes
+- `feat`: A larger user-facing feature, improvement, or new functionality
+- `enhance`: Small or trivial user-facing improvements or UX polish (for example wording changes, color adjustments, spacing or padding tweaks, placeholders, small UI behavior improvements)
+- `fix`: A bug fix, UX correction, or security-related dependency update
+- `perf`: Performance improvements (speed, memory, scalability)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `revert`: Reverts a previous change
+- `style`: Formatting or style-only changes that do not affect code behavior (for example lint-driven edits)
+- `test`: Adding or correcting tests
+
+Examples:
+
+```text
+fix(web): prevent avatar upload crash on empty file
+feat(api): add pagination to repo hooks list
+enhance(repo): improve diff toolbar spacing
+ci(workflows): lint PR titles in CI
+```
+
+Keep this summary up-to-date as the PR evolves. \
+If your PR changes the UI, you must add **after** screenshots in the PR summary. \
+If you are not implementing a new feature, you should also post **before** screenshots for comparison.
+
+If you are implementing a new feature, your PR will only be merged if your screenshots are up to date.\
+Furthermore, feature PRs will only be merged if their summary contains a clear usage description (understandable for users) and testing description (understandable for reviewers).
+You should strive to combine both into a single description.
+
+Another requirement for merging PRs is that the PR is labeled correctly.\
+However, this is not your job as a contributor, but the job of the person merging your PR.\
+If you think that your PR was labeled incorrectly, or notice that it was merged without labels, please let us know.
+
+For pull requests that use a valid Conventional Commits title, CI automatically applies a matching `type/…` label when the title prefix is `feat`, `enhance`, `fix`, `docs`, or `test` (for example `enhance(web): …` receives `type/enhancement`).\
+That label is kept in sync with the PR title when the title is edited.\
+Other title prefixes do not get an automatic `type/…` label; the merger still assigns the correct labels (including `type/…` when needed) for changelog and backport decisions.
+
+If your PR closes some issues, you must note that in a way that both GitHub and Gitea understand, i.e. by appending a paragraph like
+
+```text
+Fixes/Closes/Resolves #<ISSUE_NR_X>.
+Fixes/Closes/Resolves #<ISSUE_NR_Y>.
+```
+
+to your summary. \
+Each issue that will be closed must stand on a separate line.
+
+### Breaking PRs
+
+#### What is a breaking PR?
+
+A PR is breaking if it meets one of the following criteria:
+
+- It changes API output in an incompatible way for existing users
+- It removes a setting that an admin could previously set (i.e. via `app.ini`)
+- An admin must do something manually to restore the old behavior
+
+In particular, this means that adding new settings is not breaking.\
+Changing the default value of a setting or replacing the setting with another one is breaking, however.
+
+#### How to handle breaking PRs?
+
+If your PR has a breaking change, you must add two things to the summary of your PR:
+
+1. A reasoning why this breaking change is necessary
+2. A `BREAKING` section explaining in simple terms (understandable for a typical user) how this PR affects users and how to mitigate these changes. This section can look for example like
+
+```md
+## :warning: BREAKING :warning:
+```
+
+Breaking PRs will not be merged as long as not both of these requirements are met.
+
+### Maintaining open PRs
+
+Code review starts when you open a non-draft PR or move a draft out of draft state. After that, do not rebase or squash your branch; it makes new changes harder to review.
+
+Merge the base branch into yours only when you need to, for example because of conflicting changes elsewhere. That limits unnecessary CI runs.
+
+Every PR is squash-merged, so merge commits on your branch do not matter for final history. The squash produces a single commit; mergers follow the [commit message format](docs/community-governance.md#commit-messages) in the governance guide.
+
+### Reviewing PRs
+
+Maintainers are encouraged to review pull requests in areas where they have expertise or particular interest.
+
+#### For PR authors
+
+- **Response**: When answering reviewer questions, use real-world cases or examples and avoid speculation.
+- **Discussion**: A discussion is always welcome and should be used to clarify the changes and the intent of the PR.
+- **Help**: If you need help with the PR or comments are unclear, ask for clarification.
+
+Guidance for reviewers, the merge queue, and the squash commit message format is in [docs/community-governance.md](docs/community-governance.md).
+
+## Documentation
+
+If you add a new feature or change an existing aspect of Gitea, the documentation for that feature must be created or updated in another PR at [https://gitea.com/gitea/docs](https://gitea.com/gitea/docs).
+**The docs directory on main repository will be removed at some time. We will have a yaml file to store configuration file's meta data. After that completed, configuration documentation should be in the main repository.**
+
+## Developer Certificate of Origin (DCO)
+
+We consider the act of contributing to the code by submitting a Pull Request as the "Sign off" or agreement to the certifications and terms of the [DCO](DCO) and [MIT license](LICENSE). \
+No further action is required. \
+You can also decide to sign off your commits by adding the following line at the end of your commit messages:
+
+```
+Signed-off-by: Joe Smith <joe.smith@email.com>
+```
+
+If you set the `user.name` and `user.email` Git config options, you can add the line to the end of your commits automatically with `git commit -s`.
+
+We assume in good faith that the information you provide is legally binding.
+
+
+=== Dockerfile ===
+# syntax=docker/dockerfile:1
+# Build frontend on the native platform to avoid QEMU-related issues with nodejs ecosystem
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26-alpine3.24 AS frontend-build
+RUN apk --no-cache add build-base git nodejs pnpm
+WORKDIR /src
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+COPY --exclude=.git/ . .
+RUN make frontend
+
+# Build backend for each target platform
+FROM docker.io/library/golang:1.26-alpine3.24 AS build-env
+
+ARG GITEA_VERSION
+ARG TAGS=""
+ENV TAGS="bindata timetzdata $TAGS"
+ARG CGO_EXTRA_CFLAGS
+
+# Build deps
+RUN apk --no-cache add \
+    build-base \
+    git
+
+WORKDIR ${GOPATH}/src/gitea.dev
+COPY go.mod go.sum ./
+RUN go mod download
+# Use COPY instead of bind mount as read-only one breaks makefile state tracking and read-write one needs binary to be moved as it's discarded.
+# ".git" directory is mounted separately later only for version data extraction.
+COPY --exclude=.git/ . .
+COPY --from=frontend-build /src/public/assets public/assets
+
+# Build gitea, .git mount is required for version data
+RUN --mount=type=cache,target="/root/.cache/go-build" \
+    --mount=type=bind,source=".git/",target=".git/" \
+    make backend
+
+COPY docker/root /tmp/local
+
+# Set permissions for builds that made under windows which strips the executable bit from file
+RUN chmod 755 /tmp/local/usr/bin/entrypoint \
+              /tmp/local/usr/local/bin/* \
+              /tmp/local/etc/s6/gitea/* \
+              /tmp/local/etc/s6/openssh/* \
+              /tmp/local/etc/s6/.s6-svscan/* \
+              /go/src/gitea.dev/gitea
+
+FROM docker.io/library/alpine:3.24 AS gitea
+
+EXPOSE 22 3000
+
+RUN apk --no-cache add \
+    bash \
+    ca-certificates \
+    curl \
+    gettext \
+    git \
+    linux-pam \
+    openssh \
+    s6 \
+    sqlite \
+    su-exec \
+    gnupg
+
+RUN addgroup \
+    -S -g 1000 \
+    git && \
+  adduser \
+    -S -H -D \
+    -h /data/git \
+    -s /bin/bash \
+    -u 1000 \
+    -G git \
+    git && \
+  echo "git:*" | chpasswd -e
+
+COPY --from=build-env /tmp/local /
+COPY --from=build-env /go/src/gitea.dev/gitea /app/gitea/gitea
+
+ENV USER=git
+ENV GITEA_CUSTOM=/data/gitea
+
+VOLUME ["/data"]
+
+# HINT: HEALTH-CHECK-ENDPOINT: don't use HEALTHCHECK, search this hint keyword for more information
+ENTRYPOINT ["/usr/bin/entrypoint"]
+CMD ["/usr/bin/s6-svscan", "/etc/s6"]
+
+
+=== Makefile ===
+DIST := dist
+DIST_DIRS := $(DIST)/binaries $(DIST)/release
+
+# By default use go's 1.25 experimental json v2 library when building
+# TODO: remove when no longer experimental
+export GOEXPERIMENT ?= jsonv2
+
+GO ?= go
+SHASUM ?= shasum -a 256
+COMMA := ,
+
+XGO_VERSION := go-1.26.x
+
+AIR_PACKAGE ?= github.com/air-verse/air@v1.65.3 # renovate: datasource=go
+EDITORCONFIG_CHECKER_PACKAGE ?= github.com/editorconfig-checker/editorconfig-checker/v3/cmd/editorconfig-checker@v3.8.0 # renovate: datasource=go
+GOLANGCI_LINT_PACKAGE ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 # renovate: datasource=go
+GXZ_PACKAGE ?= github.com/ulikunitz/xz/cmd/gxz@v0.5.15 # renovate: datasource=go
+MISSPELL_PACKAGE ?= github.com/golangci/misspell/cmd/misspell@v0.8.0 # renovate: datasource=go
+SWAGGER_PACKAGE ?= github.com/go-swagger/go-swagger/cmd/swagger@v0.35.0 # renovate: datasource=go
+XGO_PACKAGE ?= src.techknowlogick.com/xgo@v1.9.0 # renovate: datasource=go
+GOVULNCHECK_PACKAGE ?= golang.org/x/vuln/cmd/govulncheck@v1.5.0 # renovate: datasource=go
+ACTIONLINT_PACKAGE ?= github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 # renovate: datasource=go
+SHELLCHECK_IMAGE ?= docker.io/koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d # renovate: datasource=docker
+
+CONTAINER_RUNTIME ?= $(shell hash docker >/dev/null 2>&1 && echo docker || echo podman)
+
+HAS_GO := $(shell hash $(GO) > /dev/null 2>&1 && echo yes)
+ifeq ($(HAS_GO), yes)
+	CGO_EXTRA_CFLAGS := -DSQLITE_MAX_VARIABLE_NUMBER=32766
+	CGO_CFLAGS ?= $(shell $(GO) env CGO_CFLAGS) $(CGO_EXTRA_CFLAGS)
+endif
+
+MAKE_EVIDENCE_DIR := .make_evidence
+
+# Use sqlite as default database if running tests, only do so for local tests, not in CI.
+# CI should explicitly set the database to avoid unexpected results.
+ifneq ($(findstring test-,$(MAKECMDGOALS)),)
+	ifeq ($(CI),)
+		GITEA_TEST_DATABASE ?= sqlite
+	endif
+endif
+
+TAGS ?=
+TAGS_EVIDENCE := $(MAKE_EVIDENCE_DIR)/tags
+
+CGO_ENABLED ?= 0
+ifneq (,$(findstring sqlite_mattn,$(TAGS))$(findstring pam,$(TAGS)))
+	CGO_ENABLED = 1
+endif
+
+STATIC ?=
+EXTLDFLAGS ?=
+ifneq ($(STATIC),)
+	EXTLDFLAGS = -extldflags "-static"
+endif
+
+ifeq ($(GOOS),windows)
+	IS_WINDOWS := yes
+else ifeq ($(patsubst Windows%,Windows,$(OS)),Windows)
+	ifeq ($(GOOS),)
+		IS_WINDOWS := yes
+	endif
+endif
+
+# GOFLAGS and EXTRA_GOFLAGS are for the 'go build' command only
+ifeq ($(IS_WINDOWS),yes)
+	GOFLAGS := -v -buildmode=exe
+	EXECUTABLE ?= gitea.exe
+else
+	GOFLAGS := -v
+	EXECUTABLE ?= gitea
+endif
+EXTRA_GOFLAGS ?=
+
+ifeq ($(shell sed --version 2>/dev/null | grep -q GNU && echo gnu),gnu)
+	SED_INPLACE := sed -i
+else
+	SED_INPLACE := sed -i ''
+endif
+
+# GOTEST_FLAGS is for unit test and integration test
+GOTEST_FLAGS ?= -timeout 40m
+
+STORED_VERSION_FILE := VERSION
+
+GITHUB_REF_TYPE ?= branch
+GITHUB_REF_NAME ?= $(shell git rev-parse --abbrev-ref HEAD)
+
+ifneq ($(GITHUB_REF_TYPE),branch)
+	VERSION ?= $(subst v,,$(GITHUB_REF_NAME))
+	GITEA_VERSION ?= $(VERSION)
+else
+	ifneq ($(GITHUB_REF_NAME),)
+		VERSION ?= $(subst release/v,,$(GITHUB_REF_NAME))-nightly
+	else
+		VERSION ?= main
+	endif
+
+	STORED_VERSION=$(shell cat $(STORED_VERSION_FILE) 2>/dev/null)
+	ifneq ($(STORED_VERSION),)
+		GITEA_VERSION ?= $(STORED_VERSION)
+	else
+		GITEA_VERSION ?= $(shell git describe --tags --always | sed 's/-/+/' | sed 's/^v//')
+	endif
+endif
+
+# if version = "main" then update version to "nightly"
+ifeq ($(VERSION),main)
+	VERSION := main-nightly
+endif
+
+LDFLAGS := $(LDFLAGS) -X "main.Version=$(GITEA_VERSION)" -X "main.Tags=$(TAGS)"
+
+LINUX_ARCHS ?= linux/amd64,linux/386,linux/arm-5,linux/arm-6,linux/arm64,linux/riscv64
+
+GO_TEST_PACKAGES ?= $(filter-out $(shell $(GO) list gitea.dev/models/migrations/...) gitea.dev/tests/integration/migration-test gitea.dev/tests gitea.dev/tests/integration,$(shell $(GO) list ./... | grep -v /vendor/))
+MIGRATE_TEST_PACKAGES ?= $(shell $(GO) list gitea.dev/models/migrations/...)
+
+FRONTEND_SOURCES := $(shell find web_src/js web_src/css -type f)
+FRONTEND_CONFIGS := vite.config.ts tailwind.config.ts
+FRONTEND_DEST := public/assets/.vite/manifest.json
+FRONTEND_DEST_ENTRIES := public/assets/js public/assets/css public/assets/fonts public/assets/.vite
+FRONTEND_DEV_LOG_LEVEL ?= warn
+
+BINDATA_DEST_WILDCARD := modules/migration/bindata.* modules/public/bindata.* modules/options/bindata.* modules/templates/bindata.*
+
+GENERATED_GO_DEST := modules/charset/invisible_gen.go modules/charset/ambiguous_gen.go
+
+SVG_DEST_DIR := public/assets/img/svg
+SVG_DEST_DIRS := $(SVG_DEST_DIR) options/fileicon
+
+AIR_TMP_DIR := .air
+
+GO_LICENSE_FILE := assets/go-licenses.json
+
+TAR_EXCLUDES := .git data indexers queues log node_modules $(EXECUTABLE) $(DIST) $(MAKE_EVIDENCE_DIR) $(AIR_TMP_DIR)
+
+GO_DIRS := build cmd models modules routers services tests tools
+WEB_DIRS := web_src/js web_src/css
+
+ESLINT_FILES := web_src/js tools *.ts tests/e2e
+STYLELINT_FILES := web_src/css web_src/js/components/*.vue
+SPELLCHECK_FILES := $(GO_DIRS) $(WEB_DIRS) templates options/locale/locale_en-US.json .github $(filter-out CHANGELOG.md, $(wildcard *.go *.md *.yml *.yaml *.toml))
+EDITORCONFIG_FILES := templates .github/workflows options/locale/locale_en-US.json
+
+GO_SOURCES := $(wildcard *.go)
+GO_SOURCES += $(shell find $(GO_DIRS) -type f -name "*.go")
+GO_SOURCES += $(GENERATED_GO_DEST)
+
+ESLINT_CONCURRENCY ?= 2
+
+SWAGGER_SPEC := templates/swagger/v1_json.tmpl
+SWAGGER_SPEC_INPUT := templates/swagger/v1_input.json
+SWAGGER_EXCLUDE := gitea.dev/sdk
+OPENAPI3_SPEC := templates/swagger/v1_openapi3_json.tmpl
+
+TEST_MYSQL_HOST ?= mysql:3306
+TEST_MYSQL_DBNAME ?= testgitea
+TEST_MYSQL_USERNAME ?= root
+TEST_MYSQL_PASSWORD ?=
+TEST_PGSQL_HOST ?= pgsql:5432
+TEST_PGSQL_DBNAME ?= testgitea
+TEST_PGSQL_USERNAME ?= postgres
+TEST_PGSQL_PASSWORD ?= postgres
+TEST_PGSQL_SCHEMA ?= gtestschema
+TEST_MINIO_ENDPOINT ?= minio:9000
+TEST_MSSQL_HOST ?= mssql:1433
+TEST_MSSQL_DBNAME ?= testgitea
+TEST_MSSQL_USERNAME ?= sa
+TEST_MSSQL_PASSWORD ?= MwantsaSecurePassword1
+
+# Include local Makefile
+# Makefile.local is listed in .gitignore
+ifneq ("$(wildcard Makefile.local)","")
+	include Makefile.local
+endif
+
+$(foreach v, $(filter TEST_%, $(.VARIABLES)), $(eval MAKEFILE_VARS+=$v=$($v)))
+$(foreach v, $(filter GITEA_TEST_%, $(.VARIABLES)), $(eval MAKEFILE_VARS+=$v=$($v)))
+export MAKEFILE_VARS
+
+.PHONY: all
+all: build
+
+.PHONY: help
+help: Makefile ## print Makefile help information.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m[TARGETS] default target: build\033[0m\n\n\033[35mTargets:\033[0m\n"} /^[0-9A-Za-z._-]+:.*?##/ { printf "  \033[36m%-45s\033[0m %s\n", $$1, $$2 }' Makefile #$(MAKEFILE_LIST)
+	@printf "  \033[36m%-46s\033[0m %s\n" "test-e2e" "test end to end using playwright"
+	@printf "  \033[36m%-46s\033[0m %s\n" "test-backend[#TestSpecificName]" "run unit test (sqlite only)"
+	@printf "  \033[36m%-46s\033[0m %s\n" "test-integration[#TestSpecificName]" "run integration test for GITEA_TEST_DATABASE (sqlite, mysql, pgsql, mssql)"
+
+.PHONY: clean-all
+clean-all: clean ## delete backend, frontend and integration files
+	rm -rf $(FRONTEND_DEST_ENTRIES) node_modules
+
+.PHONY: clean
+clean: ## delete backend and integration files
+	rm -f $(EXECUTABLE) test-*.test tests/*.ini
+	rm -rf  $(DIST) $(BINDATA_DEST_WILDCARD) man tests/integration/gitea-integration-*
+
+.PHONY: fmt
+fmt: ## format the Go and template code
+	$(GO) run $(GOLANGCI_LINT_PACKAGE) fmt
+	$(eval TEMPLATES := $(shell find templates -type f -name '*.tmpl'))
+	@# strip whitespace after '{{' or '(' and before '}}' or ')' unless there is only
+	@# whitespace before it
+	@$(SED_INPLACE) \
+		-e 's/{{[ 	]\{1,\}/{{/g' -e '/^[ 	]\{1,\}}}/! s/[ 	]\{1,\}}}/}}/g' \
+	  -e 's/([ 	]\{1,\}/(/g' -e '/^[ 	]\{1,\})/! s/[ 	]\{1,\})/)/g' \
+	  $(TEMPLATES)
+
+.PHONY: fmt-check
+fmt-check: fmt
+	@diff=$$(git diff --color=always $(GO_SOURCES) templates $(WEB_DIRS)); \
+	if [ -n "$$diff" ]; then \
+	  echo "Please run 'make fmt' and commit the result:"; \
+	  printf "%s" "$${diff}"; \
+	  exit 1; \
+	fi
+
+.PHONY: $(TAGS_EVIDENCE)
+$(TAGS_EVIDENCE):
+	@mkdir -p $(MAKE_EVIDENCE_DIR)
+	@echo "$(TAGS)" > $(TAGS_EVIDENCE)
+
+ifneq "$(TAGS)" "$(shell cat $(TAGS_EVIDENCE) 2>/dev/null)"
+TAGS_PREREQ := $(TAGS_EVIDENCE)
+endif
+
+.PHONY: generate-swagger
+generate-swagger: $(SWAGGER_SPEC) $(OPENAPI3_SPEC) ## generate the swagger spec from code comments
+
+$(SWAGGER_SPEC): $(GO_SOURCES) $(SWAGGER_SPEC_INPUT)
+	@output="$$($(GO) run $(SWAGGER_PACKAGE) generate spec --enable-allof-compounding --skip-enum-desc --exclude "$(SWAGGER_EXCLUDE)" --input "$(SWAGGER_SPEC_INPUT)" --output './$(SWAGGER_SPEC)' 2>&1)" || { printf '%s\n' "$$output" >&2; exit 1; }; \
+	warnings="$$(printf '%s\n' "$$output" | grep -v '^go: ')"; \
+	if [ -n "$$warnings" ]; then printf '%s\n' "$$warnings" >&2; exit 1; fi
+
+.PHONY: swagger-check
+swagger-check: generate-swagger
+	@diff=$$(git diff --color=always '$(SWAGGER_SPEC)'); \
+	if [ -n "$$diff" ]; then \
+		echo "Please run 'make generate-swagger' and commit the result:"; \
+		printf "%s" "$${diff}"; \
+		exit 1; \
+	fi
+
+.PHONY: swagger-validate
+swagger-validate: ## check if the swagger spec is valid
+	@# swagger "validate" requires that the "basePath" must start with a slash, but we are using Golang template "{{...}}"
+	@$(SED_INPLACE) -E -e 's|"basePath":( *)"(.*)"|"basePath":\1"/\2"|g' './$(SWAGGER_SPEC)' # add a prefix slash to basePath
+	@output="$$($(GO) run $(SWAGGER_PACKAGE) validate './$(SWAGGER_SPEC)' 2>&1)"; status=$$?; \
+	$(SED_INPLACE) -E -e 's|"basePath":( *)"/(.*)"|"basePath":\1"\2"|g' './$(SWAGGER_SPEC)'; \
+	printf '%s\n' "$$output" | grep -v '^go: '; \
+	[ $$status -eq 0 ] || exit $$status; \
+	case "$$output" in *WARNING:*) exit 1;; esac
+
+.PHONY: generate-openapi3
+generate-openapi3: $(OPENAPI3_SPEC) ## generate the OpenAPI 3.0 spec from the Swagger 2.0 spec
+
+$(OPENAPI3_SPEC): $(SWAGGER_SPEC) build/generate-openapi.go $(wildcard build/openapi3gen/*.go)
+	$(GO) run build/generate-openapi.go
+
+.PHONY: openapi3-check
+openapi3-check: generate-openapi3
+	@diff=$$(git diff --color=always '$(OPENAPI3_SPEC)'); \
+	if [ -n "$$diff" ]; then \
+		echo "Please run 'make generate-openapi3' and commit the result:"; \
+		printf "%s" "$${diff}"; \
+		exit 1; \
+	fi
+
+.PHONY: checks
+checks: checks-frontend checks-backend ## run various consistency checks
+
+.PHONY: checks-frontend
+checks-frontend: lockfile-check svg-check ## check frontend files
+
+.PHONY: checks-backend
+checks-backend: tidy-check swagger-check openapi3-check fmt-check swagger-validate security-check ## check backend files
+
+.PHONY: lint
+lint: lint-frontend lint-backend lint-templates lint-swagger lint-spell lint-md lint-actions lint-json lint-yaml lint-shell ## lint everything
+
+.PHONY: lint-fix
+lint-fix: lint-frontend-fix lint-backend-fix lint-spell-fix ## lint everything and fix issues
+
+.PHONY: lint-frontend
+lint-frontend: lint-js lint-css ## lint frontend files
+
+.PHONY: lint-frontend-fix
+lint-frontend-fix: lint-js-fix lint-css-fix ## lint frontend files and fix issues
+
+.PHONY: lint-backend
+lint-backend: lint-go lint-editorconfig ## lint backend files
+
+.PHONY: lint-backend-fix
+lint-backend-fix: lint-go-fix lint-editorconfig ## lint backend files and fix issues
+
+.PHONY: lint-js
+lint-js: node_modules ## lint js and ts files
+	pnpm exec eslint --color --max-warnings=0 --concurrency $(ESLINT_CONCURRENCY) $(ESLINT_FILES)
+	pnpm exec vue-tsc
+
+.PHONY: lint-js-fix
+lint-js-fix: node_modules ## lint js and ts files and fix issues
+	pnpm exec eslint --color --max-warnings=0 --concurrency $(ESLINT_CONCURRENCY) $(ESLINT_FILES) --fix
+	pnpm exec vue-tsc
+
+.PHONY: lint-css
+lint-css: node_modules ## lint css files
+	pnpm exec stylelint --color --max-warnings=0 $(STYLELINT_FILES)
+
+.PHONY: lint-css-fix
+lint-css-fix: node_modules ## lint css files and fix issues
+	pnpm exec stylelint --color --max-warnings=0 $(STYLELINT_FILES) --fix
+
+.PHONY: lint-swagger
+lint-swagger: node_modules ## lint swagger files
+	pnpm exec spectral lint -q -F hint $(SWAGGER_SPEC)
+
+.PHONY: lint-md
+lint-md: node_modules ## lint markdown files
+	pnpm exec markdownlint *.md
+
+.PHONY: lint-md-fix
+lint-md-fix: node_modules ## lint markdown files and fix issues
+	pnpm exec markdownlint --fix *.md
+
+.PHONY: lint-spell
+lint-spell: ## lint spelling
+	@git ls-files $(SPELLCHECK_FILES) | xargs go run $(MISSPELL_PACKAGE) -dict assets/misspellings.csv -error
+
+.PHONY: lint-spell-fix
+lint-spell-fix: ## lint spelling and fix issues
+	@git ls-files $(SPELLCHECK_FILES) | xargs go run $(MISSPELL_PACKAGE) -dict assets/misspellings.csv -w
+
+.PHONY: lint-go
+lint-go: ## lint go files
+	GO=$(GO) GOLANGCI_LINT_PACKAGE=$(GOLANGCI_LINT_PACKAGE) $(GO) run ./tools/lint-go-all.go
+
+.PHONY: lint-go-fix
+lint-go-fix: ## lint go files and fix issues
+	GO=$(GO) GOLANGCI_LINT_PACKAGE=$(GOLANGCI_LINT_PACKAGE) $(GO) run ./tools/lint-go-all.go --fix
+
+.PHONY: lint-editorconfig
+lint-editorconfig:
+	@echo "Running editorconfig check..."
+	@$(GO) run $(EDITORCONFIG_CHECKER_PACKAGE) $(EDITORCONFIG_FILES)
+
+.PHONY: lint-actions
+lint-actions: .venv ## lint action workflow files
+	@$(GO) run $(ACTIONLINT_PACKAGE)
+	@uv run --frozen zizmor --quiet --min-confidence=medium .github
+
+.PHONY: lint-shell
+lint-shell: ## lint shell scripts
+	@SHELLCHECK_IMAGE=$(SHELLCHECK_IMAGE) CONTAINER_RUNTIME=$(CONTAINER_RUNTIME) ./tools/lint-shell.sh $$(git ls-files '*.sh')
+
+.PHONY: lint-templates
+lint-templates: .venv node_modules ## lint template files
+	@node tools/lint-templates-svg.ts
+	@uv run --frozen djlint $(shell find templates -type f -iname '*.tmpl')
+
+.PHONY: lint-yaml
+lint-yaml: .venv ## lint yaml files
+	@uv run --frozen yamllint -s .
+
+.PHONY: lint-json
+lint-json: node_modules ## lint json files
+	pnpm exec eslint -c eslint.json.config.ts --color --max-warnings=0 --concurrency $(ESLINT_CONCURRENCY)
+
+.PHONY: lint-json-fix
+lint-json-fix: node_modules ## lint and fix json files
+	pnpm exec eslint -c eslint.json.config.ts --color --max-warnings=0 --concurrency $(ESLINT_CONCURRENCY) --fix
+
+.PHONY: watch
+watch: ## watch everything and continuously rebuild
+	@bash tools/watch.sh
+
+.PHONY: watch-frontend
+watch-frontend: node_modules ## start vite dev server for frontend
+	NODE_ENV=development pnpm exec vite --logLevel $(FRONTEND_DEV_LOG_LEVEL)
+
+.PHONY: watch-backend
+watch-backend: ## watch backend files and continuously rebuild
+	GITEA_RUN_MODE=dev $(GO) run $(AIR_PACKAGE) -c .air.toml
+
+.PHONY: test-backend
+test-backend: ## test backend files
+	@echo "Running go test with $(GOTEST_FLAGS) -tags '$(TAGS)'..."
+	@$(GO) test $(GOTEST_FLAGS) -tags='$(TAGS)' $(GO_TEST_PACKAGES)
+
+.PHONY: test-frontend
+test-frontend: node_modules ## test frontend files
+	pnpm exec vitest
+
+.PHONY: test-check
+test-check:
+	@echo "Running test-check...";
+	@diff=$$(git status -s); \
+	if [ -n "$$diff" ]; then \
+		echo "make test-backend has changed files in the source tree:"; \
+		printf "%s" "$${diff}"; \
+		echo "You should change the tests to create these files in a temporary directory."; \
+		echo "Do not simply add these files to .gitignore"; \
+		exit 1; \
+	fi
+
+.PHONY: test-backend\#%
+test-backend\#%:
+	@echo "Running go test with -tags '$(TAGS)'..."
+	@$(GO) test $(GOTEST_FLAGS) -tags='$(TAGS)' -run $(subst .,/,$*) $(GO_TEST_PACKAGES)
+
+.PHONY: coverage
+coverage:
+	grep '^\(mode: .*\)\|\(.*:[0-9]\+\.[0-9]\+,[0-9]\+\.[0-9]\+ [0-9]\+ [0-9]\+\)$$' coverage.out > coverage-bodged.out
+	grep '^\(mode: .*\)\|\(.*:[0-9]\+\.[0-9]\+,[0-9]\+\.[0-9]\+ [0-9]\+ [0-9]\+\)$$' integration.coverage.out > integration.coverage-bodged.out
+	$(GO) run tools/gocovmerge.go integration.coverage-bodged.out coverage-bodged.out > coverage.all
+
+.PHONY: unit-test-coverage
+unit-test-coverage:
+	@echo "Running unit-test-coverage $(GOTEST_FLAGS) -tags '$(TAGS)'..."
+	@$(GO) test $(GOTEST_FLAGS) -tags='$(TAGS)' -cover -coverprofile coverage.out $(GO_TEST_PACKAGES) && echo "\n==>\033[32m Ok\033[m\n" || exit 1
+
+.PHONY: tidy
+tidy: ## run go mod tidy
+	$(eval MIN_GO_VERSION := $(shell grep -Eo '^go\s+[0-9]+\.[0-9.]+' go.mod | cut -d' ' -f2))
+	$(GO) mod tidy -compat=$(MIN_GO_VERSION)
+	@$(MAKE) --no-print-directory $(GO_LICENSE_FILE)
+
+vendor: go.mod go.sum
+	$(GO) mod vendor
+	@touch vendor
+
+.PHONY: tidy-check
+tidy-check: tidy
+	@diff=$$(git diff --color=always go.mod go.sum $(GO_LICENSE_FILE)); \
+	if [ -n "$$diff" ]; then \
+		echo "Please run 'make tidy' and commit the result:"; \
+		printf "%s" "$${diff}"; \
+		exit 1; \
+	fi
+
+.PHONY: go-licenses
+go-licenses: $(GO_LICENSE_FILE) ## regenerate go licenses
+
+$(GO_LICENSE_FILE): go.mod go.sum
+	GO=$(GO) $(GO) run build/generate-go-licenses.go $(GO_LICENSE_FILE)
+
+.PHONY: test-integration
+test-integration:
+	@# Use a compiled binary: testlogger forwards gitea logs to t.Log, so `go test -v`
+	@# would flood output per passing test. testcache can't help these tests anyway —
+	@# they mutate the work directory, so cache inputs change between runs.
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' -c gitea.dev/tests/integration -o ./test-integration-$(GITEA_TEST_DATABASE).test
+	./tools/test-integration.sh ./test-integration-$(GITEA_TEST_DATABASE).test
+
+.PHONY: test-integration-compile
+test-integration-compile:
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' -c -o /dev/null gitea.dev/tests/integration
+
+.PHONY: test-integration\#%
+test-integration\#%:
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' -run $(subst .,/,$*) gitea.dev/tests/integration
+
+.PHONY: test-migration
+test-migration: migrations.integration.test migrations.individual.test
+
+.PHONY: migrations.integration.test
+migrations.integration.test:
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' gitea.dev/tests/integration/migration-test
+
+.PHONY: migrations.individual.test
+migrations.individual.test:
+	@# tests of multiple packages use the same database, don't run in parallel
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' -p 1 $(MIGRATE_TEST_PACKAGES)
+
+.PHONY: migrations.individual.test\#%
+migrations.individual.test\#%:
+	$(GO) test $(GOTEST_FLAGS) -tags '$(TAGS)' gitea.dev/models/migrations/$*
+
+.PHONY: playwright
+playwright: deps-frontend
+	@CONTAINER_RUNTIME=$(CONTAINER_RUNTIME) ./tools/test-e2e.sh install
+
+.PHONY: test-e2e
+test-e2e: playwright frontend backend
+	@CONTAINER_RUNTIME=$(CONTAINER_RUNTIME) EXECUTABLE=$(EXECUTABLE) ./tools/test-e2e.sh run $(GITEA_TEST_E2E_FLAGS)
+
+.PHONY: build
+build: frontend backend ## build everything
+
+.PHONY: frontend
+frontend: $(FRONTEND_DEST) ## build frontend files
+
+.PHONY: backend
+backend: generate-backend $(EXECUTABLE) ## build backend files
+
+# We generate the backend before the frontend in case we in future we want to generate things in the frontend from generated files in backend
+.PHONY: generate
+generate: generate-backend ## run "go generate"
+
+.PHONY: generate-backend
+generate-backend: $(TAGS_PREREQ) generate-go
+
+.PHONY: generate-go
+generate-go: $(TAGS_PREREQ)
+	@echo "Running go generate..."
+	@CC= GOOS= GOARCH= CGO_ENABLED=0 $(GO) generate -tags '$(TAGS)' ./...
+
+.PHONY: security-check
+security-check:
+	GOEXPERIMENT= go run $(GOVULNCHECK_PACKAGE) -show color ./... || true
+
+$(EXECUTABLE): $(GO_SOURCES) $(TAGS_PREREQ)
+ifneq ($(and $(STATIC),$(findstring pam,$(TAGS))),)
+  $(error pam support set via TAGS does not support static builds)
+endif
+	CGO_ENABLED="$(CGO_ENABLED)" CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) build $(GOFLAGS) $(EXTRA_GOFLAGS) -tags '$(TAGS)' -ldflags '-s -w $(EXTLDFLAGS) $(LDFLAGS)' -o $@
+
+.PHONY: release
+release: frontend generate release-windows release-linux release-darwin release-freebsd release-copy release-compress vendor release-sources release-check
+
+$(DIST_DIRS):
+	mkdir -p $(DIST_DIRS)
+
+.PHONY: release-windows
+release-windows: | $(DIST_DIRS)
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -buildmode exe -dest $(DIST)/binaries -tags 'osusergo $(TAGS)' -ldflags '-s -w -linkmode external -extldflags "-static" $(LDFLAGS)' -targets 'windows/*' -out gitea-$(VERSION) .
+ifeq (,$(findstring gogit,$(TAGS)))
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -buildmode exe -dest $(DIST)/binaries -tags 'osusergo gogit $(TAGS)' -ldflags '-s -w -linkmode external -extldflags "-static" $(LDFLAGS)' -targets 'windows/*' -out gitea-$(VERSION)-gogit .
+endif
+
+.PHONY: release-linux
+release-linux: | $(DIST_DIRS)
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -dest $(DIST)/binaries -tags 'netgo osusergo $(TAGS)' -ldflags '-s -w -linkmode external -extldflags "-static" $(LDFLAGS)' -targets '$(LINUX_ARCHS)' -out gitea-$(VERSION) .
+
+.PHONY: release-darwin
+release-darwin: | $(DIST_DIRS)
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -dest $(DIST)/binaries -tags 'netgo osusergo $(TAGS)' -ldflags '-s -w $(LDFLAGS)' -targets 'darwin-10.12/amd64,darwin-10.12/arm64' -out gitea-$(VERSION) .
+
+.PHONY: release-freebsd
+release-freebsd: | $(DIST_DIRS)
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -dest $(DIST)/binaries -tags 'netgo osusergo $(TAGS)' -ldflags '-s -w $(LDFLAGS)' -targets 'freebsd/amd64' -out gitea-$(VERSION) .
+
+.PHONY: release-copy
+release-copy: | $(DIST_DIRS)
+	cd $(DIST); for file in `find . -type f -name "*"`; do cp $${file} ./release/; done;
+
+.PHONY: release-check
+release-check: | $(DIST_DIRS)
+	cd $(DIST)/release/; for file in `find . -type f -name "*"`; do echo "checksumming $${file}" && $(SHASUM) `echo $${file} | sed 's/^..//'` > $${file}.sha256; done;
+
+.PHONY: release-compress
+release-compress: | $(DIST_DIRS)
+	cd $(DIST)/release/; for file in `find . -type f -name "*"`; do echo "compressing $${file}" && $(GO) run $(GXZ_PACKAGE) -k -9 $${file}; done;
+
+.PHONY: release-sources
+release-sources: | $(DIST_DIRS)
+	echo $(VERSION) > $(STORED_VERSION_FILE)
+# bsdtar needs a ^ to prevent matching subdirectories
+	$(eval EXCL := --exclude=$(shell tar --help | grep -q bsdtar && echo "^")./)
+# use transform to a add a release-folder prefix; in bsdtar the transform parameter equivalent is -s
+	$(eval TRANSFORM := $(shell tar --help | grep -q bsdtar && echo "-s '/^./gitea-src-$(VERSION)/'" || echo "--transform 's|^./|gitea-src-$(VERSION)/|'"))
+	tar $(addprefix $(EXCL),$(TAR_EXCLUDES)) $(TRANSFORM) -czf $(DIST)/release/gitea-src-$(VERSION).tar.gz .
+	rm -f $(STORED_VERSION_FILE)
+
+.PHONY: deps
+deps: deps-frontend deps-backend deps-tools deps-py ## install dependencies
+
+.PHONY: deps-py
+deps-py: .venv ## install python dependencies
+
+.PHONY: deps-frontend
+deps-frontend: node_modules ## install frontend dependencies
+
+.PHONY: deps-backend
+deps-backend: ## install backend dependencies
+	$(GO) mod download
+
+.PHONY: deps-tools
+deps-tools: ## install tool dependencies
+	$(GO) install $(AIR_PACKAGE) & \
+	$(GO) install $(EDITORCONFIG_CHECKER_PACKAGE) & \
+	$(GO) install $(GOLANGCI_LINT_PACKAGE) & \
+	$(GO) install $(GXZ_PACKAGE) & \
+	$(GO) install $(MISSPELL_PACKAGE) & \
+	$(GO) install $(SWAGGER_PACKAGE) & \
+	$(GO) install $(XGO_PACKAGE) & \
+	$(GO) install $(GOVULNCHECK_PACKAGE) & \
+	$(GO) install $(ACTIONLINT_PACKAGE) & \
+	wait
+
+node_modules: pnpm-lock.yaml
+	pnpm install --frozen-lockfile
+	@touch node_modules
+
+.venv: uv.lock
+	uv sync
+	@touch .venv
+
+.PHONY: update
+update: update-go update-js update-py ## update dependencies
+
+.PHONY: update-go
+update-go: ## update go dependencies
+	$(GO) get -u ./...
+	$(MAKE) tidy
+
+.PHONY: update-js
+update-js: node_modules ## update js dependencies
+	pnpm exec updates -u -f package.json
+	rm -rf node_modules pnpm-lock.yaml
+	pnpm install
+	@touch node_modules
+
+.PHONY: update-py
+update-py: node_modules ## update py dependencies
+	pnpm exec updates -u -f pyproject.toml
+	rm -rf .venv uv.lock
+	uv sync
+	@touch .venv
+
+.PHONY: vite
+vite: $(FRONTEND_DEST) ## build vite files
+
+$(FRONTEND_DEST): $(FRONTEND_SOURCES) $(FRONTEND_CONFIGS) pnpm-lock.yaml
+	@$(MAKE) -s node_modules
+	@rm -rf $(FRONTEND_DEST_ENTRIES)
+	@echo "Running vite build..."
+	@pnpm exec vite build
+	@touch $(FRONTEND_DEST)
+
+.PHONY: svg
+svg: node_modules ## build svg files
+	rm -rf $(SVG_DEST_DIR)
+	node tools/generate-svg.ts
+
+.PHONY: svg-check
+svg-check: svg
+	@git add $(SVG_DEST_DIRS)
+	@diff=$$(git diff --color=always --cached $(SVG_DEST_DIRS)); \
+	if [ -n "$$diff" ]; then \
+		echo "Please run 'make svg' and 'git add $(SVG_DEST_DIRS)' and commit the result:"; \
+		printf "%s" "$${diff}"; \
+		exit 1; \
+	fi
+
+.PHONY: lockfile-check
+lockfile-check:
+	pnpm install --frozen-lockfile
+	@diff=$$(git diff --color=always pnpm-lock.yaml); \
+	if [ -n "$$diff" ]; then \
+		echo "pnpm-lock.yaml is inconsistent with package.json"; \
+		echo "Please run 'pnpm install --frozen-lockfile' and commit the result:"; \
+		printf "%s" "$${diff}"; \
+		exit 1; \
+	fi
+
+.PHONY: generate-gitignore
+generate-gitignore: ## update gitignore files
+	$(GO) run build/generate-gitignores.go
+
+.PHONY: generate-images
+generate-images: | node_modules ## generate images
+	cd tools && node generate-images.ts $(TAGS)
+
+.PHONY: generate-codemirror-languages
+generate-codemirror-languages: | node_modules ## generate codemirror languages
+	node tools/generate-codemirror-languages.ts
+
+.PHONY: generate-manpage
+generate-manpage: ## generate manpage
+	@[ -f gitea ] || make backend
+	@mkdir -p man/man1/ man/man5
+	@./gitea docs --man > man/man1/gitea.1
+	@gzip -9 man/man1/gitea.1 && echo man/man1/gitea.1.gz created
+	@#TODO A small script that formats config-cheat-sheet.en-us.md nicely for use as a config man page
+
+# Disable parallel execution because it would break some targets that don't
+# specify exact dependencies like 'backend' which does currently not depend
+# on 'frontend' to enable Node.js-less builds from source tarballs.
+.NOTPARALLEL:
+
+
+=== contrib/grafana-monitoring-mixin/Makefile ===
+JSONNET_FMT := jsonnetfmt -n 2 --max-blank-lines 1 --string-style s --comment-style s
+
+.PHONY: all
+all: build dashboards_out
+
+vendor: jsonnetfile.json
+	jb install
+
+.PHONY: build
+build: vendor
+
+.PHONY: fmt
+fmt:
+	find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
+		xargs -n 1 -- $(JSONNET_FMT) -i
+
+.PHONY: lint
+lint: build
+	find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
+		while read f; do \
+			$(JSONNET_FMT) "$$f" | diff -u "$$f" -; \
+		done
+	mixtool lint mixin.libsonnet
+
+dashboards_out: mixin.libsonnet config.libsonnet $(wildcard dashboards/*)
+	@mkdir -p dashboards_out
+	jsonnet -J vendor -m dashboards_out lib/dashboards.jsonnet
+
+.PHONY: clean
+clean:
+	rm -rf dashboards_out
+
+
+=== docs/DEVELOPMENT.md ===
+# Development
+
+This document describes how to build Gitea from source and the day-to-day
+development workflow. For prerequisites and how to obtain the code, see
+[build-setup.md](build-setup.md). For running tests, see [testing.md](testing.md). For the
+contribution workflow and review process, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+Area-specific guidelines:
+
+- [Backend development guidelines](guidelines-backend.md)
+- [Frontend development guidelines](guidelines-frontend.md)
+- [Refactoring guidelines](guidelines-refactoring.md)
+
+## Building
+
+To build Gitea for development, run:
+
+```bash
+make build
+```
+
+No build tags are required: SQLite support is compiled in by default, which is
+enough for local development. The `build` target runs two sub-targets, `frontend`
+and `backend`. The `bindata` tag embeds the frontend assets into the binary and is
+only needed when packaging a self-contained build, so leave it out during
+development.
+
+See `make help` for all available targets, and the workflows in
+[`.github/workflows`](https://github.com/go-gitea/gitea/tree/main/.github/workflows)
+to see how continuous integration builds and checks Gitea.
+
+## Building continuously
+
+To rebuild automatically when source files change:
+
+```bash
+# watch both frontend and backend
+make watch
+
+# or watch only the frontend (starts the Vite dev server)
+make watch-frontend
+
+# or watch only the backend (Go)
+make watch-backend
+```
+
+Watching all backend source files may hit the default open-files limit on macOS or
+Linux; raise it with `ulimit -n 12288` for the current shell, or in your shell
+startup file to make it permanent.
+
+## Formatting, linting and checks
+
+Continuous integration rejects pull requests that fail formatting, linting, or
+consistency checks. Format your code first:
+
+```bash
+make fmt
+```
+
+Then lint:
+
+```bash
+# lint everything
+make lint
+# or only one side
+make lint-backend
+make lint-frontend
+```
+
+Many linters can fix issues automatically with `make lint-fix` (or the scoped
+`make lint-backend-fix` / `make lint-frontend-fix`). The combined consistency
+checks that CI runs are available as `make checks`.
+
+## Building and adding SVGs
+
+SVG icons are built with `make svg`, which compiles the icon sources into
+`public/assets/img/svg`. Custom icons can be added under `web_src/svg`.
+
+## Updating the API
+
+When you create or change API routes, you **must** update the
+[Swagger](https://swagger.io/docs/specification/2-0/what-is-swagger/) documentation
+using [go-swagger](https://goswagger.io/) comments. See the
+[backend development guidelines](guidelines-backend.md) for how API routes,
+request/response structs, and swagger definitions fit together.
+
+Regenerate and validate the spec after changing an endpoint, then commit the
+updated JSON:
+
+```bash
+make generate-swagger
+make swagger-validate
+```
+
+CI verifies the committed spec is up to date with:
+
+```bash
+make swagger-check
+```
+
+## Creating new configuration options
+
+When adding configuration options it is not enough to add them to the
+`modules/setting` files. Also update
+[`custom/conf/app.example.ini`](../custom/conf/app.example.ini), and document them in
+the [configuration cheat sheet](https://docs.gitea.com/administration/config-cheat-sheet),
+which lives in the [documentation repository](https://gitea.com/gitea/docs).
+
+## Database migrations
+
+If you make breaking changes to a database-persisted struct under `models/`, add a
+new migration in `models/migrations/`. See [testing.md](testing.md#migration-tests)
+for running the migration tests.
+
+## Testing
+
+For unit, integration, end-to-end, and migration tests, see [testing.md](testing.md).
+
+## IDE configuration
+
+### Visual Studio Code
+
+A `launch.json` and `tasks.json` are provided in
+[`contrib/development/vscode`](../contrib/development/vscode). See
+[`contrib/development/README.md`](../contrib/development/README.md) for details.
+
+### GoLand
+
+Clicking the `Run Application` arrow on `func main()` in `/main.go` starts a
+debuggable Gitea instance.
+
+The `Output Directory` in `Run/Debug Configuration` **must** be set to the Gitea
+project directory (the one containing `main.go` and `go.mod`). Otherwise the working
+directory is a GoLand temporary directory, which prevents Gitea from loading dynamic
+resources (such as templates) in development.
+
+## Submitting your changes
+
+Push your branch and open a pull request. See [CONTRIBUTING.md](../CONTRIBUTING.md)
+for the review process and PR requirements. For help, join the `#Develop` channel on
+[Discord](https://discord.gg/gitea).
+
+
+=== go.mod ===
+module gitea.dev
+
+go 1.26.4
+
+require (
+	codeberg.org/gusted/mcaptcha v0.0.0-20220723083913-4f3072e1d570
+	connectrpc.com/connect v1.20.0
+	gitea.com/gitea/runner v1.0.8
+	gitea.com/go-chi/binding v0.0.0-20260414111559-654cea7ac60a
+	gitea.com/go-chi/cache v0.2.1
+	gitea.com/go-chi/captcha v0.0.0-20240315150714-fb487f629098
+	gitea.com/go-chi/session v0.0.0-20251124165456-68e0254e989e
+	gitea.com/lunny/dingtalk_webhook v0.0.0-20171025031554-e3534c89ef96
+	gitea.com/lunny/levelqueue v0.4.2-0.20230414023320-3c0159fe0fe4
+	gitea.dev/actions-proto-go v0.6.0
+	gitea.dev/sdk v1.2.0
+	github.com/42wim/httpsig v1.2.4
+	github.com/42wim/sshsig v0.0.0-20260317195500-b9f38cf0d432
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.7.0
+	github.com/Azure/go-ntlmssp v0.1.1
+	github.com/Necoro/html2text v0.0.0-20250804200300-7bf1ce1c7347
+	github.com/ProtonMail/go-crypto v1.4.1
+	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/SaveTheRbtz/zstd-seekable-format-go/pkg v0.10.0
+	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.25
+	github.com/aws/aws-sdk-go-v2/service/codecommit v1.34.5
+	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb
+	github.com/blevesearch/bleve/v2 v2.6.0
+	github.com/bohde/codel v0.2.0
+	github.com/buildkite/terminal-to-html/v3 v3.16.8
+	github.com/caddyserver/certmagic v0.25.4
+	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20260309112543-12416315a635
+	github.com/chi-middleware/proxy v1.1.1
+	github.com/dlclark/regexp2/v2 v2.2.2
+	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707
+	github.com/dustin/go-humanize v1.0.1
+	github.com/editorconfig/editorconfig-core-go/v2 v2.6.4
+	github.com/emersion/go-imap v1.2.1
+	github.com/emirpasic/gods v1.18.1
+	github.com/ethantkoenig/rupture v1.0.1
+	github.com/felixge/fgprof v0.9.5
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/getkin/kin-openapi v0.140.0
+	github.com/gliderlabs/ssh v0.3.8
+	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/cors v1.2.2
+	github.com/go-co-op/gocron/v2 v2.21.2
+	github.com/go-enry/go-enry/v2 v2.9.6
+	github.com/go-git/go-billy/v5 v5.9.0
+	github.com/go-git/go-git/v5 v5.19.1
+	github.com/go-ldap/ldap/v3 v3.4.13
+	github.com/go-redsync/redsync/v4 v4.16.0
+	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-webauthn/webauthn v0.17.4
+	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f
+	github.com/gogs/go-gogs-client v0.0.0-20210131175652-1d7215cd8d85
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/go-github/v89 v89.0.0
+	github.com/google/licenseclassifier/v2 v2.0.0
+	github.com/google/pprof v0.0.0-20260604005048-7023385849c0
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/feeds v1.2.0
+	github.com/gorilla/sessions v1.4.0
+	github.com/hashicorp/go-version v1.9.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/huandu/xstrings v1.5.0
+	github.com/jhillyerd/enmime/v2 v2.4.1
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/klauspost/compress v1.19.0
+	github.com/klauspost/cpuid/v2 v2.4.0
+	github.com/lib/pq v1.12.3
+	github.com/markbates/goth v1.82.0
+	github.com/mattn/go-isatty v0.0.22
+	github.com/mattn/go-sqlite3 v1.14.47
+	github.com/meilisearch/meilisearch-go v0.36.3
+	github.com/mholt/archives v0.1.5
+	github.com/microcosm-cc/bluemonday v1.0.27
+	github.com/microsoft/go-mssqldb v1.10.0
+	github.com/minio/minio-go/v7 v7.2.1
+	github.com/msteinert/pam/v2 v2.1.0
+	github.com/niklasfasching/go-org v1.9.1
+	github.com/opencontainers/go-digest v1.0.0
+	github.com/opencontainers/image-spec v1.1.1
+	github.com/pquerna/otp v1.5.0
+	github.com/prometheus/client_golang v1.23.2
+	github.com/quasoft/websspi v1.1.2
+	github.com/redis/go-redis/v9 v9.21.0
+	github.com/robfig/cron/v3 v3.0.1
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
+	github.com/sassoftware/go-rpmutils v0.4.0
+	github.com/sergi/go-diff v1.4.0
+	github.com/stretchr/testify v1.11.1
+	github.com/syndtr/goleveldb v1.0.0
+	github.com/tstranex/u2f v1.0.0
+	github.com/ulikunitz/xz v0.5.15
+	github.com/urfave/cli-docs/v3 v3.1.0
+	github.com/urfave/cli/v3 v3.10.1
+	github.com/wneessen/go-mail v0.7.3
+	github.com/yohcop/openid-go v1.0.1
+	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
+	gitlab.com/gitlab-org/api/client-go/v2 v2.44.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.5
+	golang.org/x/crypto v0.53.0
+	golang.org/x/image v0.43.0
+	golang.org/x/mod v0.37.0
+	golang.org/x/net v0.56.0
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/text v0.38.0
+	google.golang.org/grpc v1.82.0
+	google.golang.org/protobuf v1.36.11
+	gopkg.in/ini.v1 v1.67.3
+	modernc.org/sqlite v1.53.0
+	mvdan.cc/xurls/v2 v2.6.0
+	strk.kbt.io/projects/go/libravatar v0.0.0-20260301104140-add494e31dab
+	xorm.io/builder v0.3.13
+	xorm.io/xorm v1.4.1
+)
+
+require (
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	dario.cat/mergo v1.0.2 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
+	github.com/DataDog/zstd v1.5.7 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/RoaringBitmap/roaring/v2 v2.18.2 // indirect
+	github.com/STARRY-S/zip v0.2.3 // indirect
+	github.com/andybalholm/brotli v1.2.1 // indirect
+	github.com/andybalholm/cascadia v1.3.4 // indirect
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
+	github.com/aws/aws-sdk-go-v2 v1.42.0 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.29 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.29 // indirect
+	github.com/aws/smithy-go v1.27.2 // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.24.5 // indirect
+	github.com/blevesearch/bleve_index_api v1.3.12 // indirect
+	github.com/blevesearch/geo v0.2.5 // indirect
+	github.com/blevesearch/go-faiss v1.1.4 // indirect
+	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
+	github.com/blevesearch/gtreap v0.1.1 // indirect
+	github.com/blevesearch/mmap-go v1.2.0 // indirect
+	github.com/blevesearch/scorch_segment_api/v2 v2.4.7 // indirect
+	github.com/blevesearch/segment v0.9.1 // indirect
+	github.com/blevesearch/snowballstem v0.9.0 // indirect
+	github.com/blevesearch/upsidedown_store_api v1.0.2 // indirect
+	github.com/blevesearch/vellum v1.2.0 // indirect
+	github.com/blevesearch/zapx/v11 v11.4.3 // indirect
+	github.com/blevesearch/zapx/v12 v12.4.3 // indirect
+	github.com/blevesearch/zapx/v13 v13.4.3 // indirect
+	github.com/blevesearch/zapx/v14 v14.4.3 // indirect
+	github.com/blevesearch/zapx/v15 v15.4.3 // indirect
+	github.com/blevesearch/zapx/v16 v16.3.4 // indirect
+	github.com/blevesearch/zapx/v17 v17.1.6 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
+	github.com/bodgit/plumbing v1.3.0 // indirect
+	github.com/bodgit/sevenzip v1.6.4 // indirect
+	github.com/bodgit/windows v1.0.1 // indirect
+	github.com/boombuler/barcode v1.1.0 // indirect
+	github.com/bradfitz/gomemcache v0.0.0-20260422231931-4d751bb6e37c // indirect
+	github.com/caddyserver/zerossl v0.1.5 // indirect
+	github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/clipperhouse/displaywidth v0.11.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
+	github.com/couchbase/go-couchbase v0.1.1 // indirect
+	github.com/couchbase/gomemcached v0.3.4 // indirect
+	github.com/couchbase/goutils v0.3.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
+	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/davidmz/go-pageant v1.0.2 // indirect
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
+	github.com/fatih/color v1.19.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
+	github.com/git-lfs/pktline v0.0.0-20230103162542-ca444d533ef1 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
+	github.com/go-enry/go-oniguruma v1.2.1 // indirect
+	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
+	github.com/go-openapi/jsonpointer v0.23.1 // indirect
+	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
+	github.com/go-webauthn/x v0.2.6 // indirect
+	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
+	github.com/google/flatbuffers v25.12.19+incompatible // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
+	github.com/google/go-tpm v0.9.8 // indirect
+	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
+	github.com/inbucket/html2text v1.0.0 // indirect
+	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/jonboulle/clockwork v0.5.0 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kevinburke/ssh_config v1.6.0 // indirect
+	github.com/klauspost/crc32 v1.3.0 // indirect
+	github.com/klauspost/pgzip v1.2.6 // indirect
+	github.com/libdns/libdns v1.1.1 // indirect
+	github.com/markbates/going v1.0.3 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-runewidth v0.0.24 // indirect
+	github.com/mattn/go-shellwords v1.0.13 // indirect
+	github.com/mholt/acmez/v3 v3.1.6 // indirect
+	github.com/miekg/dns v1.1.72 // indirect
+	github.com/mikelolasagasti/xz v1.0.1 // indirect
+	github.com/minio/crc64nvme v1.1.1 // indirect
+	github.com/minio/md5-simd v1.1.2 // indirect
+	github.com/minio/minlz v1.1.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/mrjones/oauth v0.0.0-20190623134757-126b35219450 // indirect
+	github.com/mschoch/smat v0.2.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/nwaples/rardecode/v2 v2.2.3 // indirect
+	github.com/oasdiff/yaml v0.1.0 // indirect
+	github.com/oasdiff/yaml3 v0.0.13 // indirect
+	github.com/olekukonko/cat v0.0.0-20250911104152-50322a0618f6 // indirect
+	github.com/olekukonko/errors v1.3.0 // indirect
+	github.com/olekukonko/ll v0.1.8 // indirect
+	github.com/olekukonko/tablewriter v1.1.4 // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.27 // indirect
+	github.com/pjbgf/sha1cd v0.6.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.68.1 // indirect
+	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/rhysd/actionlint v1.7.12 // indirect
+	github.com/rs/xid v1.6.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/skeema/knownhosts v1.3.2 // indirect
+	github.com/sorairolake/lzip-go v0.3.8 // indirect
+	github.com/spf13/afero v1.15.0 // indirect
+	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
+	github.com/stangelandcl/ppmd v0.1.1 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
+	github.com/unknwon/com v1.0.1 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	github.com/zeebo/blake3 v0.2.4 // indirect
+	github.com/zeebo/xxh3 v1.1.0 // indirect
+	go.etcd.io/bbolt v1.4.3 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.28.0 // indirect
+	go.uber.org/zap/exp v0.3.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
+	golang.org/x/time v0.15.0 // indirect
+	golang.org/x/tools v0.45.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	modernc.org/libc v1.73.4 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.11.0 // indirect
+)
+
+ignore (
+	./.venv
+	./node_modules
+)
+
+// When doing "go get -u ./...", Golang will try to update all dependencies
+// But not all latest versions of dependencies are compatible with other packages or our codebase, so we need to pin some dependencies to specific versions
+// Need to regularly maintain this list to try to update them to latest versions, especially the TODO ones
+
+replace go.yaml.in/yaml/v4 => go.yaml.in/yaml/v4 v4.0.0-rc.3 // rc.4 changes block scalar serialization, wait for stable release
+
+replace github.com/Azure/azure-sdk-for-go/sdk/azcore => github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.0 // v1.21.0+ uses API version unsupported by Azurite in CI
+
+replace github.com/Azure/azure-sdk-for-go/sdk/storage/azblob => github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.2 // v1.6.4+ uses API version unsupported by Azurite in CI
+
+replace github.com/microsoft/go-mssqldb => github.com/microsoft/go-mssqldb v1.9.7 // downgraded with Azure SDK
+
+
+=== package.json ===
+{
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">= 22.18.0",
+    "pnpm": ">= 11.0.0"
+  },
+  "dependencies": {
+    "@citation-js/core": "0.7.21",
+    "@citation-js/plugin-bibtex": "0.7.21",
+    "@citation-js/plugin-csl": "0.7.22",
+    "@citation-js/plugin-software-formats": "0.6.2",
+    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/commands": "6.10.4",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-markdown": "6.5.0",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/language-data": "6.5.2",
+    "@codemirror/legacy-modes": "6.5.3",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/search": "6.7.1",
+    "@codemirror/state": "6.7.0",
+    "@codemirror/view": "6.43.4",
+    "@deltablot/dropzone": "7.4.3",
+    "@github/markdown-toolbar-element": "2.2.3",
+    "@github/paste-markdown": "1.5.3",
+    "@github/text-expander-element": "2.9.4",
+    "@lezer/highlight": "1.2.3",
+    "@mcaptcha/vanilla-glue": "0.1.0-rc2",
+    "@mermaid-js/layout-elk": "0.2.2",
+    "@primer/octicons": "19.29.1",
+    "@replit/codemirror-indentation-markers": "6.5.3",
+    "@replit/codemirror-lang-nix": "6.0.1",
+    "@replit/codemirror-lang-svelte": "6.0.0",
+    "@replit/codemirror-vscode-keymap": "6.0.2",
+    "@resvg/resvg-wasm": "2.6.2",
+    "@vitejs/plugin-vue": "6.0.7",
+    "ansi_up": "6.0.6",
+    "asciinema-player": "3.17.0",
+    "chart.js": "4.5.1",
+    "chartjs-adapter-dayjs-4": "1.0.4",
+    "chartjs-plugin-zoom": "2.2.0",
+    "clippie": "4.2.1",
+    "codemirror-lang-elixir": "4.0.1",
+    "colord": "2.9.3",
+    "compare-versions": "6.1.1",
+    "cropperjs": "1.6.2",
+    "dayjs": "1.11.21",
+    "easymde": "2.21.0",
+    "esbuild": "0.28.1",
+    "idiomorph": "0.7.4",
+    "jquery": "4.0.0",
+    "js-yaml": "5.2.1",
+    "katex": "0.17.0",
+    "mermaid": "11.16.0",
+    "online-3d-viewer": "0.18.0",
+    "pdfobject": "2.3.1",
+    "perfect-debounce": "2.1.0",
+    "postcss": "8.5.16",
+    "rolldown-license-plugin": "3.0.9",
+    "sortablejs": "1.15.7",
+    "swagger-ui-dist": "5.32.8",
+    "tailwindcss": "3.4.19",
+    "throttle-debounce": "5.0.2",
+    "tippy.js": "6.3.7",
+    "toastify-js": "1.12.0",
+    "tributejs": "5.1.3",
+    "uint8-to-base64": "0.2.1",
+    "vanilla-colorful": "0.7.2",
+    "vite": "8.1.3",
+    "vite-string-plugin": "2.0.5",
+    "vue": "3.5.39",
+    "vue-chartjs": "5.3.3"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "4.7.2",
+    "@eslint/json": "2.0.1",
+    "@playwright/test": "1.61.1",
+    "@stylistic/eslint-plugin": "5.10.0",
+    "@stylistic/stylelint-plugin": "5.2.1",
+    "@types/codemirror": "5.60.17",
+    "@types/jquery": "4.0.1",
+    "@types/katex": "0.16.8",
+    "@types/node": "26.1.0",
+    "@types/pdfobject": "2.2.5",
+    "@types/sortablejs": "1.15.9",
+    "@types/swagger-ui-dist": "3.30.6",
+    "@types/throttle-debounce": "5.0.2",
+    "@types/toastify-js": "1.12.4",
+    "@typescript-eslint/parser": "8.62.1",
+    "@vitejs/plugin-vue": "6.0.7",
+    "@vitest/eslint-plugin": "1.6.20",
+    "eslint": "10.6.0",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-import-x": "4.17.1",
+    "eslint-plugin-playwright": "2.10.4",
+    "eslint-plugin-regexp": "3.1.1",
+    "eslint-plugin-sonarjs": "4.1.0",
+    "eslint-plugin-unicorn": "71.1.0",
+    "eslint-plugin-vue": "10.9.2",
+    "eslint-plugin-vue-scoped-css": "3.1.1",
+    "eslint-plugin-wc": "3.1.0",
+    "globals": "17.7.0",
+    "happy-dom": "20.10.6",
+    "jiti": "2.7.0",
+    "markdownlint-cli": "0.49.0",
+    "material-icon-theme": "5.36.1",
+    "postcss-html": "1.8.1",
+    "spectral-cli-bundle": "1.0.11",
+    "stylelint": "17.14.0",
+    "stylelint-config-recommended": "18.0.0",
+    "stylelint-declaration-block-no-ignored-properties": "3.0.0",
+    "stylelint-declaration-strict-value": "1.11.1",
+    "stylelint-value-no-unknown-custom-properties": "6.1.1",
+    "svgo": "4.0.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1",
+    "updates": "17.18.2",
+    "vitest": "4.1.9",
+    "vue-tsc": "3.3.6"
+  }
+}
+
+
+=== pnpm-lock.yaml ===
+[File too large: 304472 bytes — skipped]
+
+=== pyproject.toml ===
+[project]
+name = "gitea"
+version = "0.0.0"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = [
+  "djlint==1.40.1",
+  "yamllint==1.38.0",
+  "zizmor==1.26.1",
+]
+
+[tool.djlint]
+profile="golang"
+ignore="H005,H006,H013,H016,H020,H021,H030,H031"
+
+
+=== stylelint.config.ts ===
+import {fileURLToPath} from 'node:url';
+import type {Config} from 'stylelint';
+
+const cssVarFiles = [
+  fileURLToPath(new URL('web_src/css/base.css', import.meta.url)),
+  fileURLToPath(new URL('web_src/css/themes/theme-gitea-light.css', import.meta.url)),
+  fileURLToPath(new URL('web_src/css/themes/theme-gitea-dark.css', import.meta.url)),
+];
+
+export default {
+  extends: 'stylelint-config-recommended',
+  reportUnscopedDisables: true,
+  reportNeedlessDisables: true,
+  reportInvalidScopeDisables: true,
+  plugins: [
+    'stylelint-declaration-strict-value',
+    'stylelint-declaration-block-no-ignored-properties',
+    'stylelint-value-no-unknown-custom-properties',
+    '@stylistic/stylelint-plugin',
+  ],
+  ignoreFiles: [
+    '**/*.go',
+    '/web_src/fomantic',
+  ],
+  overrides: [
+    {
+      files: ['**/*.vue'],
+      customSyntax: 'postcss-html',
+    },
+  ],
+  rules: {
+    '@stylistic/at-rule-name-case': null,
+    '@stylistic/at-rule-name-newline-after': null,
+    '@stylistic/at-rule-name-space-after': null,
+    '@stylistic/at-rule-semicolon-newline-after': null,
+    '@stylistic/at-rule-semicolon-space-before': null,
+    '@stylistic/block-closing-brace-empty-line-before': null,
+    '@stylistic/block-closing-brace-newline-after': null,
+    '@stylistic/block-closing-brace-newline-before': null,
+    '@stylistic/block-closing-brace-space-after': null,
+    '@stylistic/block-closing-brace-space-before': null,
+    '@stylistic/block-opening-brace-newline-after': null,
+    '@stylistic/block-opening-brace-newline-before': null,
+    '@stylistic/block-opening-brace-space-after': null,
+    '@stylistic/block-opening-brace-space-before': 'always',
+    '@stylistic/color-hex-case': 'lower',
+    '@stylistic/declaration-bang-space-after': 'never',
+    '@stylistic/declaration-bang-space-before': 'always',
+    '@stylistic/declaration-block-semicolon-newline-after': null,
+    '@stylistic/declaration-block-semicolon-newline-before': null,
+    '@stylistic/declaration-block-semicolon-space-after': null,
+    '@stylistic/declaration-block-semicolon-space-before': 'never',
+    '@stylistic/declaration-block-trailing-semicolon': null,
+    '@stylistic/declaration-colon-newline-after': null,
+    '@stylistic/declaration-colon-space-after': 'always',
+    '@stylistic/declaration-colon-space-before': 'never',
+    '@stylistic/function-comma-newline-after': null,
+    '@stylistic/function-comma-newline-before': null,
+    '@stylistic/function-comma-space-after': null,
+    '@stylistic/function-comma-space-before': null,
+    '@stylistic/function-max-empty-lines': 0,
+    '@stylistic/function-parentheses-newline-inside': null,
+    '@stylistic/function-parentheses-space-inside': null,
+    '@stylistic/function-whitespace-after': null,
+    '@stylistic/indentation': 2,
+    '@stylistic/linebreaks': null,
+    '@stylistic/max-empty-lines': 1,
+    '@stylistic/max-line-length': null,
+    '@stylistic/media-feature-colon-space-after': null,
+    '@stylistic/media-feature-colon-space-before': 'never',
+    '@stylistic/media-feature-name-case': null,
+    '@stylistic/media-feature-parentheses-space-inside': null,
+    '@stylistic/media-feature-range-operator-space-after': 'always',
+    '@stylistic/media-feature-range-operator-space-before': 'always',
+    '@stylistic/media-query-list-comma-newline-after': null,
+    '@stylistic/media-query-list-comma-newline-before': null,
+    '@stylistic/media-query-list-comma-space-after': null,
+    '@stylistic/media-query-list-comma-space-before': null,
+    '@stylistic/named-grid-areas-alignment': null,
+    '@stylistic/no-empty-first-line': null,
+    '@stylistic/no-eol-whitespace': true,
+    '@stylistic/no-extra-semicolons': true,
+    '@stylistic/no-missing-end-of-source-newline': null,
+    '@stylistic/number-leading-zero': null,
+    '@stylistic/number-no-trailing-zeros': null,
+    '@stylistic/property-case': 'lower',
+    '@stylistic/selector-attribute-brackets-space-inside': null,
+    '@stylistic/selector-attribute-operator-space-after': null,
+    '@stylistic/selector-attribute-operator-space-before': null,
+    '@stylistic/selector-combinator-space-after': null,
+    '@stylistic/selector-combinator-space-before': null,
+    '@stylistic/selector-descendant-combinator-no-non-space': true,
+    '@stylistic/selector-list-comma-newline-after': null,
+    '@stylistic/selector-list-comma-newline-before': null,
+    '@stylistic/selector-list-comma-space-after': 'always-single-line',
+    '@stylistic/selector-list-comma-space-before': 'never-single-line',
+    '@stylistic/selector-max-empty-lines': 0,
+    '@stylistic/selector-pseudo-class-case': 'lower',
+    '@stylistic/selector-pseudo-class-parentheses-space-inside': 'never',
+    '@stylistic/selector-pseudo-element-case': 'lower',
+    '@stylistic/string-quotes': 'double',
+    '@stylistic/unicode-bom': null,
+    '@stylistic/unit-case': 'lower',
+    '@stylistic/value-list-comma-newline-after': null,
+    '@stylistic/value-list-comma-newline-before': null,
+    '@stylistic/value-list-comma-space-after': null,
+    '@stylistic/value-list-comma-space-before': null,
+    '@stylistic/value-list-max-empty-lines': 0,
+    'at-rule-no-unknown': [true, {ignoreAtRules: ['tailwind']}],
+    'at-rule-no-vendor-prefix': true,
+    'csstools/value-no-unknown-custom-properties': [true, {importFrom: cssVarFiles}],
+    'declaration-block-no-duplicate-properties': [true, {ignore: ['consecutive-duplicates-with-different-values']}],
+    'declaration-block-no-redundant-longhand-properties': [true, {ignoreShorthands: ['flex-flow', 'overflow', 'grid-template']}],
+    'declaration-property-unit-disallowed-list': null,
+    'declaration-property-value-disallowed-list': {'word-break': ['break-word']},
+    'font-family-name-quotes': 'always-where-recommended',
+    'function-name-case': 'lower',
+    'function-url-quotes': 'always',
+    'import-notation': 'string',
+    'length-zero-no-unit': [true, {ignore: ['custom-properties'], ignoreFunctions: ['var']}],
+    'media-feature-name-no-vendor-prefix': true,
+    'no-descending-specificity': null,
+    'no-invalid-position-at-import-rule': [true, {ignoreAtRules: ['tailwind']}],
+    'no-unknown-animations': null, // disabled until stylelint supports multi-file linting
+    'no-unknown-custom-media': null, // disabled until stylelint supports multi-file linting
+    'no-unknown-custom-properties': null,  // disabled until stylelint supports multi-file linting
+    'plugin/declaration-block-no-ignored-properties': true,
+    'scale-unlimited/declaration-strict-value': [['/color$/', 'fill', 'stroke', 'font-weight'], {ignoreValues: '/^(inherit|transparent|unset|initial|currentcolor|none)$/', ignoreFunctions: true, disableFix: true, expandShorthand: true}],
+    'selector-attribute-quotes': 'always',
+    'selector-no-vendor-prefix': true,
+    'selector-pseudo-element-colon-notation': 'double',
+    'selector-type-case': 'lower',
+    'selector-type-no-unknown': [true, {ignore: ['custom-elements']}],
+    'shorthand-property-no-redundant-values': true,
+    'value-no-vendor-prefix': [true, {ignoreValues: ['box', 'inline-box']}],
+  },
+} satisfies Config;
+
+
+=== tsconfig.json ===
+{
+  "include": [
+    "${configDir}/*",
+    "${configDir}/.*",
+    "${configDir}/tests/e2e/**/*",
+    "${configDir}/tests/e2e/**/.*",
+    "${configDir}/tools/**/*",
+    "${configDir}/tools/**/.*",
+    "${configDir}/web_src/js/**/*",
+    "${configDir}/web_src/js/**/.*",
+  ],
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["dom", "esnext", "webworker"],
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "erasableSyntaxOnly": true,
+    "esModuleInterop": true,
+    "exactOptionalPropertyTypes": false,
+    "isolatedModules": true,
+    "libReplacement": false,
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUncheckedSideEffectImports": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "stripInternal": true,
+    "verbatimModuleSyntax": true,
+    "types": [
+      "node",
+      "vite/client",
+      "vitest/globals",
+      "./web_src/js/globals.d.ts",
+      "./types.d.ts",
+    ],
+  }
+}
+
+
+=== uv.lock ===
+[File too large: 100276 bytes — skipped]

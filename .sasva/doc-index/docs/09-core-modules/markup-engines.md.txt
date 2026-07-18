@@ -1,0 +1,552 @@
+=== FILE: docs/09-core-modules/markup-engines.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Markup Rendering Engines Gitea needs to turn many different kinds of raw text and binary-adjacent files — Markdown READMEs, Org-mode notes, CSV spreadsheets, Jupyter notebooks, terminal session recordings, and even third-party formats handled by external tools — into safe, styled HTML. All of this logic lives under `modules/markup/` and is orchestrated by a small, pluggable **renderer registry**.
+
+# Markup Rendering Engines
+
+Gitea needs to turn many different kinds of raw text and binary-adjacent files — Markdown READMEs, Org-mode notes, CSV spreadsheets, Jupyter notebooks, terminal session recordings, and even third-party formats handled by external tools — into safe, styled HTML. All of this logic lives under `modules/markup/` and is orchestrated by a small, pluggable **renderer registry**.
+
+This page documents:
+
+- How renderer plugins register themselves and how one is selected for a given file
+- The rendering pipeline: detection → render → sanitize → post-process
+- Sanitization with `bluemonday`
+- Syntax highlighting with Chroma (`modules/highlight`)
+- Emoji shortcode processing
+- Charset/encoding detection (`modules/charset`)
+- How external, out-of-process renderers plug into the same framework
+
+## Renderer Registration Pattern
+
+Every markup format implements the `markup.Renderer` interface (defined in `modules/markup/renderer.go`):
+
+```go
+// Renderer defines an interface for rendering markup file to HTML
+type Renderer interface {
+	Name() string // markup format name, also the renderer type, also the external tool name
+	FileNamePatterns() []string
+	SanitizerRules() []setting.MarkupSanitizerRule
+	Render(ctx *RenderContext, input io.Reader, output io.Writer) error
+}
+```
+
+Optional capability interfaces let a renderer opt into extra behavior:
+
+| Interface | Purpose |
+|---|---|
+| `PostProcessRenderer` | `NeedPostProcess() bool` — whether the rendered HTML should go through the shared HTML post-processing pipeline (auto-linking, mentions, emoji, etc.) |
+| `RendererContentDetector` | `CanRender(filename, sniffedType, prefetchBuf) bool` — lets a renderer claim ambiguous/extensionless content by sniffing its bytes |
+| `ExternalRenderer` | `GetExternalRendererOptions() ExternalRendererOptions` — used by out-of-process / iframe-based renderers |
+
+Renderers register themselves via `init()` side effects, which is why they are imported with the blank `_` identifier in `main.go`:
+
+```go
+// main.go
+import (
+	// register supported doc types
+	_ "gitea.dev/modules/markup/console"
+	_ "gitea.dev/modules/markup/csv"
+	_ "gitea.dev/modules/markup/jupyter"
+	_ "gitea.dev/modules/markup/markdown"
+	_ "gitea.dev/modules/markup/orgmode"
+)
+```
+
+Each package's `init()` calls `markup.RegisterRenderer(...)`, for example in `modules/markup/console/console.go`:
+
+```go
+func init() {
+	markup.RegisterRenderer(Renderer{})
+}
+```
+
+The registry itself (`modules/markup/renderer.go`) keeps two maps:
+
+```go
+var (
+	fileNameRenderers = make(map[string]Renderer) // filename pattern -> renderer
+	renderers         = make(map[string]Renderer) // renderer name -> renderer
+)
+
+func RegisterRenderer(renderer Renderer) {
+	renderers[renderer.Name()] = renderer
+}
+```
+
+`RefreshFileNamePatterns()` (also called from `markup.Init`) rebuilds `fileNameRenderers` by iterating every registered renderer's `FileNamePatterns()`, keyed by lower-cased pattern (e.g. `*.md`, `readme.md`, `*.tar.gz`).
+
+> A fifth built-in renderer family, **external renderers**, is *not* imported via blank import in `main.go`. Instead, `routers/init.go` calls `external.RegisterRenderers()` explicitly during application start-up, after configuration has been loaded (since external renderer definitions come from `app.ini`).
+
+### Built-in Renderer Catalog
+
+| Package | `Name()` | Default file patterns | Post-process? | Notes |
+|---|---|---|---|---|
+| `modules/markup/console` | `console` | `*.sh-session` | no | Implements `RendererContentDetector`; also auto-detects ANSI-colored plain text (≥2 escape sequences) via `CanRender` |
+| `modules/markup/csv` | `csv` | `*.csv`, `*.tsv` | no | Streams rows into an HTML `<table>`, capped by `setting.UI.CSV.MaxFileSize` / `MaxRows` |
+| `modules/markup/jupyter` | (Jupyter notebook renderer) | notebook file patterns | yes | Converts `.ipynb` JSON cells to HTML, delegates Markdown cells to the `markdown` renderer, and highlights code cells via `modules/highlight` |
+| `modules/markup/markdown` | `markdown` | configurable, defaults to `.md`, `.markdown`, `.mdown`, `.mkd`, `.livemd` | yes | The primary renderer, built on `goldmark` |
+| `modules/markup/orgmode` | `orgmode` | `*.org` | yes | Wraps `github.com/niklasfasching/go-org/org` |
+| `modules/markup/external` | one renderer per configured tool, plus built-ins `openapi-swagger`, `viewer-3d`, `asciicast` | configured via `app.ini` `[markup.*]` sections, or fixed patterns for the built-ins | configurable | Shells out to an external command, or renders a client-side viewer/iframe |
+
+### Renderer Selection: File Name and Content Sniffing
+
+`DetectRendererTypeByFilename` (in `renderer.go`) tries, in order:
+
+1. Exact basename match (e.g. `Dockerfile`)
+2. `"*" + <last extension>` (e.g. `*.md`)
+3. `"*" + <second-to-last extension> + <last extension>` (e.g. `*.tar.gz`)
+
+If no filename match is found, `DetectRendererTypeByPrefetch` falls back to calling `CanRender` on every renderer that implements `RendererContentDetector`, passing a sniffed MIME type (`modules/typesniffer`) and a prefetch buffer of the file's leading bytes. This is how the `console` renderer opportunistically claims plain-text files that look like captured terminal sessions (two or more ANSI escape sequences) even without the `.sh-session` extension.
+
+```go
+// modules/markup/render.go
+func (ctx *RenderContext) DetectMarkupRenderer(prefetchBuf []byte) Renderer {
+	if ctx.RenderOptions.MarkupType == "" && ctx.RenderOptions.RelativePath != "" {
+		var sniffedType typesniffer.SniffedType
+		if len(prefetchBuf) > 0 {
+			sniffedType = typesniffer.DetectContentType(prefetchBuf)
+		}
+		ctx.RenderOptions.MarkupType = DetectRendererTypeByPrefetch(ctx.RenderOptions.RelativePath, sniffedType, prefetchBuf)
+	}
+	return renderers[ctx.RenderOptions.MarkupType]
+}
+```
+
+Callers can also force a specific renderer up-front by setting `RenderOptions.MarkupType` (e.g. `markdown.Render` always sets `MarkupType = "markdown"` before delegating to `markup.Render`).
+
+## The Rendering Pipeline
+
+The core orchestration function is `markup.RenderWithRenderer` (called by `markup.Render`, which first auto-detects the renderer). Conceptually, raw content flows through up to four pipe-connected stages:
+
+```mermaid
+flowchart LR
+    A["Raw content<br/>(file bytes / DB text)"] --> B["Format detection<br/>DetectRendererTypeByFilename /<br/>DetectRendererTypeByPrefetch"]
+    B --> C["Renderer plugin<br/>Render(ctx, input, output)"]
+    C --> D{"NeedPostProcess?"}
+    D -- yes --> E["PostProcessDefault<br/>links, mentions, issues,<br/>emoji, hashes, code preview"]
+    D -- no --> F["(skip)"]
+    E --> G{"Sanitizer enabled?"}
+    F --> G
+    G -- yes --> H["SanitizeReader<br/>bluemonday policy"]
+    G -- no --> I["(skip, ExternalRenderer<br/>SanitizerDisabled)"]
+    H --> J["Final HTML output"]
+    I --> J
+```
+
+Internally, `RenderWithRenderer` (in `modules/markup/render.go`) wires these stages together with `io.Pipe()`s and an `errgroup`, so the renderer, post-processor, and sanitizer run concurrently as a streaming pipeline instead of buffering the whole document in memory:
+
+```go
+// input -> (pw1=pr1) -> renderer -> (pw2=pr2) -> SanitizeReader -> finalProcessor -> output
+// no sanitizer: input -> (pw1=pr1) -> renderer -> pw2(finalProcessor) -> output
+pr1, pw1, close1 := pipes()
+...
+eg.Go(func() error {
+    defer pr2.Close()
+    return SanitizeReader(pr2, renderer.Name(), finalProcessor)
+})
+
+eg.Go(func() (err error) {
+    if RendererNeedPostProcess(renderer) {
+        err = PostProcessDefault(ctx, pr1, pw2)
+    } else {
+        _, err = io.Copy(pw2, pr1)
+    }
+    _, _ = pr1.Close(), pw2.Close()
+    return err
+})
+
+if err := renderer.Render(ctx, input, pw1); err != nil {
+    return err
+}
+_ = pw1.Close()
+
+return eg.Wait()
+```
+
+Key points:
+
+- **Sanitization is skipped** only when the renderer is an `ExternalRenderer` whose `GetExternalRendererOptions().SanitizerDisabled` is `true` — used for tools running in `no-sanitizer` or `iframe` content modes (see [External Renderers](#external-renderers-shelling-out-to-tools) below). All built-in renderers (`markdown`, `orgmode`, `csv`, `console`, `jupyter`) are always sanitized.
+- **Post-processing is opt-in** via the `PostProcessRenderer` interface; `markdown`, `orgmode`, and `jupyter` need it (to convert bare URLs, `#123` issue references, `@user` mentions, emoji, commit hashes, etc. into links), while `csv` and `console` do not (their `Render` already emits final, non-linkable markup).
+- The `RenderContext` (`modules/markup/render.go`) carries request-scoped state: `RenderOptions` (markup type, relative path, metas map for repo/user/org context, absolute-vs-relative link mode), a `RenderHelper` for resolving links, and `RenderInternal` for issuing "safe" attributes that survive sanitization.
+
+### `RenderOptions` and `RenderContext`
+
+```go
+type RenderOptions struct {
+	UseAbsoluteLink bool
+	RelativePath string      // path from tree root of the branch
+	MarkupType   string      // e.g. "orgmode", "asciicast", "console"; empty = detect by extension
+	Metas map[string]string  // user&repo, format&style&regexp (external issue pattern), teams&org (mention)
+	StandalonePageOptions *StandalonePageOptions
+	EnableHeadingIDGeneration bool
+}
+```
+
+`RenderContext` is built with a fluent builder API (`NewRenderContext(ctx).WithMarkupType(...).WithRelativePath(...).WithMetas(...)`), used throughout `models/renderhelper` (repo file, repo wiki, repo comment, simple document contexts) to supply the right link-resolution behavior per surface. See [Web Routers](../06-web-routers/README.md) and [Services](../08-services/README.md) for how these render contexts get constructed for issues, wiki pages, and file previews.
+
+## Renderer Deep Dive
+
+### Markdown (`modules/markup/markdown`)
+
+The default and most heavily used renderer, built on [`goldmark`](https://github.com/yuin/goldmark). `SpecializedMarkdown` (in `markdown.go`) assembles a Goldmark instance with Gitea-specific extensions:
+
+```go
+r.goldmarkMarkdown = goldmark.New(
+	goldmark.WithParser(goldmarkDefaultParser()),
+	goldmark.WithExtensions(
+		extension.NewTable(extension.WithTableCellAlignMethod(extension.TableCellAlignAttribute)),
+		extension.Strikethrough,
+		extension.TaskList,
+		extension.DefinitionList,
+		common.FootnoteExtension,
+		highlighting.NewHighlighting(
+			highlighting.WithFormatOptions(
+				chromahtml.WithClasses(true),
+				chromahtml.PreventSurroundingPre(true),
+			),
+			highlighting.WithWrapperRenderer(r.highlightingRenderer),
+		),
+		math.NewExtension(&ctx.RenderInternal, math.Options{ Enabled: setting.Markdown.EnableMath, ... }),
+	),
+	goldmark.WithParserOptions(
+		parser.WithAttribute(),
+		parser.WithASTTransformers(util.Prioritized(NewASTTransformer(&ctx.RenderInternal), 10000)),
+	),
+	goldmark.WithRendererOptions(html.WithUnsafe()),
+)
+```
+
+Notable behaviors:
+
+- **Code fences are highlighted via Chroma** through the `goldmark-highlighting` extension, whose wrapper renderer (`highlightingRenderer`) emits `<div class="code-block-container ..."><pre class="code-block"><code class="chroma language-X display">`. Special handling exists for `mermaid` and `math` code blocks (marked `is-loading`, later hydrated client-side).
+- **Math** rendering is a separate Goldmark extension (`modules/markup/markdown/math`) gated by `setting.Markdown.EnableMath` and various delimiter options (`$...$`, `\(...\)`, `$$...$$`, `\[...\]`).
+- **YAML front matter** is extracted before parsing via `ExtractMetadataBytes` (`meta.go`), producing a `RenderConfig` (e.g. controlling how metadata is displayed: `details`, `none`, or `table` — see `RenderMetaMode` in `render.go`).
+- A **custom emphasis parser** (`goldmarkNewEmphasisParser`) avoids treating underscores in things like `module/__init__.py` as emphasis markers.
+- Output size is capped with a `limitWriter` at `setting.UI.MaxDisplayFileSize * 3` bytes to guard against pathological documents.
+- If Goldmark panics mid-render, `render()` recovers and instead emits the HTML-escaped raw source, rather than crashing the request.
+- `Renderer.NeedPostProcess()` returns `true` — Markdown output is always passed through `PostProcessDefault` (mentions, issue refs, emoji, etc.) **before** sanitization.
+- The Markdown renderer's `SanitizerRules()` is empty — it relies entirely on the shared default sanitizer policy rather than adding its own allowlist rules.
+
+Convenience wrappers exposed by the package: `Render`, `RenderString`, `RenderRaw` (skips the post-processor / link-rewriting, used for untrusted contexts), and `RenderRawString`.
+
+### Org-mode (`modules/markup/orgmode`)
+
+Wraps [`github.com/niklasfasching/go-org/org`](https://github.com/niklasfasching/go-org). Registers file pattern `*.org`, needs post-processing, and plugs Chroma into Org's `HighlightCodeBlock` callback:
+
+```go
+htmlWriter.HighlightCodeBlock = func(source, lang string, inline bool, params map[string]string) string {
+	lexer := highlight.DetectChromaLexerByFileName("", lang)
+	lexer = chroma.Coalesce(lexer)
+	sb := &strings.Builder{}
+	_ = ctx.RenderInternal.FormatWithSafeAttrs(sb, `<pre><code class="chroma language-%s">`, strings.ToLower(lexer.Config().Name))
+	_, _ = sb.WriteString(string(highlight.RenderCodeByLexer(lexer, source)))
+	_, _ = sb.WriteString("</code></pre>")
+	return sb.String()
+}
+```
+
+A panic inside the highlighter is recovered and logged rather than failing the whole render.
+
+### CSV / TSV (`modules/markup/csv`)
+
+Not a "markup" language at all — the renderer streams rows into an HTML table (`writeField` escapes each cell with `html.EscapeString`). It uses `modules/csv.CreateReaderAndDetermineDelimiter` (delimiter auto-detection) and enforces two safety limits from settings:
+
+```go
+maxSize := setting.UI.CSV.MaxFileSize
+maxRows := setting.UI.CSV.MaxRows
+```
+
+When either limit is hit, rendering stops and a translated "file too large, view raw" message with a link (resolved via `ctx.RenderHelper.ResolveLink(..., markup.LinkTypeRaw)`) is appended. `SanitizerRules()` explicitly allowlists `table.data-table` and `th/td.line-num` classes.
+
+### Console / Terminal Sessions (`modules/markup/console`)
+
+Renders ANSI-colored terminal transcripts (`.sh-session` or auto-detected by content) using `github.com/buildkite/terminal-to-html`. Content sniffing logic in `CanRender` counts plausible ANSI CSI sequences (`\x1b[...m` / `;`-separated) and requires at least two matches plus "reasonable" UTF-8 validity before claiming a plain-text file. `SanitizerRules()` allowlists the `span.class` values that `terminal-to-html` emits for terminal colors (`term-fgNN`, `term-bgNN`, `term-container`).
+
+### Jupyter Notebooks (`modules/markup/jupyter`)
+
+A newer renderer that parses the notebook's JSON structure and renders each cell:
+
+- **Markdown cells** are delegated to the `markdown` package's converter.
+- **Code cells** are highlighted via `modules/highlight`.
+- **Rich outputs** (`image/png`, `image/jpeg`, `image/svg+xml`, `text/html`, `text/plain`, and unsupported MIME types) are each handled by a dedicated `mimeHandler` function, e.g.:
+
+```go
+var dataMimeHandlers = sync.OnceValue(func() []mimeHandler {
+	renderImage := func(w htmlutil.HTMLWriter, subtype, payload string) error {
+		w.WriteFormat(`<div class="cell-output-image"><img src="data:image/%s;base64,%s"></div>`, subtype, payload)
+		return w.Err()
+	}
+	return []mimeHandler{
+		{"image/png", func(w htmlutil.HTMLWriter, d string) error { return renderImage(w, "png", d) }},
+		{"image/jpeg", func(w htmlutil.HTMLWriter, d string) error { return renderImage(w, "jpeg", d) }},
+		{"image/svg+xml", func(w htmlutil.HTMLWriter, d string) error {
+			return renderImage(w, "svg+xml", base64.StdEncoding.EncodeToString(util.UnsafeStringToBytes(d)))
+		}},
+		{"text/html", func(w htmlutil.HTMLWriter, d string) error {
+			// don't allow custom CSS classes/attributes: ".link-action"/"data-fetch-xxx" can send POST requests -> XSS
+			w.WriteFormat(`<div class="cell-output-html">%s</div>`, markup.Sanitize(d))
+			return w.Err()
+		}},
+		...
+	}
+})
+```
+
+Note the defensive comment: embedded `text/html` output is explicitly re-sanitized inline with `markup.Sanitize()` (the same default bluemonday policy used elsewhere) before being embedded, because arbitrary notebook HTML output is a classic XSS vector.
+
+### External Renderers (Shelling Out to Tools)
+
+`modules/markup/external` is unique: instead of a single fixed renderer, `RegisterRenderers()` (called once at start-up from `routers/init.go`) registers:
+
+1. Three fixed "frontend" renderers that don't run any process but tell the web UI to load a client-side viewer/iframe: `openapi-swagger` (OpenAPI/Swagger specs), `viewer-3d` (3D model formats: `.glb`, `.stl`, `.obj`, ...), and `asciicast` (`.cast` terminal recordings, played back by asciinema-player).
+2. One `Renderer` per `[markup.*]` section configured in `app.ini`, each wrapping an arbitrary shell command.
+
+```go
+func RegisterRenderers() {
+	markup.RegisterRenderer(&frontendRenderer{name: "openapi-swagger", patterns: []string{"openapi.yaml", ...}})
+	markup.RegisterRenderer(&frontendRenderer{name: "viewer-3d", patterns: []string{"*.3dm", "*.glb", ...}})
+	markup.RegisterRenderer(&frontendRenderer{name: "asciicast", patterns: []string{"*.cast"}})
+
+	for _, renderer := range setting.ExternalMarkupRenderers {
+		markup.RegisterRenderer(&Renderer{renderer})
+	}
+}
+```
+
+Each configured external renderer's `Render` method spawns the configured `Command` (parsed with shell-quoting rules), optionally writing the content to a temp file (`IsInputFile`) instead of stdin, and captures stdout as the rendered HTML:
+
+```go
+command := strings.NewReplacer(
+	envMark("GITEA_PREFIX_SRC"), baseLinkSrc,
+	envMark("GITEA_PREFIX_RAW"), baseLinkRaw,
+).Replace(p.Command)
+...
+cmd := exec.CommandContext(processCtx, commands[0], args...)
+cmd.Env = append(os.Environ(), "GITEA_PREFIX_SRC="+baseLinkSrc, "GITEA_PREFIX_RAW="+baseLinkRaw)
+```
+
+`GetExternalRendererOptions()` maps the configured `RenderContentMode` (`sanitized` | `no-sanitizer` | `iframe`) to `ExternalRendererOptions{SanitizerDisabled, DisplayInIframe, ContentSandbox}`:
+
+```go
+func (p *Renderer) GetExternalRendererOptions() (ret markup.ExternalRendererOptions) {
+	ret.SanitizerDisabled = p.RenderContentMode == setting.RenderContentModeNoSanitizer || p.RenderContentMode == setting.RenderContentModeIframe
+	ret.DisplayInIframe = p.RenderContentMode == setting.RenderContentModeIframe
+	ret.ContentSandbox = p.RenderContentSandbox
+	return ret
+}
+```
+
+- `sanitized` (default): output still passes through bluemonday.
+- `no-sanitizer`: trusts the external tool's output completely — use only for fully trusted commands.
+- `iframe`: the rendered output is never inlined; instead `RenderIFrame` (in `render.go`) emits a sandboxed `<iframe data-src="...">` pointing at a dedicated `/owner/repo/render/...` route so the untrusted content is isolated in its own browsing context (see `RenderIFrame` and `routers/init.go`'s render routes).
+
+> ⚠️ Because `no-sanitizer` mode bypasses all HTML sanitization, administrators should only configure it for well-audited, trusted rendering commands.
+
+## Sanitization with bluemonday
+
+All HTML that isn't going through an `iframe`/`no-sanitizer` external renderer passes through `modules/markup/sanitizer*.go`, which wraps [`github.com/microcosm-cc/bluemonday`](https://github.com/microcosm-cc/bluemonday).
+
+### Policy Construction
+
+`GetDefaultSanitizer()` (in `sanitizer.go`) lazily builds a `Sanitizer` (guarded by `sync.Once`) holding:
+
+```go
+type Sanitizer struct {
+	defaultPolicy     *bluemonday.Policy
+	descriptionPolicy *bluemonday.Policy
+	rendererPolicies  map[string]*bluemonday.Policy // keyed by renderer Name()
+	allowAllRegex     *regexp.Regexp
+}
+```
+
+For every registered renderer that supplies non-empty `SanitizerRules()` (e.g. `console`, `csv`), a **dedicated policy** is derived from the default policy plus those extra rules, and cached in `rendererPolicies[name]`. Renderers with no custom rules (e.g. `markdown`, `orgmode`) simply fall back to `defaultPolicy`:
+
+```go
+func SanitizeReader(r io.Reader, renderer string, w io.Writer) error {
+	policy, exist := GetDefaultSanitizer().rendererPolicies[renderer]
+	if !exist {
+		policy = GetDefaultSanitizer().defaultPolicy
+	}
+	return policy.SanitizeReaderToWriter(r, w)
+}
+```
+
+### Default Policy Highlights (`sanitizer_default.go`)
+
+Built on top of `bluemonday.UGCPolicy()` (a "user generated content" baseline), then extended with Gitea-specific allowances:
+
+- SVG icon attributes (`viewBox`, `width`, `height`, `aria-hidden`, `data-attr-class`, path `d`/`fill-rule`) — used for inline octicons.
+- `<input type="checkbox">` with `checked`/`disabled`/`data-source-position` — for Markdown task lists.
+- `span.class` matching `^\w{0,2}$` — tolerates Chroma's short (1–2 letter) syntax-highlighting class names.
+- `span[data-line-number]` — code preview line numbers.
+- Custom URL schemes: if `setting.Markdown.CustomURLSchemes` is configured, only those (+`http`/`https`) are allowed; otherwise **all** schemes are allowed *except* `javascript:`, `vbscript:`, and `data:` which are explicitly blocked regardless of configuration:
+
+```go
+disallowScheme := func(*url.URL) bool { return false }
+policy.AllowURLSchemeWithCustomPolicy("javascript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("vbscript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("data", disallowScheme)
+```
+
+- Org-mode list status classes (`unchecked`/`checked`/`indeterminate`).
+- `color` / `background-color` inline styles on a handful of text elements.
+- `<video>` playback attributes and `<picture>/<source media/srcset>` for responsive/theme-aware images.
+- A large MathML element/attribute allowlist (rendered by the `math` Goldmark extension).
+- A broad "generally safe" attribute/element allowlist modeled on [html-pipeline](https://github.com/jch/html-pipeline).
+- Finally, any **admin-configured custom rules** (`setting.ExternalSanitizerRules`, from `[markup.sanitizer.*]` ini sections) are appended.
+
+Custom per-renderer or admin-configured rules are parsed by `addSanitizerRules` (`sanitizer_custom.go`), which enforces that any `Regexp` rule is anchored (`^...$`) to avoid accidentally-permissive partial matches:
+
+```go
+if !strings.HasPrefix(rule.Regexp, "^") || !strings.HasSuffix(rule.Regexp, "$") {
+	panic("Markup sanitizer rule regexp must start with ^ and end with $ to be strict")
+}
+policy.AllowAttrs(rule.AllowAttr).Matching(regexp.MustCompile(rule.Regexp)).OnElements(rule.Element)
+```
+
+There's also a **separate, stricter policy** for short plain-text fields — `sanitizer_description.go`'s `descriptionPolicy` — used for things like repository/organization descriptions, where almost no HTML should survive.
+
+## Syntax Highlighting (`modules/highlight`)
+
+Code highlighting is powered by [Chroma](https://github.com/alecthomas/chroma) and is shared by the `markdown`, `orgmode`, and `jupyter` renderers, as well as file-view/blame/diff pages elsewhere in the app.
+
+### Lexer Detection
+
+`modules/highlight/lexerdetect.go` maintains a hand-tuned, fast lookup table (`chromaLexers`, built once via `sync.OnceValue`) instead of calling Chroma's slower `lexers.Get`/glob-matching APIs directly:
+
+- `fileBaseMap` / `fileExtMap` — exact file name / extension → lexer
+- `fileParts` — multi-part filename suffix matches (e.g. `Dockerfile.*`)
+- `lowerNameMap` — language name (lower-cased) → lexer, used when a language hint (e.g. from a fenced code block ` ```go `) is supplied
+- `conflictingExtLangMap` / `conflictingAliasLangMap` — Chroma has multiple lexers claiming the same extension (e.g. `.h` → could be C or Objective-C); this map picks Gitea's preferred default so behavior is deterministic without expensive content analysis
+
+```go
+ret.conflictingExtLangMap = map[string]string{
+	".as":  "ActionScript 3", // vs ActionScript
+	".asm": "NASM",           // vs TASM, RGBDS Assembly, Z80 Assembly
+	".h":   "C",              // vs Objective-C
+	".m":   "Objective-C",    // vs Matlab, Mathematica, Mason
+	...
+}
+```
+
+For genuinely ambiguous cases, `detectChromaLexerWithAnalyze` (used by `RenderCodeSlowGuess`/`RenderFullFile`) falls back to `go-enry`'s content-based language analysis — this is intentionally slower and reserved for cases (e.g. full file view) where the extra cost is acceptable, unlike inline code-fence highlighting during Markdown rendering which always has an explicit language hint.
+
+### Rendering Highlighted Code
+
+`RenderCodeByLexer` tokenizes source with the resolved Chroma lexer and formats it with the Chroma HTML formatter:
+
+```go
+func RenderCodeByLexer(lexer chroma.Lexer, code string) template.HTML {
+	formatter := chromahtml.New(chromahtml.WithClasses(true), chromahtml.WithLineNumbers(false), chromahtml.PreventSurroundingPre(true))
+	iterator, err := lexer.Tokenise(nil, code)
+	...
+	err = formatter.Format(htmlBuf, globalVars().githubStyles, iterator)
+	...
+}
+```
+
+- `WithClasses(true)` emits CSS classes (e.g. `<span class="k">`) rather than inline styles, so the actual colors come from Gitea's CSS themes, not Chroma — the `githubStyles` style object passed to `Format` is a placeholder required by the Chroma API but has no visible effect on the live site.
+- `PreventSurroundingPre(true)` — the caller (e.g. the Markdown `highlightingRenderer`, or `orgmode`'s `HighlightCodeBlock`) wraps the output in its own `<pre><code class="chroma language-X">` shell so the markup/highlighting layers can add their own container classes and attributes.
+- A **1 MiB (`sizeLimit`) cutoff** disables highlighting for very large files/blocks — beyond that, content is HTML-escaped and shown as plain text (`renderPlainText` / `RenderFullFile`'s `LanguagePlaintext` short-circuit) purely for performance.
+- `UnsafeSplitHighlightedLines` splits the highlighted HTML back into per-line chunks (careful about not breaking mid-tag across a `\n`) so file-view/blame UIs can render line-by-line with line numbers, "copy line", etc.
+
+## Emoji Processing
+
+Emoji handling happens in the **HTML post-processing** stage (`modules/markup/html_emoji.go`), which runs for any renderer whose `NeedPostProcess()` is `true`. Two processors are registered (see `PostProcessDefault`/`emojiProcessors` in `html.go`):
+
+1. **`emojiProcessor`** — scans text nodes for actual Unicode emoji characters (`emoji.FindEmojiSubmatchIndex`) and wraps each one in `<span class="emoji" aria-label="...">` for consistent styling/accessibility (`modules/emoji` package resolves the emoji's description).
+2. **`emojiShortCodeProcessor`** — scans for GitHub-style shortcodes matching `:[-+\w]+:` (e.g. `:smile:`, `:+1:`) and, if the alias resolves via `emoji.FromAlias`, replaces the text with the same emoji `<span>`. Custom, admin-configured emoji (`setting.UI.CustomEmojisMap`) are instead rendered as `<span class="emoji"><img src=".../assets/img/emoji/<alias>.png"></span>` via `createCustomEmoji`.
+
+Guardrails baked into the shortcode processor:
+
+- A shortcode immediately preceded by a backtick is skipped, so `` `:smile:` `` inside an *unclosed* inline code span isn't converted.
+- A shortcode immediately followed by another `:`, a letter, or a digit is skipped, to avoid false positives like `:something_not_an_emoji:_suffix`.
+
+```go
+func emojiShortCodeProcessor(ctx *RenderContext, node *html.Node) {
+	...
+	alias = strings.Trim(alias, ":")
+	converted := emoji.FromAlias(alias)
+	if converted != nil {
+		replaceContent(node, m[0], m[1], createEmoji(ctx, converted.Emoji, converted.Description))
+	} else if _, exist := setting.UI.CustomEmojisMap[alias]; exist {
+		replaceContent(node, m[0], m[1], createCustomEmoji(ctx, alias))
+	}
+}
+```
+
+Because emoji processing walks the parsed DOM tree (via `golang.org/x/net/html`) rather than raw text, it composes safely with the other post-processors (issue/PR linking, `@mention` linking, commit-hash linking, bare URL linking) that all run in the same `PostProcessDefault` pass, in this order:
+
+```go
+procs := []processor{
+	fullIssuePatternProcessor,
+	comparePatternProcessor,
+	codePreviewPatternProcessor,
+	fullHashPatternProcessor,
+	shortLinkProcessor,
+	linkProcessor,
+	mentionProcessor,
+	issueIndexPatternProcessor,
+	commitCrossReferencePatternProcessor,
+	hashCurrentPatternProcessor,
+	emailAddressProcessor,
+	emojiProcessor,
+	emojiShortCodeProcessor,
+}
+```
+
+`PostProcessDefault` output is what ultimately gets piped into the sanitizer stage in the rendering pipeline diagram above.
+
+## Charset & Encoding Detection (`modules/charset`)
+
+Before content even reaches a markup renderer, Gitea needs to know whether raw file bytes are valid UTF-8 or some legacy encoding (Latin-1, Shift-JIS, GBK, etc.), so that non-UTF-8 repository files can still be displayed correctly. `modules/charset/charset.go` provides:
+
+```go
+func DetectEncoding(content []byte) (encoding string, _ error)
+
+func ToUTF8(content []byte, opts ConvertOpts) []byte
+func ToUTF8WithFallback(content []byte, opts ConvertOpts) []byte
+func ToUTF8WithFallbackReader(rd io.Reader, opts ConvertOpts) io.Reader
+```
+
+- `DetectEncoding` first checks whether the content is already valid UTF-8 (careful to tolerate a truncated multi-byte character at the very end of a prefetch buffer), then falls back to [`github.com/gogs/chardet`](https://github.com/gogs/chardet) for statistical charset detection.
+- `ToUTF8`/`ToUTF8WithFallback` use `golang.org/x/net/html/charset` + `golang.org/x/text/transform` to decode the detected encoding into UTF-8, with configurable behavior for decode errors (`ErrorReplacement` bytes, or `ErrorReturnOrigin` to bail out and keep the original bytes unmodified) via `ConvertOpts`.
+- A UTF-8 byte-order-mark (BOM) is stripped by default (`maybeRemoveBOM`) unless `ConvertOpts.KeepBOM` is set.
+- `ToUTF8WithFallbackReader` only prefetches `ToUTF8WithFallbackReaderPrefetchSize` (16 KiB) bytes to sniff the encoding, then streams the rest through a `transform.Reader`, so large files aren't fully buffered just to determine encoding — mirroring the streaming design of the render pipeline itself.
+
+The package also includes `ambiguous.go`/`escape*.go`, which power Gitea's "invisible/ambiguous Unicode character" highlighting in diffs and file views (a security feature to reveal homoglyph attacks and invisible characters), though that is a display concern layered on top of, rather than part of, the core render pipeline.
+
+Charset normalization typically happens **before** a renderer is even invoked (e.g. when a repository file is read for preview/rendering), ensuring every renderer downstream always receives clean UTF-8 text — this is why none of the individual `Renderer.Render()` implementations documented above need to worry about source encoding themselves.
+
+## End-to-End Example: Rendering a Markdown README
+
+Putting it together, here's what happens when a repository home page needs to render `README.md`:
+
+```mermaid
+sequenceDiagram
+    participant Router as Web Router
+    participant RH as renderhelper.NewRenderContextRepoFile
+    participant Charset as modules/charset
+    participant MU as markup.Render
+    participant MD as markdown.Renderer
+    participant PP as PostProcessDefault
+    participant San as bluemonday Sanitizer
+    Router->>Charset: ToUTF8WithFallback(rawBytes)
+    Router->>RH: build RenderContext (Metas, RelativePath)
+    Router->>MU: Render(rctx, utf8Content, output)
+    MU->>MU: DetectMarkupRendererByReader (or forced "markdown")
+    MU->>MD: Render(ctx, input, pw1)
+    MD->>MD: Goldmark parse + Chroma highlight code fences
+    MD-->>PP: raw HTML (needs post-process)
+    PP->>PP: link issues, mentions, emoji, hashes, URLs
+    PP-->>San: post-processed HTML
+    San->>San: SanitizeReader(renderer="markdown")
+    San-->>Router: final safe HTML
+```
+
+## Related Pages
+
+- [Core Modules Overview](README.md)
+- [Web Routers](../06-web-routers/README.md) — where rendered markup is served for repo files, issues, wiki pages
+- [Services](../08-services/README.md) — render helpers that build `RenderContext`s for different surfaces
+- [REST API](../07-rest-api/README.md) — `/markup` and `/markdown` API endpoints backed by `routers/common/markup.go`

@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "issueId": "PSMA-NEW",
+    "projectKey": "PSMA",
+    "baseUrl": "https://psljira2.atlassian.net"
+  },
+  "issues": [
+    {
+      "ref": "epic-1",
+      "issueType": "Epic",
+      "summary": "Add wrap-text toggle to Markdown inline code blocks",
+      "description": "Implements go-gitea/gitea#35314. Adds a client-side 'Toggle code wrap' button next to the existing copy-code button on every rendered Markdown code block, using the already-shipped .code-overflow-wrap/.code-overflow-scroll CSS classes (web_src/css/markup/content.css lines 377-392), with a localUserSettings-backed persisted preference. Prior art: draft PR go-gitea/gitea#35529 (unmerged).",
+      "labels": ["prd-generated"],
+      "parentRef": null,
+      "dependsOn": [],
+      "fields": {}
+    },
+    {
+      "ref": "story-1",
+      "issueType": "Story",
+      "summary": "Shared code-block-button module, icon, and locale key",
+      "description": "Refactor codecopy.ts into a shared button-row module (codeblocks.ts) and add the new material-wrap-text icon plus code_toggle_wrap locale string needed by the wrap toggle.\n\nCode touchpoints:\n- web_src/js/markup/codecopy.ts -> web_src/js/markup/codeblocks.ts\n- public/assets/img/svg/material-wrap-text.svg, web_src/svg/material-wrap-text.svg\n- web_src/js/svg.ts\n- options/locale/locale_en-US.json\n- templates/base/head_script.tmpl\n\nAcceptance criteria: makeCodeBlockButton() helper exported and used by the existing copy button with no behavior change; new icon renders via svg('material-wrap-text'); window.config.i18n.code_toggle_wrap resolves to the new locale string.",
+      "labels": ["prd-generated"],
+      "parentRef": "epic-1",
+      "dependsOn": [],
+      "fields": {}
+    },
+    {
+      "ref": "task-1",
+      "issueType": "Task",
+      "summary": "Rename codecopy.ts to codeblocks.ts and generalize the button helper",
+      "description": "Rename web_src/js/markup/codecopy.ts to codeblocks.ts, generalize makeCodeCopyButton into makeCodeBlockButton, update the import in web_src/js/markup/content.ts.\n\nCode touchpoints: web_src/js/markup/codecopy.ts, web_src/js/markup/content.ts",
+      "labels": ["prd-generated"],
+      "parentRef": "story-1",
+      "dependsOn": [],
+      "fields": {}
+    },
+    {
+      "ref": "task-2",
+      "issueType": "Task",
+      "summary": "Add material-wrap-text icon and register it in svg.ts",
+      "description": "Add material-wrap-text.svg under public/assets/img/svg/ and web_src/svg/, register in web_src/js/svg.ts alongside the existing octicon-copy entry (see svg.ts lines 25 and 114).\n\nCode touchpoints: web_src/js/svg.ts, public/assets/img/svg/material-wrap-text.svg, web_src/svg/material-wrap-text.svg",
+      "labels": ["prd-generated"],
+      "parentRef": "story-1",
+      "dependsOn": ["task-1"],
+      "fields": {}
+    },
+    {
+      "ref": "task-3",
+      "issueType": "Task",
+      "summary": "Add code_toggle_wrap locale key",
+      "description": "Add code_toggle_wrap key to options/locale/locale_en-US.json near the existing copy_success key (line 104).\n\nCode touchpoints: options/locale/locale_en-US.json",
+      "labels": ["prd-generated"],
+      "parentRef": "story-1",
+      "dependsOn": ["task-2"],
+      "fields": {}
+    },
+    {
+      "ref": "task-4",
+      "issueType": "Task",
+      "summary": "Expose code_toggle_wrap via window.config.i18n",
+      "description": "Wire the new locale key into templates/base/head_script.tmpl following the existing pattern: copy_success: {{ctx.Locale.Tr \"copy_success\"}} (line 27).\n\nCode touchpoints: templates/base/head_script.tmpl",
+      "labels": ["prd-generated"],
+      "parentRef": "story-1",
+      "dependsOn": ["task-3"],
+      "fields": {}
+    },
+    {
+      "ref": "story-2",
+      "issueType": "Story",
+      "summary": "Wrap-toggle click behavior and persistence",
+      "description": "Implement the click handler that toggles .code-overflow-wrap/.code-overflow-scroll classes on .code-block-container and persists the preference via localUserSettings (web_src/js/modules/user-settings.ts) instead of raw localStorage.\n\nCode touchpoints: web_src/js/markup/codeblocks.ts, web_src/js/modules/user-settings.ts, web_src/js/markup/content.ts\n\nAcceptance criteria: clicking the button toggles classes with no page reload; preference persists across reload via localUserSettings.getBoolean/setBoolean; no raw localStorage calls.",
+      "labels": ["prd-generated"],
+      "parentRef": "epic-1",
+      "dependsOn": ["story-1"],
+      "fields": {}
+    },
+    {
+      "ref": "task-5",
+      "issueType": "Task",
+      "summary": "Implement wrap-toggle button and class toggle behavior",
+      "description": "Implement the wrap-toggle button and its click handler (class toggle on .code-block-container) in codeblocks.ts, wired via content.ts's initMarkupContent().\n\nCode touchpoints: web_src/js/markup/codeblocks.ts, web_src/js/markup/content.ts",
+      "labels": ["prd-generated"],
+      "parentRef": "story-2",
+      "dependsOn": ["task-4"],
+      "fields": {}
+    },
+    {
+      "ref": "task-6",
+      "issueType": "Task",
+      "summary": "Persist wrap preference via localUserSettings",
+      "description": "Persist the toggle state using localUserSettings.getBoolean('wrap-markup-code') / setBoolean(...), replacing PR #35529's raw localStorage prototype. Required for ESLint no-restricted-globals compliance.\n\nCode touchpoints: web_src/js/modules/user-settings.ts, web_src/js/markup/codeblocks.ts",
+      "labels": ["prd-generated"],
+      "parentRef": "story-2",
+      "dependsOn": ["task-5"],
+      "fields": {}
+    },
+    {
+      "ref": "task-7",
+      "issueType": "Task",
+      "summary": "Apply stored wrap preference on markup content init",
+      "description": "On initMarkupContent()'s .markup selector fan-out, read the stored preference and pre-apply the correct class to avoid a flash of the wrong wrap state.\n\nCode touchpoints: web_src/js/markup/content.ts",
+      "labels": ["prd-generated"],
+      "parentRef": "story-2",
+      "dependsOn": ["task-6"],
+      "fields": {}
+    },
+    {
+      "ref": "story-3",
+      "issueType": "Story",
+      "summary": "Button-row CSS styling",
+      "description": "Rename/extend the copy-button CSS into a shared button-row stylesheet with active/inactive state styling for the wrap toggle.\n\nCode touchpoints: web_src/css/markup/codecopy.css -> codeblocks.css, web_src/css/markup/content.css (line 532)\n\nAcceptance criteria: copy and wrap buttons render in a consistent flex row; hover-to-reveal (auto-hide-control) behavior unchanged; toggle button visually indicates active/inactive state.",
+      "labels": ["prd-generated"],
+      "parentRef": "epic-1",
+      "dependsOn": ["story-1"],
+      "fields": {}
+    },
+    {
+      "ref": "task-8",
+      "issueType": "Task",
+      "summary": "Rename codecopy.css to codeblocks.css and add button-row layout",
+      "description": "Rename web_src/css/markup/codecopy.css to codeblocks.css, add .code-block-buttons flex container rules.\n\nCode touchpoints: web_src/css/markup/codecopy.css",
+      "labels": ["prd-generated"],
+      "parentRef": "story-3",
+      "dependsOn": ["task-1"],
+      "fields": {}
+    },
+    {
+      "ref": "task-9",
+      "issueType": "Task",
+      "summary": "Add data-active button state styling",
+      "description": "Add [data-active=\"true\"|\"false\"] button state styling for the wrap toggle button.\n\nCode touchpoints: web_src/css/markup/codeblocks.css",
+      "labels": ["prd-generated"],
+      "parentRef": "story-3",
+      "dependsOn": ["task-8"],
+      "fields": {}
+    },
+    {
+      "ref": "story-4",
+      "issueType": "Story",
+      "summary": "Mermaid button-row integration",
+      "description": "Update Mermaid's own control buttons (zoom-in/reset/zoom-out) to use the shared button-row helper/styling for visual consistency with the new copy/wrap buttons.\n\nCode touchpoints: web_src/js/markup/mermaid.ts (lines ~206-210)\n\nAcceptance criteria: Mermaid control buttons render with shared button styling; no change to pan/zoom/reset behavior.",
+      "labels": ["prd-generated"],
+      "parentRef": "epic-1",
+      "dependsOn": ["story-2", "story-3"],
+      "fields": {}
+    },
+    {
+      "ref": "task-10",
+      "issueType": "Task",
+      "summary": "Update mermaid.ts controls to use shared button helper",
+      "description": "Update mermaid.ts control button markup/creation to call the shared makeCodeBlockButton() helper from codeblocks.ts.\n\nCode touchpoints: web_src/js/markup/mermaid.ts",
+      "labels": ["prd-generated"],
+      "parentRef": "story-4",
+      "dependsOn": ["task-7", "task-9"],
+      "fields": {}
+    },
+    {
+      "ref": "story-5",
+      "issueType": "Story",
+      "summary": "Tests and regression validation",
+      "description": "Add/execute tests covering the new wrap toggle and verify no regressions in existing code-block rendering.\n\nCode touchpoints: new frontend test (e.g. web_src/js/markup/codeblocks.test.ts), modules/markup/markdown/markdown_test.go, templates/devtest/markup-render.tmpl\n\nAcceptance criteria: all PRD acceptance criteria pass; ESLint no-restricted-globals check passes; markdown_test.go:611 assertion on code-overflow-scroll output remains valid; devtest page still renders both static wrap states correctly.",
+      "labels": ["prd-generated"],
+      "parentRef": "epic-1",
+      "dependsOn": ["story-2", "story-3", "story-4"],
+      "fields": {}
+    },
+    {
+      "ref": "task-11",
+      "issueType": "Task",
+      "summary": "Add unit/E2E test for wrap-toggle behavior and persistence",
+      "description": "Add unit/E2E test for wrap-toggle click behavior and persistence.\n\nCode touchpoints: new test file under web_src/js/markup/",
+      "labels": ["prd-generated"],
+      "parentRef": "story-5",
+      "dependsOn": ["task-7", "task-9"],
+      "fields": {}
+    },
+    {
+      "ref": "task-12",
+      "issueType": "Task",
+      "summary": "Regression check: devtest template and Go renderer tests",
+      "description": "Run regression check against templates/devtest/markup-render.tmpl and modules/markup/markdown/markdown_test.go to confirm server-side output and static demo page are unaffected.\n\nCode touchpoints: templates/devtest/markup-render.tmpl, modules/markup/markdown/markdown_test.go",
+      "labels": ["prd-generated"],
+      "parentRef": "story-5",
+      "dependsOn": ["task-11"],
+      "fields": {}
+    },
+    {
+      "ref": "task-13",
+      "issueType": "Task",
+      "summary": "ESLint lint compliance check for localStorage restriction",
+      "description": "Run ESLint (no-restricted-globals) to confirm no raw localStorage usage was introduced by the persistence implementation.\n\nCode touchpoints: tools/eslint-rules (project-wide lint config)",
+      "labels": ["prd-generated"],
+      "parentRef": "story-5",
+      "dependsOn": ["task-6"],
+      "fields": {}
+    }
+  ]
+}

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Input Handling & XSS Defense</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../03-attack-surface/README.html">Attack Surface</a> &rsaquo; Input Handling & XSS Defense</div>
+<h1>Input Handling & XSS Defense</h1>
+<h1 id="input-handling-xss-defense">Input Handling &amp; XSS Defense</h1>
+<p>Gitea renders an enormous amount of attacker-influenced content as HTML: repository READMEs,
+wiki pages, issue/PR/comment bodies, commit messages, CSV files, Jupyter notebooks, terminal
+session recordings, and — via admin-configured external tools — essentially arbitrary
+third-party output. This page synthesizes how that pipeline is built, where the actual XSS
+defenses live, and where a scanner operator (Trivy/opengrep) should focus attention when
+looking for injection or sanitizer-bypass issues. It is based entirely on
+<a href="../../docs/09-core-modules/markup-engines.html"><code>docs/09-core-modules/markup-engines.md</code></a>.</p>
+<blockquote>
+<p><strong>Why this page exists for a scanner operator:</strong> almost every stored-XSS class of finding in
+a Git hosting product like Gitea will trace back to either (a) a new renderer/format that
+forgets to route through the shared sanitizer, or (b) a custom/admin-configured sanitizer
+rule or external-renderer content mode that weakens the default policy. The sections below
+map out exactly where those decision points are.</p>
+</blockquote>
+<h2 id="the-rendering-pipeline-at-a-glance">The Rendering Pipeline at a Glance<a href="#the-rendering-pipeline-at-a-glance" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>All markup formats — Markdown, Org-mode, CSV/TSV, ANSI terminal sessions, Jupyter notebooks,
+and pluggable external renderers — flow through one shared orchestration function,
+<code>markup.RenderWithRenderer</code> (<code>modules/markup/render.go</code>), described in the
+<a href="../../docs/09-core-modules/markup-engines.html">Markup Rendering Engines docs</a>:</p>
+<pre class="mermaid">flowchart LR
+    A["Raw content<br/>(file bytes / DB text)"] --> B["Format detection<br/>DetectRendererTypeByFilename /<br/>DetectRendererTypeByPrefetch"]
+    B --> C["Renderer plugin<br/>Render(ctx, input, output)"]
+    C --> D{"NeedPostProcess?"}
+    D -- yes --> E["PostProcessDefault<br/>links, mentions, issues,<br/>emoji, hashes, code preview"]
+    D -- no --> F["(skip)"]
+    E --> G{"Sanitizer enabled?"}
+    F --> G
+    G -- yes --> H["SanitizeReader<br/>bluemonday policy"]
+    G -- no --> I["(skip: ExternalRenderer<br/>SanitizerDisabled)"]
+    H --> J["Final HTML output"]
+    I --> J</pre>
+<p>Every registered renderer implements the <code>markup.Renderer</code> interface
+(<code>modules/markup/renderer.go</code>):</p>
+<pre class="highlight"><code class="language-go">type Renderer interface {
+    Name() string // markup format name, also the renderer type, also the external tool name
+    FileNamePatterns() []string
+    SanitizerRules() []setting.MarkupSanitizerRule
+    Render(ctx *RenderContext, input io.Reader, output io.Writer) error
+}</code></pre>
+<p>Two things are worth calling out for a security review of this design:</p>
+<ol>
+<li><strong>Sanitization is opt-out, not opt-in, for built-in renderers.</strong> All built-in renderers
+   (<code>markdown</code>, <code>orgmode</code>, <code>csv</code>, <code>console</code>, <code>jupyter</code>) always pass through <code>SanitizeReader</code>.
+   The <em>only</em> way HTML skips sanitization entirely is via an <code>ExternalRenderer</code> whose
+   <code>GetExternalRendererOptions().SanitizerDisabled</code> is <code>true</code> — i.e., an admin explicitly
+   configured a <code>no-sanitizer</code> or <code>iframe</code> rendering mode for a <code>[markup.*]</code> external tool.</li>
+<li><strong>A renderer chooses its own sanitizer policy via <code>SanitizerRules()</code>.</strong> Renderers that
+   return non-empty rules (<code>console</code>, <code>csv</code>) get a dedicated bluemonday policy layered on top
+   of the shared default; renderers with empty rules (<code>markdown</code>, <code>orgmode</code>) fall back to the
+   single shared default policy. A new/custom renderer that defines <code>SanitizerRules()</code> too
+   permissively (e.g., an unanchored regex, or an element/attribute combination that permits
+   event handlers) is a direct route to stored XSS.</li>
+</ol>
+<h2 id="sanitization-with-bluemonday">Sanitization with bluemonday<a href="#sanitization-with-bluemonday" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>All non-external-renderer HTML — and any HTML re-embedded from an untrusted source inside an
+already-rendered document (see the Jupyter case below) — passes through
+<code>modules/markup/sanitizer*.go</code>, a wrapper around
+<a href="https://github.com/microcosm-cc/bluemonday"><code>github.com/microcosm-cc/bluemonday</code></a>.</p>
+<h3 id="policy-construction">Policy Construction<a href="#policy-construction" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>GetDefaultSanitizer()</code> lazily builds (once, via <code>sync.Once</code>) a <code>Sanitizer</code> holding:</p>
+<pre class="highlight"><code class="language-go">type Sanitizer struct {
+    defaultPolicy     *bluemonday.Policy
+    descriptionPolicy *bluemonday.Policy
+    rendererPolicies  map[string]*bluemonday.Policy // keyed by renderer Name()
+    allowAllRegex     *regexp.Regexp
+}</code></pre>
+<p><code>SanitizeReader</code> looks up a per-renderer policy by name, falling back to the default policy:</p>
+<pre class="highlight"><code class="language-go">func SanitizeReader(r io.Reader, renderer string, w io.Writer) error {
+    policy, exist := GetDefaultSanitizer().rendererPolicies[renderer]
+    if !exist {
+        policy = GetDefaultSanitizer().defaultPolicy
+    }
+    return policy.SanitizeReaderToWriter(r, w)
+}</code></pre>
+<h3 id="default-policy-highlights-sanitizer_defaultgo">Default Policy Highlights (<code>sanitizer_default.go</code>)<a href="#default-policy-highlights-sanitizer_defaultgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The default policy starts from <code>bluemonday.UGCPolicy()</code> (a "user generated content" baseline)
+and is then extended with a number of Gitea-specific allowances:</p>
+<table>
+<thead>
+<tr>
+<th>Allowance</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SVG icon attributes (<code>viewBox</code>, <code>width</code>, <code>height</code>, <code>aria-hidden</code>, <code>data-attr-class</code>, path <code>d</code>/<code>fill-rule</code>)</td>
+<td>Inline octicons</td>
+</tr>
+<tr>
+<td><code>&lt;input type="checkbox"&gt;</code> with <code>checked</code>/<code>disabled</code>/<code>data-source-position</code></td>
+<td>Markdown task lists</td>
+</tr>
+<tr>
+<td><code>span.class</code> matching <code>^\w{0,2}$</code></td>
+<td>Chroma's short (1–2 letter) syntax-highlighting class names</td>
+</tr>
+<tr>
+<td><code>span[data-line-number]</code></td>
+<td>Code preview line numbers</td>
+</tr>
+<tr>
+<td>Org-mode list status classes (<code>unchecked</code>/<code>checked</code>/<code>indeterminate</code>)</td>
+<td>Org-mode task lists</td>
+</tr>
+<tr>
+<td><code>color</code> / <code>background-color</code> inline styles on a handful of text elements</td>
+<td>Rich text styling</td>
+</tr>
+<tr>
+<td><code>&lt;video&gt;</code> playback attributes, <code>&lt;picture&gt;/&lt;source media/srcset&gt;</code></td>
+<td>Responsive/theme-aware media</td>
+</tr>
+<tr>
+<td>Large MathML element/attribute allowlist</td>
+<td>The <code>math</code> Goldmark extension</td>
+</tr>
+<tr>
+<td>Broad "generally safe" attribute/element allowlist modeled on <a href="https://github.com/jch/html-pipeline">html-pipeline</a></td>
+<td>General Markdown/HTML content</td>
+</tr>
+</tbody>
+</table>
+<p>Each entry above is a place where the allowlist was deliberately widened past the UGC
+baseline — a useful checklist when reasoning about whether a new sanitizer rule (custom or
+built-in) reintroduces an injection vector (e.g., an element/attribute pairing that could
+carry <code>on*</code> event handlers, or an inline style property that enables CSS-based data
+exfiltration).</p>
+<h3 id="url-scheme-handling-the-key-xss-control">URL Scheme Handling — the Key XSS Control<a href="#url-scheme-handling-the-key-xss-control" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The single most security-relevant piece of the default policy is its URL scheme handling:</p>
+<ul>
+<li>If an admin configures <code>setting.Markdown.CustomURLSchemes</code>, <strong>only</strong> those schemes plus
+  <code>http</code>/<code>https</code> are allowed on links/images.</li>
+<li>Otherwise, <strong>all schemes are allowed by default</strong> — except <code>javascript:</code>, <code>vbscript:</code>, and
+  <code>data:</code>, which are <strong>explicitly and unconditionally blocked regardless of configuration</strong>:</li>
+</ul>
+<pre class="highlight"><code class="language-go">disallowScheme := func(*url.URL) bool { return false }
+policy.AllowURLSchemeWithCustomPolicy("javascript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("vbscript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("data", disallowScheme)</code></pre>
+<blockquote>
+<p><strong>Scanner note:</strong> because the <em>default</em> posture is "allow-all-except-blocklist" rather than
+a strict allowlist, any regression that removes or narrows this specific blocklist (or any
+new markup extension that constructs <code>href</code>/<code>src</code> attributes through a different code path
+that bypasses this policy) is a high-value target to check for during a code review or SAST
+pass. <code>data:</code> in particular is worth double-checking on any newly added element type, since
+<code>data:text/html</code> URIs are a classic sanitizer-bypass vector if a future rule accidentally
+re-allows the <code>data</code> scheme on a specific element.</p>
+</blockquote>
+<h3 id="admin-configured-custom-rules-must-be-anchored">Admin-Configured Custom Rules Must Be Anchored<a href="#admin-configured-custom-rules-must-be-anchored" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Both per-renderer (<code>SanitizerRules()</code>) and admin-configured (<code>[markup.sanitizer.*]</code> ini
+sections, surfaced as <code>setting.ExternalSanitizerRules</code>) rules are parsed by
+<code>addSanitizerRules</code> (<code>sanitizer_custom.go</code>), which <strong>enforces that any <code>Regexp</code> rule is fully
+anchored</strong> (<code>^...$</code>) before it's allowed to take effect:</p>
+<pre class="highlight"><code class="language-go">if !strings.HasPrefix(rule.Regexp, "^") || !strings.HasSuffix(rule.Regexp, "$") {
+    panic("Markup sanitizer rule regexp must start with ^ and end with $ to be strict")
+}
+policy.AllowAttrs(rule.AllowAttr).Matching(regexp.MustCompile(rule.Regexp)).OnElements(rule.Element)</code></pre>
+<p>This is a deliberate guard against a common bluemonday misconfiguration class: an
+unanchored regex (e.g. <code>class</code> instead of <code>^class$</code>) can accidentally match attribute values
+that merely <em>contain</em> the intended substring, silently permitting attacker-controlled
+surrounding content. Anything that bypasses this <code>panic()</code> check — e.g., a code path that
+builds a <code>bluemonday.Policy</code> directly instead of going through <code>addSanitizerRules</code> — should be
+treated as a sanitizer-bypass risk.</p>
+<h3 id="a-stricter-policy-for-plain-text-fields">A Stricter Policy for Plain-Text Fields<a href="#a-stricter-policy-for-plain-text-fields" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>There is also a <strong>separate, stricter policy</strong>, <code>sanitizer_description.go</code>'s
+<code>descriptionPolicy</code>, used for short plain-text fields like repository/organization
+descriptions, where almost no HTML should survive at all. If a form field is <em>supposed</em> to be
+plain text (bios, descriptions, display names) but is found rendering through the general
+<code>defaultPolicy</code> instead of <code>descriptionPolicy</code>, that's a meaningful sanitizer-selection bug
+worth flagging.</p>
+<h2 id="per-renderer-risk-notes">Per-Renderer Risk Notes<a href="#per-renderer-risk-notes" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Renderer</th>
+<th>Post-processed?</th>
+<th>Own <code>SanitizerRules()</code>?</th>
+<th>Notable risk surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>markdown</code> (<code>modules/markup/markdown</code>)</td>
+<td>Yes</td>
+<td>No (uses shared default policy)</td>
+<td>Built on <code>goldmark</code> with <code>html.WithUnsafe()</code> enabled at the Goldmark level — raw HTML is allowed <em>through Goldmark</em>, meaning bluemonday sanitization is the <strong>only</strong> backstop against injected HTML in Markdown source.</td>
+</tr>
+<tr>
+<td><code>orgmode</code> (<code>modules/markup/orgmode</code>)</td>
+<td>Yes</td>
+<td>No</td>
+<td>Chroma highlighting is plugged into Org's callback; a panicking highlighter is recovered/logged rather than failing the render.</td>
+</tr>
+<tr>
+<td><code>csv</code> (<code>modules/markup/csv</code>)</td>
+<td>No</td>
+<td>Yes — allowlists <code>table.data-table</code>, <code>th/td.line-num</code> classes</td>
+<td>Cells are escaped with <code>html.EscapeString</code> before insertion; size/row limits (<code>setting.UI.CSV.MaxFileSize</code> / <code>MaxRows</code>) guard against resource exhaustion, not just XSS.</td>
+</tr>
+<tr>
+<td><code>console</code> (<code>modules/markup/console</code>)</td>
+<td>No</td>
+<td>Yes — allowlists <code>term-fgNN</code>/<code>term-bgNN</code>/<code>term-container</code> span classes</td>
+<td>Content-sniffs plain text for ANSI escape sequences to auto-claim files without a <code>.sh-session</code> extension — a content-detection heuristic worth fuzzing.</td>
+</tr>
+<tr>
+<td><code>jupyter</code> (<code>modules/markup/jupyter</code>)</td>
+<td>Yes</td>
+<td>No (delegates Markdown cells to <code>markdown</code>)</td>
+<td>See dedicated section below — notebook <code>text/html</code> outputs are a classic XSS vector and are explicitly re-sanitized.</td>
+</tr>
+<tr>
+<td><code>external</code> (<code>modules/markup/external</code>)</td>
+<td>Configurable</td>
+<td>Configurable</td>
+<td>See dedicated section below — the one place sanitization can be turned off entirely.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="jupyter-notebooks-explicit-re-sanitization-of-embedded-html">Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML<a href="#jupyter-notebooks-explicit-re-sanitization-of-embedded-html" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Jupyter notebook cell outputs can contain arbitrary MIME types, including raw <code>text/html</code>.
+The renderer's <code>text/html</code> mime handler contains an explicit, commented defensive measure —
+it calls <code>markup.Sanitize()</code> (the same default bluemonday policy) on the embedded HTML before
+writing it into the page, specifically because unrestricted CSS classes/attributes like
+<code>.link-action</code>/<code>data-fetch-xxx</code> can be abused to trigger POST requests from within rendered
+content:</p>
+<pre class="highlight"><code class="language-go">{"text/html", func(w htmlutil.HTMLWriter, d string) error {
+    // don't allow custom CSS classes/attributes: ".link-action"/"data-fetch-xxx" can send POST requests -&gt; XSS
+    w.WriteFormat(`&lt;div class="cell-output-html"&gt;%s&lt;/div&gt;`, markup.Sanitize(d))
+    return w.Err()
+}},</code></pre>
+<p>This is a good template for reviewing any <em>other</em> place in the codebase that re-embeds
+HTML fragments inside already-rendered output: the pattern to look for is "is <code>markup.Sanitize</code>
+(or <code>SanitizeReader</code>) called on this specific fragment right before it's written," not just "is
+the overall document sanitized somewhere upstream."</p>
+<h3 id="external-renderers-where-sanitization-can-be-turned-off">External Renderers: Where Sanitization Can Be Turned Off<a href="#external-renderers-where-sanitization-can-be-turned-off" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/markup/external</code> is structurally different from the other renderers: instead of one
+fixed renderer, <code>RegisterRenderers()</code> (invoked once at start-up from <code>routers/init.go</code>, after
+config is loaded) registers:</p>
+<ol>
+<li>Three fixed, process-free "frontend" renderers that just tell the web UI to load a
+   client-side viewer/iframe: <code>openapi-swagger</code>, <code>viewer-3d</code>, <code>asciicast</code>.</li>
+<li>One <code>Renderer</code> per <code>[markup.*]</code> section in <code>app.ini</code>, each of which shells out to an
+   <strong>arbitrary, admin-configured command</strong> and captures its stdout as rendered HTML.</li>
+</ol>
+<p>Each external renderer's <code>RenderContentMode</code> setting (<code>sanitized</code> | <code>no-sanitizer</code> | <code>iframe</code>)
+maps directly to how much trust is placed in that command's output:</p>
+<pre class="highlight"><code class="language-go">func (p *Renderer) GetExternalRendererOptions() (ret markup.ExternalRendererOptions) {
+    ret.SanitizerDisabled = p.RenderContentMode == setting.RenderContentModeNoSanitizer || p.RenderContentMode == setting.RenderContentModeIframe
+    ret.DisplayInIframe = p.RenderContentMode == setting.RenderContentModeIframe
+    ret.ContentSandbox = p.RenderContentSandbox
+    return ret
+}</code></pre>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Sanitized?</th>
+<th>Isolation</th>
+<th>Risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sanitized</code> (default)</td>
+<td>Yes — still passes through bluemonday</td>
+<td>Inlined into the page</td>
+<td>Lowest risk; equivalent to a built-in renderer.</td>
+</tr>
+<tr>
+<td><code>no-sanitizer</code></td>
+<td><strong>No</strong> — bypasses all HTML sanitization</td>
+<td>Inlined into the page</td>
+<td><strong>Highest risk.</strong> Only appropriate for fully trusted, well-audited commands; any injectable input to that command becomes a direct stored-XSS path.</td>
+</tr>
+<tr>
+<td><code>iframe</code></td>
+<td>No (implied, since output is never inlined)</td>
+<td>Isolated — rendered inside a sandboxed <code>&lt;iframe data-src="..."&gt;</code> served from a dedicated <code>/owner/repo/render/...</code> route (<code>RenderIFrame</code> in <code>render.go</code>)</td>
+<td>Mitigated by browser sandboxing (<code>ContentSandbox</code>) rather than server-side sanitization; still worth checking the sandbox attribute value and the served route's own headers (CSP, <code>X-Frame-Options</code>) during a review.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>⚠️ Source-flagged warning:</strong> the markup-engines documentation explicitly calls out that
+because <code>no-sanitizer</code> mode bypasses all HTML sanitization, <strong>administrators should only
+configure it for well-audited, trusted rendering commands.</strong> For a Trivy/opengrep review of
+a specific Gitea deployment, enumerate every <code>[markup.*]</code> section in that instance's
+<code>app.ini</code> and check <code>RENDER_CONTENT_MODE</code> — any <code>no-sanitizer</code> renderer wired to a command
+that processes attacker-influenced input (e.g., anything derived from repository content) is
+a priority manual-review target, not something a generic scanner will catch on its own.</p>
+</blockquote>
+<h2 id="syntax-highlighting-charset-handling-adjacent-hardening">Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)<a href="#syntax-highlighting-charset-handling-adjacent-hardening" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Two supporting subsystems reduce the attack surface further, per
+<a href="../../docs/09-core-modules/markup-engines.html">the markup engines docs</a>:</p>
+<ul>
+<li><strong>Chroma-based syntax highlighting</strong> (<code>modules/highlight</code>) is shared by <code>markdown</code>,
+  <code>orgmode</code>, and <code>jupyter</code>. Highlighting emits short (1–2 letter) <code>span.class</code> values that the
+  default sanitizer policy specifically allowlists (<code>^\w{0,2}$</code>) — a tight, low-risk allowance
+  by design rather than an open class allowlist.</li>
+<li><strong>Charset/encoding normalization</strong> (<code>modules/charset</code>) runs <em>before</em> any renderer executes,
+  stripping BOMs and converting content to UTF-8 via a streaming <code>transform.Reader</code> (only the
+  leading 16 KiB is buffered to sniff encoding). This ensures no individual renderer has to
+  reason about source encoding — and, indirectly, removes a class of encoding-confusion bugs
+  that have historically been used to smuggle payloads past naive sanitizers.</li>
+<li>The same <code>modules/markup/escape*.go</code>/<code>ambiguous.go</code> machinery that powers "invisible/ambiguous
+  Unicode character" highlighting in diffs is a <em>display</em> security feature — it reveals
+  homoglyph/invisible-character attacks to human reviewers — but it is layered on top of,
+  rather than part of, the sanitization pipeline itself, and does not by itself prevent
+  injection.</li>
+</ul>
+<h2 id="trivy-opengrep-focus-checklist">Trivy / opengrep Focus Checklist<a href="#trivy-opengrep-focus-checklist" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Use this list to translate the synthesis above into concrete scanning/review actions:</p>
+<ul>
+<li>[ ] <strong>Grep for new <code>Renderer</code> implementations</strong> and confirm each either has empty
+      <code>SanitizerRules()</code> (falls back to the shared default policy) or an intentionally scoped,
+      reviewed rule set — not an ad hoc, overly broad allowlist.</li>
+<li>[ ] <strong>Check any custom <code>[markup.sanitizer.*]</code> config</strong> shipped with a deployment for
+      unanchored regexes or over-broad <code>AllowAttrs</code>/<code>OnElements</code> combinations (though the
+      <code>addSanitizerRules</code> panic should already reject unanchored patterns at load time).
+      Opengrep-class SAST is well-suited to flag any <em>new</em> code path that builds a
+      <code>bluemonday.Policy</code> without going through <code>addSanitizerRules</code>.</li>
+<li>[ ] <strong>Enumerate <code>[markup.*]</code> external renderer sections</strong> in any real deployment's
+      <code>app.ini</code> and flag every <code>RENDER_CONTENT_MODE = no-sanitizer</code> entry for manual review of
+      the wrapped command and its inputs.</li>
+<li>[ ] <strong>Watch for any place raw/<code>text/html</code>-typed content is re-embedded</strong> into an
+      already-rendered document without an explicit <code>markup.Sanitize()</code>/<code>SanitizeReader</code> call
+      immediately before insertion (the Jupyter <code>text/html</code> handler is the reference-correct
+      pattern).</li>
+<li>[ ] <strong>Treat <code>javascript:</code>/<code>vbscript:</code>/<code>data:</code> scheme handling as a regression class</strong>: any
+      diff touching <code>sanitizer_default.go</code>'s <code>AllowURLSchemeWithCustomPolicy</code> calls, or any new
+      code path that emits <code>href</code>/<code>src</code> attributes without going through the shared sanitizer,
+      deserves careful review even if it passes automated scanning.</li>
+<li>[ ] <strong>Confirm <code>setting.Markdown.CustomURLSchemes</code></strong> (if configured for a given deployment)
+      doesn't inadvertently include <code>javascript</code>/<code>vbscript</code>/<code>data</code> — although the source
+      indicates these three are blocked unconditionally regardless of configuration, defense
+      in depth still favors verifying the configured allowlist explicitly.</li>
+</ul>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> — the other half
+  of Gitea's "untrusted content becomes a network/browser primitive" attack surface.</li>
+<li><a href="authorization-permission-model.html">Authorization / Permission Model</a> — who is allowed to
+  submit the content that ultimately flows through this rendering pipeline.</li>
+<li><code>docs/09-core-modules/markup-engines.md</code> — the full source document this page is derived
+  from, including additional detail on renderer registration, file-name/content-sniffing
+  detection, and the end-to-end Markdown README rendering sequence diagram.</li>
+</ul>
+<div class="page-nav">
+<a href="authorization-permission-model.html"><div class="nav-label">← Previous</div><div class="nav-title">Authorization / Permission Model</div></a>
+<a href="ssrf-webhooks-and-outbound-requests.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">SSRF, Webhooks & Outbound Requests</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#the-rendering-pipeline-at-a-glance" class="" data-anchor="the-rendering-pipeline-at-a-glance">The Rendering Pipeline at a Glance</a>
+<a href="#sanitization-with-bluemonday" class="" data-anchor="sanitization-with-bluemonday">Sanitization with bluemonday</a>
+<a href="#policy-construction" class="toc-h3" data-anchor="policy-construction">Policy Construction</a>
+<a href="#default-policy-highlights-sanitizer_defaultgo" class="toc-h3" data-anchor="default-policy-highlights-sanitizer_defaultgo">Default Policy Highlights (sanitizer_default.go)</a>
+<a href="#url-scheme-handling-the-key-xss-control" class="toc-h3" data-anchor="url-scheme-handling-the-key-xss-control">URL Scheme Handling — the Key XSS Control</a>
+<a href="#admin-configured-custom-rules-must-be-anchored" class="toc-h3" data-anchor="admin-configured-custom-rules-must-be-anchored">Admin-Configured Custom Rules Must Be Anchored</a>
+<a href="#a-stricter-policy-for-plain-text-fields" class="toc-h3" data-anchor="a-stricter-policy-for-plain-text-fields">A Stricter Policy for Plain-Text Fields</a>
+<a href="#per-renderer-risk-notes" class="" data-anchor="per-renderer-risk-notes">Per-Renderer Risk Notes</a>
+<a href="#jupyter-notebooks-explicit-re-sanitization-of-embedded-html" class="toc-h3" data-anchor="jupyter-notebooks-explicit-re-sanitization-of-embedded-html">Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML</a>
+<a href="#external-renderers-where-sanitization-can-be-turned-off" class="toc-h3" data-anchor="external-renderers-where-sanitization-can-be-turned-off">External Renderers: Where Sanitization Can Be Turned Off</a>
+<a href="#syntax-highlighting-charset-handling-adjacent-hardening" class="" data-anchor="syntax-highlighting-charset-handling-adjacent-hardening">Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)</a>
+<a href="#trivy-opengrep-focus-checklist" class="" data-anchor="trivy-opengrep-focus-checklist">Trivy / opengrep Focus Checklist</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

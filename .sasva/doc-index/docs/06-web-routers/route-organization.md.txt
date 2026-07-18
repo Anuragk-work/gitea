@@ -1,0 +1,143 @@
+=== FILE: docs/06-web-routers/route-organization.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Route Organization This page maps out how Gitea's HTTP surface is composed at the top level and how the server-rendered web UI (`routers/web`) organizes its route groups internally. It complements [Web Router & Server-Rendered UI](web-routes.md), which drills into the web UI's middleware chain, Git Smart HTTP, `go get`, and federation endpoints in more detail, and [Middleware Chain](middleware-chain.
+
+# Route Organization
+
+This page maps out how Gitea's HTTP surface is composed at the top level and how the
+server-rendered web UI (`routers/web`) organizes its route groups internally. It
+complements [Web Router & Server-Rendered UI](web-routes.md), which drills into the
+web UI's middleware chain, Git Smart HTTP, `go get`, and federation endpoints in more
+detail, and [Middleware Chain](middleware-chain.md), which covers session/CSRF/auth
+wiring.
+
+## Top-level composition (`routers/init.go`)
+
+Everything Gitea serves over HTTP is assembled into a single `*web.Router` in
+`routers.NormalRoutes()`. Each subsystem builds its own router and is `Mount()`-ed at a
+fixed prefix:
+
+```go
+// routers/init.go
+func NormalRoutes() *web.Router {
+	r := web.NewRouter()
+	r.BeforeRouting(common.ProtocolMiddlewares()...)
+	r.AfterRouting(common.MaintenanceModeHandler())
+
+	r.Mount("/", web_routers.Routes())         // server-rendered web UI
+	r.Mount("/api/v1", apiv1.Routes())          // REST API
+	r.Mount("/api/internal", private.Routes())  // internal-only API (INTERNAL_TOKEN)
+
+	r.Post("/-/fetch-redirect", common.FetchRedirectDelegate)
+
+	if setting.Packages.Enabled {
+		r.Mount("/api/packages", packages_router.CommonRoutes())
+		r.Mount("/v2", packages_router.ContainerRoutes()) // OCI container registry
+	}
+
+	if setting.Actions.Enabled {
+		r.Mount("/api/actions", actions_router.Routes("/api/actions"))
+		r.Mount("/api/actions_pipeline", actions_router.ArtifactsRoutes("/api/actions_pipeline"))
+		r.Mount(actions_router.ArtifactV4RouteBase, actions_router.ArtifactsV4Routes(...))
+	}
+
+	r.NotFound(...)
+	return r
+}
+```
+
+A separate, mutually-exclusive entry point, `routers/install.Routes()`, is used
+*instead of* `NormalRoutes()` while `setting.InstallLock` is false (i.e. before the
+install wizard has run) — see [Install & Private Routers](install-and-private.md).
+
+```mermaid
+graph TD
+  Root["/"] -->|Mount /| Web["Web UI router<br/>routers/web.Routes()"]
+  Root -->|Mount /api/v1| API["REST API router<br/>routers/api/v1.Routes()"]
+  Root -->|Mount /api/internal| Internal["Internal API router<br/>routers/private.Routes()<br/>INTERNAL_TOKEN-gated"]
+  Root -->|Mount /api/packages, conditional| Packages["Package registry router"]
+  Root -->|Mount /v2, conditional| OCI["OCI container registry"]
+  Root -->|Mount /api/actions*, conditional| Actions["Actions runner protocol router"]
+  Root -->|Post| FetchRedirect["/-/fetch-redirect"]
+```
+
+## Route-group tree
+
+Within the web UI router (`routers/web/web.go`), `registerWebRoutes()` dispatches on a
+mixture of fixed top-level prefixes and generic catch-all patterns
+(`/{username}`, `/{username}/{reponame}`). The following diagram captures the full
+route-group tree referenced by this documentation set, from the outermost mount points
+down through the web UI's major groups:
+
+```mermaid
+graph TD
+  Root["/"] --> WebUI["Web UI<br/>routers/web.Routes()"]
+  Root --> APIv1["/api/v1<br/>REST API"]
+  Root --> APIInternal["/api/internal<br/>private, INTERNAL_TOKEN"]
+
+  WebUI --> Home["GET / \u2192 Home()"]
+  WebUI --> WellKnown["/.well-known<br/>OIDC discovery, webfinger, nodeinfo, passkeys"]
+  WebUI --> Explore["/explore<br/>repos, users, orgs, code, topics"]
+  WebUI --> User["/user<br/>login, sign up, 2FA, WebAuthn, OpenID, /user/events (SSE)"]
+  WebUI --> UserSettings["/user/settings<br/>profile, security, apps, keys, packages"]
+  WebUI --> OAuthLogin["/login/oauth<br/>authorize, token, userinfo, jwks"]
+  WebUI --> Admin["/-/admin<br/>site admin panel"]
+  WebUI --> Org["/org<br/>create; /org/{org} dashboard, teams, settings"]
+  WebUI --> RepoCreate["/repo<br/>create, migrate"]
+  WebUI --> OwnerDash["/{username}/-<br/>packages, projects, code search (user or org)"]
+  WebUI --> UserPage["/{username}<br/>profile / org landing page, .rss feed"]
+  WebUI --> RepoRoot["/{username}/{reponame}<br/>repo home"]
+  WebUI --> Notifications["/notifications"]
+  WebUI --> Devtest["/devtest (non-prod / e2e only)"]
+  WebUI --> HealthzWeb["/api/healthz (pre-auth, see events-and-healthcheck.md)"]
+
+  RepoRoot --> RepoCode["code: tree, blame, raw, compare"]
+  RepoRoot --> RepoIssuesPulls["/{type:issues|pulls}<br/>shared issue/PR handlers"]
+  RepoRoot --> RepoWiki["/wiki"]
+  RepoRoot --> RepoReleasesTags["/tags, /releases (+ RSS/Atom)"]
+  RepoRoot --> RepoActions["/actions"]
+  RepoRoot --> RepoProjects["/projects"]
+  RepoRoot --> RepoSettings["/settings<br/>collaborators, branches, hooks, LFS, Actions"]
+  RepoRoot --> RepoGitHTTP["Git Smart/Dumb HTTP<br/>info/refs, git-upload-pack, git-receive-pack"]
+  RepoRoot --> RepoLFS["/info/lfs<br/>Git LFS batch API"]
+
+  APIInternal --> Hooks["/hook/{pre,post,proc}-receive<br/>git server hooks"]
+  APIInternal --> Serv["/serv/{none,command}<br/>gitea serv (SSH)"]
+  APIInternal --> Manager["/manager/*<br/>gitea manager CLI"]
+  APIInternal --> InternalRepo["/repo/{owner}/{repo}/info/lfs<br/>SSH-initiated LFS"]
+```
+
+> See [Install & Private Routers](install-and-private.md) for what runs *instead of*
+> this tree before installation, and for the `/api/internal` sub-tree's handlers.
+> See [Events & Healthcheck](events-and-healthcheck.md) for `/user/events` and
+> `/api/healthz`.
+
+## How groups are registered
+
+Gitea's thin `chi` wrapper (`modules/web.Router`) allows repeating the same path
+prefix in multiple `m.Group("/{username}/{reponame}", ...)` calls, each with its own
+middleware chain — this is why repository routes appear as many small groups rather
+than one large one (see the table in [Web Router & Server-Rendered UI](web-routes.md#repo-browsing--settings)
+for the full breakdown). The same pattern is used for:
+
+- **`/org`** — a signed-in-only group for org creation, and a second `/{org}`-scoped
+  group (gated by `context.OrgAssignment`) for dashboards/teams/settings, plus a third,
+  lightweight, `optSignIn` group just for the public members list.
+- **`/{username}`** — the generic catch-all profile/org page is registered near the
+  *end* of `registerWebRoutes()` (after all more specific prefixes like `/explore`,
+  `/user`, `/org`, `/-/admin`, `/repo`) so that chi's route matching gives fixed
+  prefixes priority over the generic `{username}` wildcard.
+- **`/{username}/{reponame}`** — repeated ~15 times across `web.go`, once per
+  functional area (code, issues/pulls, wiki, releases, activity, actions, settings,
+  projects, git HTTP, LFS), each carrying only the middleware that area needs.
+
+## Where to go next
+
+| If you want to... | Go to |
+|---|---|
+| See the exact per-route middleware, handler package, and notes | [Web Router & Server-Rendered UI](web-routes.md) |
+| Understand session/CSRF/auth-context middleware wiring | [Middleware Chain](middleware-chain.md) |
+| See the pre-install router and internal-only API | [Install & Private Routers](install-and-private.md) |
+| See SSE notifications and the health-check endpoint | [Events & Healthcheck](events-and-healthcheck.md) |
+| See the JSON API instead | [REST API](../07-rest-api/README.md) |
+| See how a request is dispatched end-to-end | [Request Lifecycle](../02-architecture/request-lifecycle.md) |

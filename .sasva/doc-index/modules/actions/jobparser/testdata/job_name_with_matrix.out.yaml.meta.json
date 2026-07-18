@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/job_name_with_matrix.out.yaml",
+  "format": "yaml",
+  "size_bytes": 2018,
+  "source_modified": "2026-07-18T06:05:26.860697+00:00",
+  "indexed_at": "2026-07-18T07:39:40.087402+00:00",
+  "text_length": 2018,
+  "line_count": 102
+}

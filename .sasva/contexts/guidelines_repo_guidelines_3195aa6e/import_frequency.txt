@@ -1,0 +1,77 @@
+# Import Frequency Analysis
+Files scanned: 2000
+Unique packages: 1904
+
+## Go (.go)
+   2500x  gitea.dev/modules [PROJECT-INTERNAL]
+    917x  gitea.dev/models [PROJECT-INTERNAL]
+    589x  github.com/stretchr/testify
+    542x  strings
+    523x  testing
+    522x  fmt
+    486x  context
+    288x  time
+    284x  gitea.dev/services [PROJECT-INTERNAL]
+    252x  net/http
+    244x  errors
+    234x  io
+    156x  os
+    152x  strconv
+    145x  gitea.dev/routers [PROJECT-INTERNAL]
+    145x  xorm.io/builder
+    131x  bytes
+    115x  path/filepath
+    111x  net/url
+    106x  sync
+     97x  xorm.io/xorm
+     80x  regexp
+     72x  slices
+     66x  github.com/yuin/goldmark
+     65x  ldap-test
+     62x  html/template
+     60x  path
+     48x  --id
+     43x  github.com/urfave/cli
+     40x  sort
+     39x  bufio
+     36x  --name
+     36x  encoding/hex
+     36x  github.com/go-git/go-git
+     34x  --host
+     31x  net
+     31x  encoding/base64
+     30x  sync/atomic
+     29x  https:/
+     28x  --port
+
+## TypeScript (.ts)
+      3x  tailwindcss
+      2x  vue
+      2x  eslint
+      2x  node:fs
+      2x  node:process
+      2x  vite
+      2x  @vitejs/plugin-vue [SCOPED]
+      2x  vite-string-plugin
+      1x  node:url
+      1x  stylelint
+      1x  @eslint-community/eslint-plugin-eslint-comments [SCOPED]
+      1x  globals
+      1x  eslint-plugin-import-x
+      1x  eslint-plugin-playwright
+      1x  eslint-plugin-regexp
+      1x  eslint-plugin-sonarjs
+      1x  @stylistic/eslint-plugin [SCOPED]
+      1x  @typescript-eslint/parser [SCOPED]
+      1x  typescript-eslint
+      1x  eslint-plugin-unicorn
+      1x  @vitest/eslint-plugin [SCOPED]
+      1x  eslint-plugin-vue
+      1x  eslint-plugin-vue-scoped-css
+      1x  eslint-plugin-wc
+      1x  postcss
+      1x  @eslint/json [SCOPED]
+      1x  @playwright/test [SCOPED]
+      1x  rolldown-license-plugin
+      1x  node:path
+      1x  vitest

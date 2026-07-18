@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_AddIssueResourceIndexTable/issue.yml",
+  "format": "yml",
+  "size_bytes": 34,
+  "source_modified": "2026-07-18T06:05:26.815931+00:00",
+  "indexed_at": "2026-07-18T07:39:39.892702+00:00",
+  "text_length": 34,
+  "line_count": 5
+}

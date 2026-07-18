@@ -1,0 +1,7 @@
+=== FILE: templates/mail/repo/collaborator.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] Subject: Collaborator added Link: http://localhost RepoName: Repo/Name
+
+Subject: Collaborator added
+Link: http://localhost
+RepoName: Repo/Name

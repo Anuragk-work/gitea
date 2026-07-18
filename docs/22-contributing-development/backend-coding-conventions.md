@@ -1,0 +1,160 @@
+# Backend Coding Conventions
+
+This page is the dedicated, deep-dive companion to the backend summary in
+[Contribution Workflow & Governance](contribution-workflow.md#2-backend-guidelines-summary).
+Both pages are sourced from the same canonical document,
+[`docs/guidelines-backend.md`](../guidelines-backend.md), and are kept
+intentionally non-duplicative:
+
+- **This page** is the reference to link when the topic *is* backend
+  conventions — it reproduces every rule in `docs/guidelines-backend.md` in full.
+- **`contribution-workflow.md`** keeps only a condensed summary plus a pointer
+  back here, so the end-to-end workflow page doesn't balloon in size.
+
+> [!NOTE]
+> If `docs/guidelines-backend.md` changes, update this page first, then re-check
+> that the summary in `contribution-workflow.md` § 2 hasn't drifted out of sync.
+
+## Background
+
+The backend is written in Go. HTTP routing goes through
+[chi](https://github.com/go-chi/chi); database access goes through the
+[XORM](https://xorm.io/) ORM. Understanding how the top-level packages depend on
+each other is essential before touching backend code.
+
+## Package design
+
+### Package layout
+
+| Package | Responsibility |
+|---|---|
+| `build` | Helper scripts used at compile time |
+| `cmd` | Subcommands such as `web`, `serv`, `hooks`, `doctor`, and admin utilities |
+| `models` | Data structures and database operations (XORM); keeps external dependencies to a minimum |
+| `models/db` | Core database operations |
+| `models/fixtures` | Sample data used by tests |
+| `models/migrations` | Schema migration scripts |
+| `modules` | Standalone functionality with few dependencies |
+| `modules/setting` | Configuration handling |
+| `modules/git` | Interaction with the Git command line |
+| `routers` | Request handlers, split into `api`, `web`, `install`, and `private` |
+| `services` | Business logic that ties routers and models together |
+| `templates` | Go HTML templates |
+| `public` | Compiled frontend assets |
+| `tests` | Integration and end-to-end test helpers |
+
+### Dependency direction
+
+Dependencies flow in exactly one direction:
+
+```text
+cmd → routers → services → models → modules
+```
+
+A package on the left may import a package on its right, but **never the
+reverse**. Concretely:
+
+- `modules` packages must have almost no dependencies and must never import
+  `models` or `services`.
+- `models` packages must not import `services` or `routers`.
+- `services` may import both `models` and `modules`, but not `routers` or `cmd`.
+- `routers` (`api`, `web`, `install`, `private`) may import `services`, `models`,
+  and `modules`, but nothing that would create a cycle back up the chain.
+
+### Naming conventions
+
+- Top-level packages use the **plural** form: `services`, `models`, `routers`.
+- Subpackages use the **singular** form: `services/user`, `models/repository`.
+- When packages from different layers share a name, disambiguate with a
+  snake_case import alias:
+  ```go
+  import user_service "gitea.dev/services/user"
+  ```
+
+### Database transactions
+
+Operations that must roll back together should run inside `db.WithTx()` (or
+`db.WithTx2()` when a value must be returned), defined in
+`models/db/context.go`. Functions that participate in a transaction take a
+`context.Context` as their first parameter so the transaction can propagate.
+
+### XORM gotchas
+
+- Never call `x.Update(exemplar)` without an explicit `WHERE` clause — it
+  updates every row in the table.
+- Partial table migrations must use `SyncWithOptions(IgnoreDrop...)` rather than
+  a plain `Sync`.
+- When inserting rows with preset IDs: MSSQL requires `SET IDENTITY_INSERT` to be
+  enabled, and PostgreSQL requires the sequence to be updated afterward.
+
+## Dependencies (Go Modules)
+
+Go dependencies are managed with [Go Modules](https://go.dev/ref/mod).
+
+- Pull requests should only modify `go.mod` / `go.sum` where it relates to the
+  change at hand (bug fix or feature). Otherwise, these files should only be
+  touched by pull requests whose sole purpose is a dependency update.
+- Run `make tidy` after any change to `go.mod`.
+- Any `go.mod` / `go.sum` update must be justified in the PR description and must
+  be verified by reviewers and the merger to reference an existing upstream
+  commit.
+
+## API v1 conventions
+
+The API is documented with [Swagger](https://gitea.com/api/swagger) and modelled
+on [the GitHub REST API](https://docs.github.com/en/rest).
+
+### GitHub API compatibility
+
+Gitea's API should use the same endpoints and fields as the GitHub API where
+possible, unless there is a good reason to deviate:
+
+- If Gitea offers functionality GitHub does not, a new endpoint may be added.
+- If Gitea exposes information the GitHub API does not, a new field may be added
+  as long as it does not collide with a GitHub field name.
+- Existing fields/response shapes should not be removed unless there is a strong
+  reason. If you notice a problem that would require a breaking change, leave a
+  comment in the code for a hypothetical future API v2 (currently not planned)
+  rather than breaking v1.
+
+### Adding and maintaining API routes
+
+- All possible results (errors, success, and failure messages) must be
+  documented in the swagger comments on the route.
+- Every JSON request body must be defined as a struct in `modules/structs/` and
+  registered in
+  [`routers/api/v1/swagger/options.go`](../../routers/api/v1/swagger/options.go).
+- Every JSON response must be defined as a struct in `modules/structs/` and
+  registered with its category under
+  [`routers/api/v1/swagger/`](../../routers/api/v1/swagger).
+
+### HTTP methods and status codes
+
+| Method | Behavior | Status |
+|---|---|---|
+| `GET` | Returns the requested object(s) | `200 OK` |
+| `POST` | Creates a new object (e.g. a user) | `201 Created` + created object |
+| `PUT` | Adds or assigns an existing object (e.g. a user to a team) | `204 No Content`, no body |
+| `PATCH` | Edits an existing object | `200 OK` + changed object |
+| `DELETE` | Removes an object | `204 No Content`, no body |
+
+### Requirements for API routes
+
+- All parameters of endpoints that edit an object must be optional, except those
+  needed to identify the object, which are required.
+- Endpoints returning lists must support pagination (`page` and `limit` query
+  options) and set the `X-Total-Count` header via `ctx.SetTotalCountHeader(...)`.
+
+See [API Conventions & Swagger](../07-rest-api/api-conventions-and-swagger.md) for
+how these rules play out in the actual router code, and
+[Module Dependency Map](../02-architecture/module-dependency-map.md) for a
+visualization of the `cmd → routers → services → models → modules` layering rule
+against the real package graph.
+
+## Related Pages
+
+- [Contribution Workflow & Governance](contribution-workflow.md)
+- [Frontend Coding Conventions](frontend-coding-conventions.md)
+- [AI-Assisted Contributions](ai-assisted-contributions.md)
+- [Module Dependency Map](../02-architecture/module-dependency-map.md)
+- [API Conventions & Swagger](../07-rest-api/api-conventions-and-swagger.md)

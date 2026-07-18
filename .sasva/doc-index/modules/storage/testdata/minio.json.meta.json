@@ -1,0 +1,9 @@
+{
+  "source": "modules/storage/testdata/minio.json",
+  "format": "json",
+  "size_bytes": 380,
+  "source_modified": "2026-07-18T06:05:26.946395+00:00",
+  "indexed_at": "2026-07-18T07:39:40.084483+00:00",
+  "text_length": 380,
+  "line_count": 13
+}

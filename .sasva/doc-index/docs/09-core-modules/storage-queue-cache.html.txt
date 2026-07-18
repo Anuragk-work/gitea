@@ -1,0 +1,1258 @@
+=== FILE: docs/09-core-modules/storage-queue-cache.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Storage, Queue & Caching</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"> <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage, Queue & Caching</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../09-core-modules/README.html">Core Modules</a> &rsaquo; Storage, Queue & Caching</div>
+<h1>Storage, Queue & Caching</h1>
+<h1 id="storage-queue-caching">Storage, Queue &amp; Caching</h1>
+<p>Gitea's backend relies on three cross-cutting infrastructure modules that many higher-level
+services depend on:</p>
+<ul>
+<li><strong><code>modules/storage</code></strong> — an abstraction over "blob" storage backends (local disk, MinIO/S3,
+  Azure Blob) used for attachments, Git LFS objects, package files, avatars, archives, and
+  Actions logs/artifacts.</li>
+<li><strong><code>modules/queue</code></strong> — a generic, pluggable async job queue (in-memory channel, LevelDB-backed,
+  or Redis-backed) used to decouple slow or bursty work (indexing, webhooks, mirrors, mail) from
+  the request path.</li>
+<li><strong><code>modules/cache</code></strong> — a thin wrapper around <code>gitea.com/go-chi/cache</code> (memory/two-queue LRU,
+  Redis, Memcache) plus a request-scoped "ephemeral cache", used to avoid repeated expensive
+  lookups (e.g. last commit info).</li>
+</ul>
+<p>A fourth related module, <strong><code>modules/globallock</code></strong>, provides distributed mutual exclusion
+(in-memory or Redis via <code>redsync</code>) for operations that must not run concurrently across multiple
+Gitea nodes (e.g. repository migration, packages that require read-modify-write semantics).</p>
+<p>This page documents all four in detail.</p>
+<h2 id="storage-backend-abstraction-modulesstorage">Storage Backend Abstraction (<code>modules/storage</code>)<a href="#storage-backend-abstraction-modulesstorage" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="the-objectstorage-interface">The <code>ObjectStorage</code> Interface<a href="#the-objectstorage-interface" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>All storage backends implement a single common interface, defined in
+<code>modules/storage/storage.go</code>:</p>
+<pre class="highlight"><code class="language-go">// ObjectStorage represents an object storage to handle a bucket and files
+type ObjectStorage interface {
+    Open(path string) (Object, error)
+
+    // Save store an object, if size is unknown set -1
+    Save(path string, r io.Reader, size int64) (int64, error)
+
+    Stat(path string) (os.FileInfo, error)
+    Delete(path string) error
+
+    // ServeDirectURL generates a "serve-direct" URL for the specified blob storage file,
+    // end user (browser) will use this URL to access the file directly from the object
+    // storage, bypassing the Gitea server. Usually time-limited and signed.
+    ServeDirectURL(path, name, method string, opt *ServeDirectOptions) (*url.URL, error)
+
+    // IterateObjects calls the iterator function for each object in the storage
+    // with the given path as prefix
+    IterateObjects(basePath string, iterator func(fullPath string, obj Object) error) error
+}</code></pre>
+<p>An <code>Object</code> returned by <code>Open</code> is a combination of <code>io.ReadCloser</code>, <code>io.Seeker</code>, and <code>Stat()</code>.</p>
+<p>Helper functions built on top of this interface (in <code>helper.go</code> / <code>storage.go</code>) provide common
+operations that work with any backend:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>storage.Copy(dst, dstPath, src, srcPath)</code></td>
+<td>Streams an object from one storage to another (used by <code>migrate-storage</code>)</td>
+</tr>
+<tr>
+<td><code>storage.Clean(storage)</code></td>
+<td>Iterates and deletes every object — used to reset storage in tests</td>
+</tr>
+<tr>
+<td><code>storage.SaveFrom(storage, path, callback)</code></td>
+<td>Pipes writer-style code (<code>func(w io.Writer) error</code>) into <code>Save</code> using an <code>io.Pipe</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="backend-implementations">Backend Implementations<a href="#backend-implementations" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Each backend registers itself with <code>RegisterStorageType</code> at <code>init()</code> time, keyed by
+<code>setting.StorageType</code>:</p>
+<pre class="highlight"><code class="language-go">var storageMap = map[Type]NewStorageFunc{}
+
+func RegisterStorageType(typ Type, fn func(ctx context.Context, cfg *setting.Storage) (ObjectStorage, error)) {
+    storageMap[typ] = fn
+}</code></pre>
+<table>
+<thead>
+<tr>
+<th>Type constant</th>
+<th>File</th>
+<th>Backend</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setting.LocalStorageType</code> (<code>"local"</code>)</td>
+<td><code>modules/storage/local.go</code></td>
+<td>Local filesystem</td>
+<td>Default. Writes via a temp file + atomic rename; cleans up empty parent directories on delete</td>
+</tr>
+<tr>
+<td><code>setting.MinioStorageType</code> (<code>"minio"</code>)</td>
+<td><code>modules/storage/minio.go</code></td>
+<td>MinIO / any S3-compatible object store</td>
+<td>Uses <code>github.com/minio/minio-go/v7</code>; supports static credentials or an IAM/env credential chain; presigned URLs for <code>ServeDirectURL</code></td>
+</tr>
+<tr>
+<td><code>setting.AzureBlobStorageType</code> (<code>"azureblob"</code>)</td>
+<td><code>modules/storage/azureblob.go</code></td>
+<td>Azure Blob Storage</td>
+<td>Uses <code>azure-sdk-for-go</code>; implements <code>Object</code> with an internal read offset for <code>Seek</code> support; SAS tokens for <code>ServeDirectURL</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>LocalStorage</strong> (<code>modules/storage/local.go</code>) requires <code>config.Path</code> to be an absolute path
+(prepared by <code>setting/storage.go</code>). <code>Save</code> writes to a temp file under <code>tmpdir</code> and then
+<code>util.Rename</code>s it into place — this keeps partially-written files from ever being visible under
+their final name.</p>
+<pre class="highlight"><code class="language-go">func NewLocalStorage(ctx context.Context, config *setting.Storage) (ObjectStorage, error) {
+    storageRoot := util.FilePathJoinAbs(config.Path)
+    storageTmp := config.TemporaryPath
+    if storageTmp == "" {
+        storageTmp = filepath.Join(storageRoot, "tmp")
+    }
+    ...
+    return &amp;LocalStorage{ctx: ctx, dir: storageRoot, tmpdir: storageTmp}, nil
+}</code></pre>
+<p><strong>MinioStorage</strong> (<code>modules/storage/minio.go</code>) creates the bucket if it doesn't already exist,
+and normalizes SDK errors (<code>NoSuchKey</code> → <code>os.ErrNotExist</code>, <code>AccessDenied</code> → <code>os.ErrPermission</code>)
+via <code>convertMinioErr</code>. <code>ServeDirectURL</code> calls <code>PresignedGetObject</code>/<code>PresignedHeadObject</code> with a
+5-minute expiry and can set <code>response-content-type</code>/<code>response-content-disposition</code> query params.</p>
+<p><strong>AzureBlobStorage</strong> (<code>modules/storage/azureblob.go</code>) implements <code>Object.Read</code>/<code>Seek</code> manually
+over <code>DownloadBuffer</code> since the Azure SDK doesn't provide a seekable stream reader out of the box,
+and maps <code>bloberror.BlobNotFound</code> to <code>os.ErrNotExist</code>.</p>
+<blockquote>
+<p>Local storage's <code>ServeDirectURL</code> always returns <code>ErrURLNotSupported</code> — direct-serving only
+makes sense for network object stores where the browser can bypass the Gitea server entirely.</p>
+</blockquote>
+<h3 id="storage-consumers">Storage Consumers<a href="#storage-consumers" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/storage/storage.go</code> declares package-level singletons for every kind of blob Gitea
+stores, all pre-initialized to a <code>discardStorage</code> (errors on every call) until <code>storage.Init()</code>
+runs at startup:</p>
+<pre class="highlight"><code class="language-go">var (
+    Attachments      ObjectStorage = uninitializedStorage
+    LFS              ObjectStorage = uninitializedStorage
+    Avatars          ObjectStorage = uninitializedStorage
+    RepoAvatars      ObjectStorage = uninitializedStorage
+    RepoArchives     ObjectStorage = uninitializedStorage
+    Packages         ObjectStorage = uninitializedStorage
+    Actions          ObjectStorage = uninitializedStorage
+    ActionsArtifacts ObjectStorage = uninitializedStorage
+)
+
+func Init() error {
+    for _, f := range []func() error{
+        initAttachments, initAvatars, initRepoAvatars, initLFS,
+        initRepoArchives, initPackages, initActions,
+    } {
+        if err := f(); err != nil {
+            return err
+        }
+    }
+    return nil
+}</code></pre>
+<p>Each <code>init*</code> function reads its own <code>setting.*</code> config (e.g. <code>setting.LFS.Storage</code>,
+<code>setting.Packages.Storage</code>) and calls <code>storage.NewStorage(typ, cfg)</code>. Storage for a feature that
+is disabled (Attachments, LFS, Packages, Actions) is replaced with a <code>discardStorage</code> sentinel
+that just returns an error — this avoids nil checks throughout the codebase while making
+"feature disabled" failures obvious.</p>
+<p>Typical consumers:</p>
+<table>
+<thead>
+<tr>
+<th>Package/Consumer</th>
+<th>Storage used</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/repo/attachment.go</code>, <code>services/attachment/attachment.go</code>, <code>routers/web/repo/attachment.go</code></td>
+<td><code>storage.Attachments</code></td>
+<td>Save/Open/Delete issue &amp; release attachments</td>
+</tr>
+<tr>
+<td><code>modules/lfs/content_store.go</code></td>
+<td><code>storage.LFS</code></td>
+<td><code>ContentStore</code> wraps <code>storage.LFS</code> to store Git LFS blobs keyed by OID path</td>
+</tr>
+<tr>
+<td><code>modules/packages/content_store.go</code></td>
+<td><code>storage.Packages</code></td>
+<td><code>ContentStore</code> wraps <code>storage.Packages</code> for uploaded package files (npm, NuGet, Maven, etc.)</td>
+</tr>
+<tr>
+<td><code>models/user/avatar.go</code></td>
+<td><code>storage.Avatars</code></td>
+<td>Saves custom user avatars via <code>storage.SaveFrom</code></td>
+</tr>
+<tr>
+<td><code>services/org/org.go</code></td>
+<td><code>storage.Avatars</code></td>
+<td>Deletes organization avatar files</td>
+</tr>
+<tr>
+<td><code>cmd/dump.go</code></td>
+<td><code>Attachments</code>/<code>LFS</code>/<code>Packages</code></td>
+<td>Iterates all objects to include them in a <code>gitea dump</code> backup</td>
+</tr>
+<tr>
+<td><code>cmd/migrate_storage.go</code></td>
+<td>any</td>
+<td><code>gitea migrate-storage</code> CLI command copies blobs from the configured backend to a new one via <code>storage.Copy</code></td>
+</tr>
+<tr>
+<td><code>services/doctor/storage.go</code></td>
+<td>all</td>
+<td><code>gitea doctor</code> storage-consistency checks (orphaned DB rows vs. missing files, and vice versa)</td>
+</tr>
+<tr>
+<td><code>services/repository/delete.go</code></td>
+<td><code>LFS</code>/<code>Attachments</code></td>
+<td>Cleans up orphaned blobs when a repository/issue/release is deleted</td>
+</tr>
+</tbody>
+</table>
+<p>Example — LFS content store built directly on top of the interface (<code>modules/lfs/content_store.go</code>):</p>
+<pre class="highlight"><code class="language-go">type ContentStore struct {
+    storage.ObjectStorage
+}
+
+func NewContentStore() *ContentStore {
+    return &amp;ContentStore{ObjectStorage: storage.LFS}
+}
+
+func (s *ContentStore) Get(pointer Pointer) (storage.Object, error) {
+    return s.Open(pointer.RelativePath())
+}</code></pre>
+<h3 id="storage-configuration">Storage Configuration<a href="#storage-configuration" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Storage configuration (<code>modules/setting/storage.go</code>) is layered: a global <code>[storage]</code> section
+provides defaults, <code>[storage.&lt;type&gt;]</code> sections (e.g. <code>[storage.minio]</code>) override per backend
+type, and <code>[storage.&lt;name&gt;]</code> sections (e.g. <code>[storage.lfs]</code>) override per named consumer. The
+resolution logic (<code>getStorageTargetSection</code> / <code>getStorageOverrideSection</code>) supports fallbacks so
+admins can either configure one storage for everything, or fine-tune individual consumers (e.g.
+"packages go to MinIO but LFS stays local").</p>
+<pre class="highlight"><code class="language-go">type Storage struct {
+    Type            StorageType // local, minio, or azureblob
+    Path            string      // for local type
+    TemporaryPath   string
+    MinioConfig     MinioStorageConfig
+    AzureBlobConfig AzureBlobStorageConfig
+}</code></pre>
+<p><code>Storage.ServeDirect()</code> returns true only when the backend is MinIO or Azure Blob <em>and</em> its
+<code>ServeDirect</code>/<code>SERVE_DIRECT</code> flag is enabled — local storage never supports direct-serving.</p>
+<h3 id="storage-selection-diagram">Storage Selection Diagram<a href="#storage-selection-diagram" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="mermaid">flowchart TD
+    Cfg["app.ini [storage] / [storage.TYPE] / [storage.NAME]"] --> Resolve["setting.getStorage()"]
+    Resolve --> Init["storage.Init() at startup"]
+
+    Init --> Attach["storage.Attachments"]
+    Init --> LFSStore["storage.LFS"]
+    Init --> Avatar["storage.Avatars"]
+    Init --> RepoAvatar["storage.RepoAvatars"]
+    Init --> Archive["storage.RepoArchives"]
+    Init --> Pkg["storage.Packages"]
+    Init --> Actions["storage.Actions / ActionsArtifacts"]
+
+    subgraph Backends["NewStorage(type, cfg) via storageMap"]
+        Local["LocalStorage<br/>(filesystem, atomic rename)"]
+        Minio["MinioStorage<br/>(minio-go S3 client)"]
+        Azure["AzureBlobStorage<br/>(azure-sdk-for-go)"]
+    end
+
+    Attach --> Backends
+    LFSStore --> Backends
+    Avatar --> Backends
+    RepoAvatar --> Backends
+    Archive --> Backends
+    Pkg --> Backends
+    Actions --> Backends
+
+    Local --> Disk[("Local Disk")]
+    Minio --> S3[("MinIO / S3-compatible bucket")]
+    Azure --> Blob[("Azure Blob Container")]
+
+    Consumer1["routers/web/repo/attachment.go"] -->|Open/Save/ServeDirectURL| Attach
+    Consumer2["modules/lfs.ContentStore"] -->|Get/Put| LFSStore
+    Consumer3["modules/packages.ContentStore"] -->|Get/Put| Pkg
+    Consumer4["cmd/migrate_storage.go"] -->|storage.Copy| Backends</pre>
+<h2 id="queue-system-modulesqueue">Queue System (<code>modules/queue</code>)<a href="#queue-system-modulesqueue" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="terminology">Terminology<a href="#terminology" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The package doc comment in <code>modules/queue/queue.go</code> lays out the vocabulary used throughout the
+module:</p>
+<ul>
+<li><strong>Item</strong> — a JSON-marshaled unit of work pushed onto a queue.</li>
+<li><strong>Batch</strong> — a slice of items delivered together to a worker.</li>
+<li><strong>Worker</strong> — a goroutine that calls the <code>Handler</code> on a batch.</li>
+<li><strong>Handler</strong> (<code>HandlerFuncT[T]</code>) — <code>func(...T) (unhandled []T)</code>; any items returned as
+  "unhandled" get pushed back onto the base queue after a short backoff, so a temporarily-down
+  dependency (e.g. a search indexer) doesn't lose work.</li>
+<li><strong>Base queue</strong> — the underlying storage mechanism: channel (in-memory), LevelDB
+  (<code>levelqueue</code>), Redis, or <code>dummy</code> (no-op, used in tests / when a handler is nil).</li>
+<li><strong>WorkerPoolQueue</strong> — glues a base queue to a pool of workers, exposing <code>Push</code>, <code>Has</code>,
+  <code>FlushWithContext</code>, <code>ShutdownWait</code>.</li>
+<li><strong>Manager</strong> — a process-wide registry of every <code>WorkerPoolQueue</code>, used by the admin "Monitor"
+  page and by <code>FlushAll</code> (mainly for tests).</li>
+</ul>
+<pre class="highlight"><code class="language-go">type HandlerFuncT[T any] func(...T) (unhandled []T)</code></pre>
+<p>A queue can additionally be <strong>unique</strong>, meaning duplicate items (by JSON-marshaled byte
+equality) are rejected while already queued — <code>Has</code>/<code>HasItem</code> lets callers check this, though
+the docs note it's "not 100% reliable" without real transactions.</p>
+<h3 id="base-queue-implementations">Base Queue Implementations<a href="#base-queue-implementations" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>All base queues implement <code>baseQueue</code> (<code>modules/queue/base.go</code>):</p>
+<pre class="highlight"><code class="language-go">type baseQueue interface {
+    PushItem(ctx context.Context, data []byte) error
+    PopItem(ctx context.Context) ([]byte, error)
+    HasItem(ctx context.Context, data []byte) (bool, error)
+    Len(ctx context.Context) (int, error)
+    Close() error
+    RemoveAll(ctx context.Context) error
+}</code></pre>
+<table>
+<thead>
+<tr>
+<th>Type key</th>
+<th>File</th>
+<th>Mechanism</th>
+<th>Persistence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>channel</code></td>
+<td><code>base_channel.go</code></td>
+<td>Go native <code>chan []byte</code> + optional <code>container.Set[string]</code> for uniqueness</td>
+<td>In-memory only; lost on restart</td>
+</tr>
+<tr>
+<td><code>level</code> (default; <code>leveldb</code>/<code>levelqueue</code>/<code>persistable-channel</code>)</td>
+<td><code>base_levelqueue.go</code>, <code>base_levelqueue_unique.go</code>, <code>base_levelqueue_common.go</code></td>
+<td><code>gitea.com/lunny/levelqueue</code> over <code>goleveldb</code></td>
+<td>On-disk, single instance</td>
+</tr>
+<tr>
+<td><code>redis</code></td>
+<td><code>base_redis.go</code></td>
+<td>Redis <code>LPUSH</code>/<code>LPOP</code> list, <code>SADD</code>/<code>SREM</code>/<code>SISMEMBER</code> set for uniqueness</td>
+<td>Shared, cluster-safe</td>
+</tr>
+<tr>
+<td><code>dummy</code>/<code>immediate</code></td>
+<td><code>base_dummy.go</code></td>
+<td>No-op; <code>PushItem</code> succeeds without storing anything</td>
+<td>None — items are dropped unless routed by <code>WorkerPoolQueue.Push</code>'s "immediate" fallback</td>
+</tr>
+</tbody>
+</table>
+<p><code>getNewQueueFn</code> (<code>modules/queue/workerqueue.go</code>) maps a configured <code>Type</code> string to the correct
+constructor:</p>
+<pre class="highlight"><code class="language-go">func getNewQueueFn(t string) (string, func(cfg *BaseConfig, unique bool) (baseQueue, error)) {
+    switch t {
+    case "dummy", "immediate":
+        return t, newBaseDummy
+    case "channel":
+        return t, newBaseChannelGeneric
+    case "redis":
+        return t, newBaseRedisGeneric
+    default: // level(leveldb,levelqueue,persistable-channel)
+        return "level", newBaseLevelQueueGeneric
+    }
+}</code></pre>
+<p>Redis-backed queues (<code>base_redis.go</code>) use <code>nosql.GetManager().GetRedisClient(cfg.ConnStr)</code> to
+share connections with the rest of the app (see <a href="#global-distributed-locking-modulesgloballock">Global Locking</a>
+below, which uses the same Redis client pool via <code>redsync</code>), retrying <code>Ping</code> up to 10 times on
+startup so Gitea can start even if Redis isn't ready yet.</p>
+<p>Push against a full Redis/local queue uses <code>backoffErr</code>/<code>backoffRetErr</code> (<code>modules/queue/backoff.go</code>)
+to retry with exponential-ish backoff rather than failing immediately or blocking forever.</p>
+<h3 id="workerpoolqueue">WorkerPoolQueue<a href="#workerpoolqueue" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/queue/workerqueue.go</code> defines the generic <code>WorkerPoolQueue[T]</code>, the type application
+code actually interacts with. Key operations:</p>
+<pre class="highlight"><code class="language-go">func (q *WorkerPoolQueue[T]) Push(data T) error {
+    ...
+    return q.baseQueue.PushItem(q.ctxRun, q.marshal(data))
+}
+
+func (q *WorkerPoolQueue[T]) Has(data T) (bool, error) {
+    return q.baseQueue.HasItem(q.ctxRun, q.marshal(data))
+}
+
+func (q *WorkerPoolQueue[T]) Run()                              { q.doRun() }
+func (q *WorkerPoolQueue[T]) Cancel()                            { q.ctxRunCancel() }
+func (q *WorkerPoolQueue[T]) ShutdownWait(timeout time.Duration) { ... }
+func (q *WorkerPoolQueue[T]) FlushWithContext(ctx context.Context, timeout time.Duration) error</code></pre>
+<p><code>NewWorkerPoolQueueWithContext</code> wires the base queue, wraps the caller's <code>HandlerFuncT[T]</code> in a
+<code>safeHandler</code> that recovers panics and restores <code>pprof</code> goroutine labels, and registers the
+queue's lifetime with <code>process.GetManager()</code> (so it shows up in the process manager / <code>gitea
+manager processes</code>). If <code>handler</code> is <code>nil</code>, the queue type is forced to <code>dummy</code> — this is used
+when a caller just wants a <code>Push</code>-able sink without actually processing items (typically tests).</p>
+<p><code>workergroup.go</code> implements the actual dynamic worker pool: <code>doDispatchBatchToWorker</code> batches
+popped items (<code>batchLength</code>), and spins up new workers (up to <code>workerMaxNum</code>) only when the
+batch channel would otherwise block or there are zero active workers — this avoids the cost of
+running <code>MaxWorkers</code> goroutines when the queue is idle.</p>
+<pre class="highlight"><code class="language-go">func (q *WorkerPoolQueue[T]) doWorkerHandle(batch []T) {
+    ...
+    unhandled := q.safeHandler(batch...)
+    if len(unhandled) == len(batch) &amp;&amp; unhandledItemRequeueDuration.Load() != 0 {
+        // back off before requeueing, e.g. indexer is temporarily down
+        ...
+    }
+    for _, item := range unhandled {
+        if err := q.Push(item); err != nil {
+            ...
+        }
+    }
+}</code></pre>
+<p>On shutdown (<code>ShutdownWait</code>), any items still in flight or in the batch buffer are pushed back
+into the base queue via <code>basePushForShutdown</code> within a bounded <code>shutdownTimeout</code>, so in-memory
+"channel" queues don't silently lose work on restart (persistent backends like LevelDB/Redis
+retain them naturally).</p>
+<h3 id="manager-configuration">Manager &amp; Configuration<a href="#manager-configuration" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/queue/manager.go</code>'s <code>Manager</code> tracks every queue created via <code>CreateSimpleQueue</code> /
+<code>CreateUniqueQueue</code>:</p>
+<pre class="highlight"><code class="language-go">func CreateSimpleQueue[T any](ctx context.Context, name string, handler HandlerFuncT[T]) *WorkerPoolQueue[T] {
+    return createWorkerPoolQueue(ctx, name, setting.CfgProvider, handler, false)
+}
+
+func CreateUniqueQueue[T any](ctx context.Context, name string, handler HandlerFuncT[T]) *WorkerPoolQueue[T] {
+    return createWorkerPoolQueue(ctx, name, setting.CfgProvider, handler, true)
+}</code></pre>
+<p>Each named queue reads its settings from <code>[queue]</code> (global defaults) overridden by
+<code>[queue.&lt;name&gt;]</code> (<code>modules/setting/queue.go</code>):</p>
+<pre class="highlight"><code class="language-go">type QueueSettings struct {
+    Name string
+
+    Type    string // dummy, channel, level, redis
+    Datadir string
+    ConnStr string // for leveldb or redis
+    Length  int    // max queue length before blocking
+
+    QueueName, SetName string
+    BatchLength int
+    MaxWorkers  int
+}</code></pre>
+<p>Defaults: <code>Type=level</code>, <code>Datadir=queues/common</code>, <code>Length=100000</code>, <code>BatchLength=20</code>,
+<code>MaxWorkers=runtime.NumCPU()/2</code> (clamped to <code>[1, 10]</code>).</p>
+<h3 id="real-queue-consumers">Real Queue Consumers<a href="#real-queue-consumers" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Grepping the codebase for <code>queue.CreateSimpleQueue</code>/<code>queue.CreateUniqueQueue</code> shows the queue
+system backs most of Gitea's background processing:</p>
+<table>
+<thead>
+<tr>
+<th>Queue name</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>code_indexer</code></td>
+<td><code>modules/indexer/code/indexer.go</code></td>
+<td>Updates the code search index (Bleve/Elasticsearch) after pushes</td>
+</tr>
+<tr>
+<td><code>issue_indexer</code></td>
+<td><code>modules/indexer/issues/indexer.go</code></td>
+<td>Updates the issue/PR search index</td>
+</tr>
+<tr>
+<td><code>repo_stats_update</code></td>
+<td><code>modules/indexer/stats/queue.go</code></td>
+<td>Recomputes repository language statistics</td>
+</tr>
+<tr>
+<td><code>webhook_sender</code></td>
+<td><code>services/webhook/deliver.go</code></td>
+<td>Delivers webhook payloads asynchronously with retries</td>
+</tr>
+<tr>
+<td><code>notification-service</code></td>
+<td><code>services/uinotification/notify.go</code></td>
+<td>Fan-out of in-app notifications</td>
+</tr>
+<tr>
+<td><code>branch_sync</code></td>
+<td><code>services/repository/branch.go</code></td>
+<td>Syncs branch metadata into the DB after Git operations</td>
+</tr>
+<tr>
+<td><code>repo-archive</code></td>
+<td><code>services/repository/archiver/archiver.go</code></td>
+<td>Generates repository archive downloads (zip/tar.gz)</td>
+</tr>
+<tr>
+<td><code>push_update</code></td>
+<td><code>services/repository/push.go</code></td>
+<td>Post-receive processing after a <code>git push</code></td>
+</tr>
+<tr>
+<td><code>repo_license_updater</code></td>
+<td><code>services/repository/repository.go</code></td>
+<td>Detects repository license files</td>
+</tr>
+<tr>
+<td><code>pr_patch_checker</code></td>
+<td><code>services/pull/check.go</code></td>
+<td>Tests whether PRs are mergeable / have conflicts</td>
+</tr>
+<tr>
+<td><code>pr_auto_merge</code></td>
+<td><code>services/automerge/automerge.go</code></td>
+<td>Executes queued auto-merges once checks pass</td>
+</tr>
+<tr>
+<td><code>mail</code></td>
+<td><code>services/mailer/mailer.go</code></td>
+<td>Sends outgoing emails</td>
+</tr>
+<tr>
+<td><code>tag_sync</code></td>
+<td><code>services/release/tag.go</code></td>
+<td>Syncs Git tags into the Releases table</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td><code>services/task/task.go</code></td>
+<td>Generic migration/mirror task runner</td>
+</tr>
+<tr>
+<td><code>actions_ready_job</code></td>
+<td><code>services/actions/init.go</code></td>
+<td>Emits Actions jobs once dependencies are satisfied</td>
+</tr>
+<tr>
+<td><code>mirror</code></td>
+<td><code>services/mirror/queue.go</code></td>
+<td>Pull/push mirror synchronization</td>
+</tr>
+</tbody>
+</table>
+<h3 id="repository-indexing-via-the-queue-example-flow">Repository Indexing via the Queue: Example Flow<a href="#repository-indexing-via-the-queue-example-flow" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/indexer/issues/indexer.go</code> is a representative example. It defines a small metadata
+struct sent through the queue (not the whole issue, to keep messages small):</p>
+<pre class="highlight"><code class="language-go">type IndexerMetadata struct {
+    ID       int64   `json:"id"`
+    IsDelete bool    `json:"is_delete"`
+    IDs      []int64 `json:"ids"`
+}
+
+var issueIndexerQueue *queue.WorkerPoolQueue[*IndexerMetadata]
+
+func InitIssueIndexer(syncReindex bool) {
+    ...
+    issueIndexerQueue = queue.CreateUniqueQueue(ctx, "issue_indexer", getIssueIndexerQueueHandler(ctx))
+    ...
+    // then asynchronously builds/loads the actual Bleve/Elasticsearch/Meilisearch/DB indexer
+}</code></pre>
+<p>Whenever an issue changes, calling code pushes an <code>IndexerMetadata</code> onto <code>issueIndexerQueue</code>.
+Workers pop batches and forward them to <code>getIssueIndexerQueueHandler</code>, which resolves each ID
+against the DB and calls the underlying search backend's <code>Index</code>/<code>Delete</code>. If the backend isn't
+ready (e.g. still initializing), the handler returns the batch as "unhandled" and the queue
+requeues it after a short backoff — the push path never blocks on indexing being available.</p>
+<pre class="mermaid">sequenceDiagram
+    participant Git as git push / Web UI
+    participant Model as models/issues
+    participant Queue as WorkerPoolQueue[*IndexerMetadata]
+    participant Base as baseQueue (level/redis/channel)
+    participant Worker as workerGroup
+    participant Indexer as Bleve/ES/Meilisearch/DB Indexer
+
+    Git->>Model: create/update/delete issue
+    Model->>Queue: Push(&IndexerMetadata{ID: issueID})
+    Queue->>Base: PushItem(ctx, jsonBytes)
+    Base-->>Queue: ack (or ErrAlreadyInQueue if unique dup)
+
+    loop worker pool
+        Worker->>Base: PopItem(ctx)
+        Base-->>Worker: item bytes
+        Worker->>Worker: batch until batchLength or debounce timeout
+        Worker->>Indexer: safeHandler(batch...) -> Index/Delete
+        alt handler fails / indexer not ready
+            Indexer-->>Worker: all items unhandled
+            Worker->>Worker: backoff (unhandledItemRequeueDuration)
+            Worker->>Queue: Push(item) again
+        else success
+            Indexer-->>Worker: [] (fully handled)
+        end
+    end</pre>
+<h2 id="caching-layer-modulescache">Caching Layer (<code>modules/cache</code>)<a href="#caching-layer-modulescache" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="stringcache-and-giteacomgo-chicache"><code>StringCache</code> and <code>gitea.com/go-chi/cache</code><a href="#stringcache-and-giteacomgo-chicache" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Gitea wraps the upstream <code>gitea.com/go-chi/cache</code> package (itself supporting <code>memory</code>,
+<code>twoqueue</code>, <code>redis</code>, and <code>memcache</code> adapters) behind a typed <code>StringCache</code> interface
+(<code>modules/cache/string_cache.go</code>):</p>
+<pre class="highlight"><code class="language-go">type StringCache interface {
+    Ping() error
+
+    Get(key string) (string, bool)
+    Put(key, value string, ttl int64) error
+    Delete(key string) error
+    IsExist(key string) bool
+
+    PutJSON(key string, v any, ttl int64) error
+    GetJSON(key string, ptr any) (exist bool, err *GetJSONError)
+
+    ChiCache() chi_cache.Cache
+}</code></pre>
+<p><code>PutJSON</code>/<code>GetJSON</code> marshal arbitrary values to/from JSON strings so any struct can be cached
+through the string-only underlying cache, and they also support caching <em>errors</em> (prefixed with
+<code>&lt;CACHED-ERROR&gt;:</code>) so a failed expensive lookup isn't retried on every request within the TTL.</p>
+<p><code>NewStringCache</code> builds the underlying <code>chi_cache.Cache</code> from <code>setting.Cache</code>:</p>
+<pre class="highlight"><code class="language-go">func NewStringCache(cacheConfig setting.Cache) (StringCache, error) {
+    adapter := util.IfZero(cacheConfig.Adapter, "memory")
+    interval := util.IfZero(cacheConfig.Interval, 60)
+    cc, err := chi_cache.NewCacher(chi_cache.Options{
+        Adapter:       adapter,
+        AdapterConfig: cacheConfig.Conn,
+        Interval:      interval,
+    })
+    ...
+    return &amp;stringCache{chiCache: cc}, nil
+}</code></pre>
+<h3 id="adapters">Adapters<a href="#adapters" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>File</th>
+<th>Backing store</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory</code></td>
+<td>(from <code>go-chi/cache</code>, built-in)</td>
+<td>In-process map</td>
+<td>Default; per-process, not shared across nodes</td>
+</tr>
+<tr>
+<td><code>twoqueue</code></td>
+<td><code>modules/cache/cache_twoqueue.go</code></td>
+<td><code>github.com/hashicorp/golang-lru/v2</code> 2Q LRU</td>
+<td>Registers itself as <code>"twoqueue"</code>; bounded by <code>Size</code>/<code>RecentRatio</code>/<code>GhostRatio</code>; supports <code>Incr</code>/<code>Decr</code> counters and background GC of expired <code>MemoryItem</code>s</td>
+</tr>
+<tr>
+<td><code>redis</code></td>
+<td><code>modules/cache/cache_redis.go</code></td>
+<td>Redis via shared <code>nosql</code> client pool</td>
+<td>Registers itself as <code>"redis"</code>; supports an "occupy mode" (uses Redis TTL natively) vs. tracking keys in an <code>HSET</code> for bulk <code>Flush()</code></td>
+</tr>
+<tr>
+<td><code>memcache</code></td>
+<td>plugin import in <code>cache.go</code> (<code>gitea.com/go-chi/cache/memcache</code>)</td>
+<td>External Memcached</td>
+<td>TTLs capped at <code>MemcacheMaxTTL</code> (30 days); beyond that Gitea stores a Unix timestamp instead of a duration (memcache protocol quirk)</td>
+</tr>
+</tbody>
+</table>
+<p><code>modules/cache/cache.go</code> initializes the process-wide default cache:</p>
+<pre class="highlight"><code class="language-go">var defaultCache StringCache
+
+func Init() error {
+    if defaultCache == nil {
+        c, err := NewStringCache(setting.CacheService.Cache)
+        ...
+        defaultCache = c
+    }
+    return nil
+}
+
+func GetString(key string, getFunc func() (string, error)) (string, error) {
+    if defaultCache == nil || setting.CacheService.TTL == 0 {
+        return getFunc()
+    }
+    cached, exist := defaultCache.Get(key)
+    if !exist {
+        value, err := getFunc()
+        ...
+        return value, defaultCache.Put(key, value, setting.CacheService.TTLSeconds())
+    }
+    return cached, nil
+}</code></pre>
+<p><code>GetString</code>/<code>GetInt64</code> implement the classic "cache-aside" pattern: check the cache, and on miss
+call the provided <code>getFunc</code>, store the result, and return it. <code>setting.CacheService</code> also
+configures a dedicated <code>LastCommit</code> sub-cache (<code>[cache.last_commit]</code>, default 1 year TTL,
+tracked per-<code>CommitsCount</code>) used to memoize "last commit info" for directory listings, a
+notoriously expensive Git operation on large repositories.</p>
+<h3 id="ephemeral-request-scoped-cache">Ephemeral (Request-Scoped) Cache<a href="#ephemeral-request-scoped-cache" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/cache/context.go</code> and <code>modules/cache/ephemeral.go</code> implement a short-lived,
+in-memory-only cache attached to a <code>context.Context</code>, distinct from the shared <code>StringCache</code>:</p>
+<pre class="highlight"><code class="language-go">func WithCacheContext(ctx context.Context) context.Context {
+    if c := GetContextCache(ctx); c != nil {
+        return ctx
+    }
+    return context.WithValue(ctx, cacheContextKey, NewEphemeralCache(contextCacheLifetime))
+}
+
+func GetWithContextCache[T, K any](ctx context.Context, groupKey string, targetKey K,
+    f func(context.Context, K) (T, error)) (T, error) {
+    if c := GetContextCache(ctx); c != nil {
+        return GetWithEphemeralCache(ctx, c, groupKey, targetKey, f)
+    }
+    return f(ctx, targetKey)
+}</code></pre>
+<p><code>EphemeralCache</code> self-limits to a 5-minute (<code>contextCacheLifetime</code>) lifetime and logs a warning
+if it's queried past that — it exists purely to deduplicate repeated lookups <em>within a single
+request</em> (e.g. resolving the same user or repo multiple times while rendering a page), not as a
+general-purpose cache; using it beyond a request's lifetime is explicitly discouraged in the
+source comments.</p>
+<h3 id="cache-data-flow">Cache Data Flow<a href="#cache-data-flow" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="mermaid">flowchart LR
+    App["Application code<br/>(routers/services/models)"] -->|GetString/GetInt64| Default["cache.defaultCache<br/>(StringCache)"]
+    App -->|WithCacheContext / GetWithContextCache| Ephemeral["EphemeralCache<br/>(per-request, 5 min TTL)"]
+
+    Default --> Adapter{"setting.CacheService.Adapter"}
+    Adapter -->|memory| Mem[("go-chi/cache memory adapter")]
+    Adapter -->|twoqueue| TwoQ[("hashicorp/golang-lru 2Q")]
+    Adapter -->|redis| Redis[("Redis via modules/nosql")]
+    Adapter -->|memcache| Memcache[("Memcached")]</pre>
+<h2 id="global-distributed-locking-modulesgloballock">Global Distributed Locking (<code>modules/globallock</code>)<a href="#global-distributed-locking-modulesgloballock" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>While the queue and cache systems help with <em>async work</em> and <em>avoiding repeated work</em>, some
+operations must be serialized across the entire cluster — e.g. mutating a Git repository's
+config file, transferring repository ownership, or pushing to a container image manifest.
+<code>modules/globallock</code> provides that guarantee.</p>
+<h3 id="locker-interface"><code>Locker</code> Interface<a href="#locker-interface" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">type Locker interface {
+    // Lock blocks until the lock is acquired or ctx is canceled.
+    Lock(ctx context.Context, key string) (ReleaseFunc, error)
+
+    // TryLock returns immediately; returns (false, release, nil) if already locked
+    // (as opposed to some other error like Redis being down).
+    TryLock(ctx context.Context, key string) (bool, ReleaseFunc, error)
+}
+
+type ReleaseFunc func()</code></pre>
+<p><code>ReleaseFunc</code> is always non-nil and idempotent-safe to call, even if lock acquisition failed —
+callers are expected to always <code>defer release()</code>.</p>
+<h3 id="implementations">Implementations<a href="#implementations" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Backend</th>
+<th>File</th>
+<th>Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory</code> (default)</td>
+<td><code>modules/globallock/memory_locker.go</code></td>
+<td><code>sync.Map</code> of held keys; <code>Lock</code> polls every 100ms until acquired or <code>ctx</code> is done</td>
+</tr>
+<tr>
+<td><code>redis</code></td>
+<td><code>modules/globallock/redis_locker.go</code></td>
+<td><code>github.com/go-redsync/redsync/v4</code> (the Redlock algorithm) over the shared <code>nosql</code> Redis client</td>
+</tr>
+</tbody>
+</table>
+<p>The Redis locker (<code>redis_locker.go</code>) auto-extends held locks in the background so long-running
+critical sections don't lose the lock mid-operation:</p>
+<pre class="highlight"><code class="language-go">func NewRedisLocker(connection string) Locker {
+    conn := nosql.GetManager().GetRedisClient(connection)
+    l := &amp;redisLocker{conn: conn, rs: redsync.New(goredis.NewPool(conn))}
+    l.extendWg.Add(1)
+    l.startExtend()
+    return l
+}</code></pre>
+<p><code>redisLockExpiry</code> defaults to 30 seconds; <code>startExtend</code> re-schedules itself every
+<code>redisLockExpiry/2</code> and calls <code>mutex.Extend()</code> on every mutex still tracked in <code>mutexM</code> that
+hasn't already expired. If extension fails, the lock simply expires naturally (fail-safe rather
+than fail-locked).</p>
+<h3 id="configuration-and-default-access">Configuration and Default Access<a href="#configuration-and-default-access" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/setting/gloabl_lock.go</code> reads <code>[global_lock]</code>:</p>
+<pre class="highlight"><code class="language-ini">[global_lock]
+SERVICE_TYPE = memory ; or "redis"
+SERVICE_CONN_STR = addrs=127.0.0.1:6379 db=0 ; required if redis</code></pre>
+<p><code>modules/globallock/globallock.go</code> lazily constructs a process-wide default <code>Locker</code> (memory or
+Redis, matching <code>setting.GlobalLock.ServiceType</code>) and exposes convenience wrappers used
+throughout the codebase:</p>
+<pre class="highlight"><code class="language-go">func Lock(ctx context.Context, key string) (ReleaseFunc, error) {
+    return DefaultLocker().Lock(ctx, key)
+}
+
+func LockAndDo(ctx context.Context, key string, f func(context.Context) error) error {
+    release, err := Lock(ctx, key)
+    if err != nil {
+        return err
+    }
+    defer release()
+    return f(ctx)
+}</code></pre>
+<h3 id="real-usages">Real Usages<a href="#real-usages" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Location</th>
+<th>Lock key pattern</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>modules/gitrepo/config.go</code>, <code>modules/gitrepo/remote.go</code></td>
+<td><code>getRepoConfigLockKey(repo.RelativePath())</code></td>
+<td>Serialize reads/writes of a bare repo's <code>.git/config</code></td>
+</tr>
+<tr>
+<td><code>modules/gitrepo/fetch.go</code></td>
+<td><code>getRepoWriteLockKey(repo.RelativePath())</code></td>
+<td>Prevent concurrent fetches into the same repository</td>
+</tr>
+<tr>
+<td><code>services/repository/transfer.go</code></td>
+<td><code>getRepoWorkingLockKey(repo.ID)</code></td>
+<td>Prevent concurrent repository ownership transfers</td>
+</tr>
+<tr>
+<td><code>services/versioned_migration/migration.go</code></td>
+<td><code>"gitea_versioned_migration"</code></td>
+<td>Ensures only one node runs DB/data migrations at startup in a cluster</td>
+</tr>
+<tr>
+<td><code>models/actions/task.go</code></td>
+<td><code>"UpdateTaskByState-run-&lt;runID&gt;"</code></td>
+<td>Serialize state transitions of an Actions run</td>
+</tr>
+<tr>
+<td><code>routers/api/packages/container/blob.go</code>, <code>manifest.go</code></td>
+<td><code>containerGlobalLockKey(ownerID, image, "blob"/"manifest"/"package")</code></td>
+<td>Container registry blob/manifest uploads must not race</td>
+</tr>
+<tr>
+<td><code>routers/api/packages/maven/maven.go</code>, <code>terraform/terraform.go</code></td>
+<td>package-name-derived keys</td>
+<td>Prevent concurrent metadata (e.g. <code>maven-metadata.xml</code>) rewrites for the same package</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid">sequenceDiagram
+    participant N1 as Gitea Node A
+    participant N2 as Gitea Node B
+    participant Lock as globallock.DefaultLocker()
+    participant Backend as Redis (redsync) or in-memory map
+
+    N1->>Lock: LockAndDo(ctx, "repo-config:owner/repo", fn)
+    Lock->>Backend: acquire mutex (SET NX EX / sync.Map.LoadOrStore)
+    Backend-->>Lock: acquired
+    Lock->>N1: run fn() -- e.g. rewrite .git/config
+
+    N2->>Lock: LockAndDo(ctx, "repo-config:owner/repo", fn)
+    Lock->>Backend: acquire mutex
+    Backend-->>Lock: already held -- block/retry
+    N1->>Lock: fn() returns, release()
+    Lock->>Backend: unlock
+    Backend-->>Lock: released
+    Lock->>N2: acquired, run fn()</pre>
+<h2 id="how-the-three-systems-interact">How the Three Systems Interact<a href="#how-the-three-systems-interact" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Storage, queue, and cache are largely independent, but they compose in real features. A common
+pattern (e.g. repository archive generation in <code>services/repository/archiver/archiver.go</code>) is:</p>
+<ol>
+<li>A web request enqueues a job onto a <code>WorkerPoolQueue</code> (queue system) instead of doing
+   expensive work synchronously.</li>
+<li>A worker picks up the job, does the work, and writes the result into an <code>ObjectStorage</code>
+   backend (storage system) — e.g. <code>storage.RepoArchives</code>.</li>
+<li>Subsequent requests for the same result use <code>cache.GetString</code>/<code>GetWithContextCache</code> (cache
+   system) to avoid re-checking storage or re-querying the DB for status on every poll, and/or
+   use <code>globallock</code> to make sure only one worker builds a given archive at a time.</li>
+</ol>
+<pre class="mermaid">flowchart TD
+    Req["HTTP Request"] --> Check{"Cached result?"}
+    Check -- yes --> Resp["Return cached response"]
+    Check -- no --> Lock["globallock.TryLock(key)"]
+    Lock -- locked by another node --> Wait["Return 'in progress' status"]
+    Lock -- acquired --> Enqueue["queue.Push(job)"]
+    Enqueue --> Worker["Queue worker executes job"]
+    Worker --> Save["storage.Save(path, data)"]
+    Save --> CacheSet["cache.Put(key, result, ttl)"]
+    CacheSet --> Resp2["Serve result / ServeDirectURL"]</pre>
+<h2 id="related-documentation">Related Documentation<a href="#related-documentation" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="README.html">Core Modules Overview</a></li>
+<li><a href="../04-configuration/README.html">Configuration Reference</a> for <code>[storage]</code>, <code>[queue]</code>,
+  <code>[cache]</code>, and <code>[global_lock]</code> app.ini sections</li>
+<li><a href="../08-services/README.html">Services Layer</a> for the higher-level services (webhook, mailer,
+  mirror, archiver) that are built on top of the queue system</li>
+</ul>
+<div class="page-nav">
+<a href="notify-mailer-webhook.html"><div class="nav-label">← Previous</div><div class="nav-title">Notifications, Mailer & Webhooks</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#storage-backend-abstraction-modulesstorage" class="" data-anchor="storage-backend-abstraction-modulesstorage">Storage Backend Abstraction (modules/storage)</a>
+<a href="#the-objectstorage-interface" class="toc-h3" data-anchor="the-objectstorage-interface">The ObjectStorage Interface</a>
+<a href="#backend-implementations" class="toc-h3" data-anchor="backend-implementations">Backend Implementations</a>
+<a href="#storage-consumers" class="toc-h3" data-anchor="storage-consumers">Storage Consumers</a>
+<a href="#storage-configuration" class="toc-h3" data-anchor="storage-configuration">Storage Configuration</a>
+<a href="#storage-selection-diagram" class="toc-h3" data-anchor="storage-selection-diagram">Storage Selection Diagram</a>
+<a href="#queue-system-modulesqueue" class="" data-anchor="queue-system-modulesqueue">Queue System (modules/queue)</a>
+<a href="#terminology" class="toc-h3" data-anchor="terminology">Terminology</a>
+<a href="#base-queue-implementations" class="toc-h3" data-anchor="base-queue-implementations">Base Queue Implementations</a>
+<a href="#workerpoolqueue" class="toc-h3" data-anchor="workerpoolqueue">WorkerPoolQueue</a>
+<a href="#manager-configuration" class="toc-h3" data-anchor="manager-configuration">Manager &amp; Configuration</a>
+<a href="#real-queue-consumers" class="toc-h3" data-anchor="real-queue-consumers">Real Queue Consumers</a>
+<a href="#repository-indexing-via-the-queue-example-flow" class="toc-h3" data-anchor="repository-indexing-via-the-queue-example-flow">Repository Indexing via the Queue: Example Flow</a>
+<a href="#caching-layer-modulescache" class="" data-anchor="caching-layer-modulescache">Caching Layer (modules/cache)</a>
+<a href="#stringcache-and-giteacomgo-chicache" class="toc-h3" data-anchor="stringcache-and-giteacomgo-chicache">StringCache and gitea.com/go-chi/cache</a>
+<a href="#adapters" class="toc-h3" data-anchor="adapters">Adapters</a>
+<a href="#ephemeral-request-scoped-cache" class="toc-h3" data-anchor="ephemeral-request-scoped-cache">Ephemeral (Request-Scoped) Cache</a>
+<a href="#cache-data-flow" class="toc-h3" data-anchor="cache-data-flow">Cache Data Flow</a>
+<a href="#global-distributed-locking-modulesgloballock" class="" data-anchor="global-distributed-locking-modulesgloballock">Global Distributed Locking (modules/globallock)</a>
+<a href="#locker-interface" class="toc-h3" data-anchor="locker-interface">Locker Interface</a>
+<a href="#implementations" class="toc-h3" data-anchor="implementations">Implementations</a>
+<a href="#configuration-and-default-access" class="toc-h3" data-anchor="configuration-and-default-access">Configuration and Default Access</a>
+<a href="#real-usages" class="toc-h3" data-anchor="real-usages">Real Usages</a>
+<a href="#how-the-three-systems-interact" class="" data-anchor="how-the-three-systems-interact">How the Three Systems Interact</a>
+<a href="#related-documentation" class="" data-anchor="related-documentation">Related Documentation</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

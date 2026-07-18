@@ -1,0 +1,1030 @@
+=== FILE: docs/05-database-models/db-engine-and-drivers.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>DB Engine and Drivers</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"> <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB Engine and Drivers</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../05-database-models/README.html">Database Models</a> &rsaquo; DB Engine and Drivers</div>
+<h1>DB Engine and Drivers</h1>
+<h1 id="db-engine-and-drivers">DB Engine and Drivers</h1>
+<p>Gitea's data layer is built on top of <a href="https://xorm.io">XORM</a>, a Go ORM. All engine setup,
+connection string construction, transaction handling, pagination and consistency checking
+lives in the <code>models/db</code> package. This page walks through how the engine is created, how
+drivers are selected, how transactions/contexts work, and the supporting utilities for
+pagination and consistency checks.</p>
+<blockquote>
+<p>Source of truth for this page: <code>models/db/engine.go</code>, <code>models/db/engine_init.go</code>,
+<code>models/db/engine_hook.go</code>, <code>models/db/conn.go</code>, <code>models/db/context.go</code>,
+<code>models/db/context_committer_test.go</code>, <code>models/db/list.go</code>, <code>models/db/paginator/</code>,
+and <code>models/db/consistency.go</code>.</p>
+</blockquote>
+<h2 id="overview">Overview<a href="#overview" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The <code>db</code> package wraps an <code>xorm.Engine</code> behind a small set of Go interfaces so that the rest
+of the codebase (<code>models/*</code>, <code>services/*</code>, <code>routers/*</code>) never imports <code>xorm.io/xorm</code> directly.
+This keeps the ORM as an implementation detail and makes it possible to swap the session for
+a transaction (or vice versa) transparently.</p>
+<pre class="mermaid">graph TD
+    A["setting.Database (app.ini)"] --> B["db.GlobalConnOptions()"]
+    B --> C["db.ConnStr(opts)"]
+    C -->|"driver name + DSN"| D["xorm.NewEngine(driver, dsn)"]
+    D --> E["newXORMEngine()"]
+    E --> F["InitEngine(ctx)"]
+    F --> G["SetMapper(GonicMapper)"]
+    F --> H["SetLogger / ShowSQL"]
+    F --> I["Pool settings: MaxOpenConns, MaxIdleConns, ConnMaxLifetime"]
+    F --> J["AddHook(EngineHook) if SlowQueryThreshold > 0"]
+    F --> K["SetDefaultEngine(ctx, engine)"]
+    K --> L["xormEngine (package-level singleton)"]</pre>
+<h2 id="engine-interfaces-enginego">Engine Interfaces (<code>engine.go</code>)<a href="#engine-interfaces-enginego" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>models/db/engine.go</code> defines a small hierarchy of interfaces that abstract over <code>*xorm.Engine</code>
+and <code>*xorm.Session</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SQLSession</code></td>
+<td>Common CRUD/query methods shared by an engine and a session (<code>Find</code>, <code>Get</code>, <code>Insert</code>, <code>Where</code>, <code>Limit</code>, <code>Iterate</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>Engine</code></td>
+<td><code>SQLSession</code> + <code>Sync(...)</code> + <code>Ping()</code> — what most model code receives from <code>db.GetEngine(ctx)</code></td>
+</tr>
+<tr>
+<td><code>Session</code></td>
+<td><code>Engine</code> + transaction control (<code>Begin</code>, <code>Commit</code>, <code>Rollback</code>, <code>IsInTx</code>, <code>Close</code>)</td>
+</tr>
+<tr>
+<td><code>EngineMigration</code></td>
+<td><code>Engine</code> + extra methods only available on <code>*xorm.Engine</code> (<code>DropTables</code>, <code>DBMetas</code>, <code>SetMapper</code>, <code>SyncWithOptions</code>, <code>TableInfo</code>, ...) — used exclusively by the migration framework</td>
+</tr>
+</tbody>
+</table>
+<p>These are enforced with compile-time assertions:</p>
+<pre class="highlight"><code class="language-go">var (
+    _ Engine          = (*xorm.Engine)(nil)
+    _ Engine          = (*xorm.Session)(nil)
+    _ Session         = (*xorm.Session)(nil)
+    _ EngineMigration = (*xorm.Engine)(nil)
+)</code></pre>
+<p>Model registration also happens in this file. Every model package calls <code>db.RegisterModel</code>
+in its <code>init()</code> function, for example in <code>models/organization/team.go</code>:</p>
+<pre class="highlight"><code class="language-go">func init() {
+    db.RegisterModel(new(Team))
+    db.RegisterModel(new(TeamUser))
+    db.RegisterModel(new(TeamRepo))
+    db.RegisterModel(new(TeamUnit))
+    db.RegisterModel(new(TeamInvite))
+}</code></pre>
+<p><code>RegisterModel</code> accumulates beans into the package-level <code>registeredModels</code> slice, plus
+optional post-sync <code>initFunc</code>s (<code>registeredInitFuncs</code>) that run once tables have been
+synced (e.g., to seed default rows). <code>SyncAllTables()</code> calls
+<code>xormEngine.StoreEngine("InnoDB").SyncWithOptions(...)</code> against every registered bean — this
+is what creates/updates tables from Go struct tags and is also used heavily by the test suite.</p>
+<p>Other engine-level helpers worth knowing:</p>
+<ul>
+<li><code>NamesToBean(names ...string)</code> — resolves table/struct names to registered beans (used by <code>dump</code>/<code>restore</code> commands to select a subset of tables).</li>
+<li><code>MaxBatchInsertSize(bean)</code> — computes a safe batch insert size based on column count (SQLite's <code>999</code> variable limit).</li>
+<li><code>IsTableNotEmpty</code>, <code>DeleteAllRecords</code>, <code>GetMaxID</code> — small raw-SQL helpers used by doctor checks and migrations.</li>
+<li><code>SetLogSQL(ctx, on)</code> — toggles <code>ShowSQL</code> on the underlying <code>*xorm.Engine</code>/<code>*xorm.Session</code> at runtime.</li>
+</ul>
+<h2 id="engine-initialization-engine_initgo">Engine Initialization (<code>engine_init.go</code>)<a href="#engine-initialization-engine_initgo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>newXORMEngine()</code> is the low-level constructor:</p>
+<pre class="highlight"><code class="language-go">func newXORMEngine() (*xorm.Engine, error) {
+    connOpts := GlobalConnOptions()
+    driver, connStr, err := ConnStr(connOpts)
+    ...
+    engine, err := xorm.NewEngine(driver, connStr)
+    ...
+    switch {
+    case connOpts.Type.IsMySQL():
+        engine.Dialect().SetParams(map[string]string{"rowFormat": "DYNAMIC"})
+    case connOpts.Type.IsMSSQL():
+        engine.Dialect().SetParams(map[string]string{"DEFAULT_VARCHAR": "nvarchar"})
+    }
+    engine.SetSchema(connOpts.Schema)
+    return engine, nil
+}</code></pre>
+<p><code>InitEngine(ctx)</code> builds on this and wires the engine into the rest of the process:</p>
+<ol>
+<li>Creates the engine via <code>newXORMEngine()</code>.</li>
+<li>Sets the struct-to-table-name mapper to <code>names.GonicMapper{}</code> (so <code>UserID</code> maps to
+   <code>user_id</code>, not <code>user_i_d</code>); <code>LintGonicMapper</code> is patched in <code>init()</code> to also treat <code>SSL</code>
+   and <code>UID</code> as recognized acronyms.</li>
+<li>Installs the XORM logger (<code>NewXORMLogger</code>, see <code>models/db/xorm_logger.go</code> conceptually) and
+   toggles <code>ShowSQL</code> based on <code>setting.Database.LogSQL</code>.</li>
+<li>Applies connection pool settings: <code>MaxOpenConns</code>, <code>MaxIdleConns</code>, <code>ConnMaxLifetime</code>.</li>
+<li>If <code>setting.Database.SlowQueryThreshold &gt; 0</code>, attaches an <code>EngineHook</code> (see below) that
+   logs slow queries and records tracing spans.</li>
+<li>Calls <code>SetDefaultEngine(ctx, xe)</code>, which stores the engine in the package-level <code>xormEngine</code>
+   variable and calls <code>xormEngine.SetDefaultContext(ctx)</code>.</li>
+</ol>
+<pre class="highlight"><code class="language-go">func InitEngine(ctx context.Context) error {
+    xe, err := newXORMEngine()
+    ...
+    xe.SetMapper(names.GonicMapper{})
+    xe.SetLogger(NewXORMLogger(setting.Database.LogSQL))
+    xe.ShowSQL(setting.Database.LogSQL)
+    xe.SetMaxOpenConns(setting.Database.MaxOpenConns)
+    xe.SetMaxIdleConns(setting.Database.MaxIdleConns)
+    xe.SetConnMaxLifetime(setting.Database.ConnMaxLifetime)
+
+    if setting.Database.SlowQueryThreshold &gt; 0 {
+        xe.AddHook(&amp;EngineHook{
+            Threshold: setting.Database.SlowQueryThreshold,
+            Logger:    log.GetLogger("xorm"),
+        })
+    }
+
+    SetDefaultEngine(ctx, xe)
+    return nil
+}</code></pre>
+<p><code>InitEngineWithMigration(ctx, migrateFunc)</code> is the entry point used by the actual server
+startup path and CLI commands. It:</p>
+<ol>
+<li>Calls <code>InitEngine(ctx)</code>.</li>
+<li><code>Ping()</code>s the database to fail fast on bad connection settings.</li>
+<li>Calls <code>preprocessDatabaseCollation(xormEngine)</code> (see <code>models/db/collation.go</code>) to normalize
+   MySQL/MariaDB charset/collation before schema sync.</li>
+<li>Invokes the supplied <code>migrateFunc(ctx, xormEngine)</code> — this is where the migration framework
+   (documented in <a href="migrations.html">migrations.md</a>) actually runs.</li>
+<li>Calls <code>SyncAllTables()</code> to sync every registered model's schema.</li>
+<li>Runs every registered <code>initFunc</code> (from <code>RegisterModel</code>).</li>
+</ol>
+<blockquote>
+<p><strong>Important:</strong> <code>InitEngineWithMigration</code> must never call <code>Sync()</code> before <code>migrateFunc</code>
+succeeds — otherwise XORM would alter table schemas ahead of the migration logic, which
+would corrupt version tracking or produce column mismatches.</p>
+</blockquote>
+<p><code>UnsetDefaultEngine()</code> closes and nils out <code>xormEngine</code>; it's primarily used by tests to reset
+state between engine re-initializations, since <code>SetDefaultEngine</code>/<code>UnsetDefaultEngine</code> aren't
+strictly paired everywhere in the codebase yet (documented as a known rough edge in the code
+comments).</p>
+<h3 id="call-sites">Call sites<a href="#call-sites" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>InitEngine</code>/<code>InitEngineWithMigration</code> are called from several entry points:</p>
+<table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>routers/common/db.go</code></td>
+<td><code>InitDBEngine</code></td>
+<td>Main server startup, with retry/backoff loop (<code>DBConnectRetries</code>, <code>DBConnectBackoff</code>)</td>
+</tr>
+<tr>
+<td><code>routers/install/install.go</code></td>
+<td><code>db.InitEngine</code> / <code>db.InitEngineWithMigration</code></td>
+<td>Web installer flow</td>
+</tr>
+<tr>
+<td><code>cmd/migrate.go</code>, <code>cmd/migrate_storage.go</code></td>
+<td><code>db.InitEngineWithMigration</code></td>
+<td><code>gitea migrate</code> CLI command</td>
+</tr>
+<tr>
+<td><code>cmd/doctor.go</code>, <code>services/doctor/doctor.go</code></td>
+<td><code>db.InitEngine</code> / <code>db.InitEngineWithMigration</code></td>
+<td><code>gitea doctor</code> diagnostics (uses <code>migrations.EnsureUpToDate</code> instead of running migrations)</td>
+</tr>
+<tr>
+<td><code>cmd/dump.go</code>, <code>cmd/helper.go</code></td>
+<td><code>db.InitEngine</code></td>
+<td>Dump/restore and other CLI helpers</td>
+</tr>
+<tr>
+<td><code>models/migrations/migrationtest</code></td>
+<td><code>db.InitEngine</code></td>
+<td>Migration test harness (see <a href="migrations.html">migrations.md</a>)</td>
+</tr>
+</tbody>
+</table>
+<p><code>routers/common/db.go</code>'s <code>InitDBEngine</code> retries connecting up to <code>Database.DBConnectRetries</code>
+times with <code>Database.DBConnectBackoff</code> sleep between attempts — useful when the database
+container isn't ready yet (e.g., Docker Compose startup ordering):</p>
+<pre class="highlight"><code class="language-go">func InitDBEngine(ctx context.Context) (err error) {
+    for i := 0; i &lt; setting.Database.DBConnectRetries; i++ {
+        if err = db.InitEngineWithMigration(ctx, migrateWithSetting); err == nil {
+            break
+        } else if i == setting.Database.DBConnectRetries-1 {
+            return err
+        }
+        time.Sleep(setting.Database.DBConnectBackoff)
+    }
+    config.SetDynGetter(system_model.NewDatabaseDynKeyGetter())
+    return nil
+}</code></pre>
+<p><code>migrateWithSetting</code> decides whether to actually run migrations based on
+<code>setting.Database.AutoMigration</code>: if disabled, it still runs migrations on a fresh/uninitialized
+database, but otherwise just verifies the DB version matches what the binary expects
+and calls <code>log.Fatal</code> if not.</p>
+<h2 id="slow-query-tracing-hook-engine_hookgo">Slow Query &amp; Tracing Hook (<code>engine_hook.go</code>)<a href="#slow-query-tracing-hook-engine_hookgo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>EngineHook</code> implements XORM's <code>contexts.Hook</code> interface and is attached whenever
+<code>Database.SlowQueryThreshold &gt; 0</code>:</p>
+<pre class="highlight"><code class="language-go">func (*EngineHook) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
+    ctx, _ := gtprof.GetTracer().Start(c.Ctx, gtprof.TraceSpanDatabase)
+    return ctx, nil
+}
+
+func (h *EngineHook) AfterProcess(c *contexts.ContextHook) error {
+    span := gtprof.GetContextSpan(c.Ctx)
+    if span != nil {
+        span.SetAttributeString(gtprof.TraceAttrDbSQL, c.SQL)
+        span.End()
+    }
+    if c.ExecuteTime &gt;= h.Threshold {
+        h.Logger.Log(8, &amp;log.Event{Level: log.WARN}, "[Slow SQL Query] %s %v - %v", c.SQL, c.Args, c.ExecuteTime)
+    }
+    return nil
+}</code></pre>
+<p>Every SQL statement is wrapped with a tracing span (integrating with Gitea's <code>gtprof</code> module)
+and, if execution time exceeds the threshold, a warning is logged with the offending SQL,
+arguments and duration. Test fixture loading (<code>ContextKeyTestFixtures</code> in context) skips the
+tracing/logging path to avoid noise during unit tests.</p>
+<h2 id="connection-strings-driver-selection-conngo">Connection Strings &amp; Driver Selection (<code>conn.go</code>)<a href="#connection-strings-driver-selection-conngo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>ConnOptions</code> captures all connection parameters read from configuration
+(<code>GlobalConnOptions()</code> copies them from <code>setting.Database</code>):</p>
+<pre class="highlight"><code class="language-go">type ConnOptions struct {
+    Type     setting.DatabaseType
+    Host     string
+    Database string
+    User     string
+    Passwd   string
+    Schema   string
+    SSLMode  string
+
+    SQLitePath        string
+    SQLiteBusyTimeout int
+    SQLiteJournalMode string
+}</code></pre>
+<p><code>ConnStr(opts)</code> returns <code>(driverName, dataSourceName, error)</code> based on <code>opts.Type</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Database</th>
+<th>Driver name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MySQL</td>
+<td><code>mysql</code></td>
+<td>Uses <code>github.com/go-sql-driver/mysql</code>; builds <code>user:pass@tcp(host)/db?parseTime=true&amp;tls=...</code>; auto-detects Unix socket vs TCP by checking if <code>Host</code> starts with <code>/</code></td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td><code>postgres</code> or <code>postgresschema</code></td>
+<td>Uses <code>github.com/lib/pq</code>; if a non-empty <code>Schema</code> is set, registers and uses a special <code>postgresschema</code> driver wrapper (<code>registerPostgresSchemaDriver()</code>) so that <code>search_path</code> is set per-connection</td>
+</tr>
+<tr>
+<td>MSSQL</td>
+<td><code>mssql</code></td>
+<td>Uses <code>github.com/microsoft/go-mssqldb</code>; host/port parsed via <code>parseMSSQLHostPort</code> (supports <code>host:port</code> and <code>host,port</code> syntaxes)</td>
+</tr>
+<tr>
+<td>SQLite3</td>
+<td><code>sqlite3</code></td>
+<td>Delegated to a build-tag-selected driver (see below); requires <code>SQLitePath</code> to be non-empty, and creates parent directories via <code>os.MkdirAll</code></td>
+</tr>
+</tbody>
+</table>
+<pre class="highlight"><code class="language-go">func ConnStr(opts ConnOptions) (string, string, error) {
+    switch {
+    case opts.Type.IsMySQL():
+        ...
+        return "mysql", connStr, nil
+    case opts.Type.IsPostgreSQL():
+        ...
+        return driver, connStr, nil
+    case opts.Type.IsMSSQL():
+        ...
+        return "mssql", connStr, nil
+    case opts.Type.IsSQLite3():
+        ...
+        return makeSQLiteConnStr(SQLiteConnStrOptions{...})
+    }
+    return "", "", fmt.Errorf("unknown database type: %s", opts.Type)
+}</code></pre>
+<p><code>ConnStrDefaultDatabase(opts)</code> is a convenience wrapper that blanks out <code>Database</code>/<code>Schema</code>
+before building the string — used when Gitea needs to connect to the server itself (e.g., to
+create the target database during install) rather than to a specific database/schema.</p>
+<h3 id="sqlite-drivers-mattn-vs-modernc-pluggable-via-build-tags">SQLite Drivers: mattn vs modernc (pluggable via build tags)<a href="#sqlite-drivers-mattn-vs-modernc-pluggable-via-build-tags" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Gitea supports two interchangeable pure driver implementations for SQLite, selected at
+<strong>compile time</strong> via Go build tags, both registering themselves through
+<code>registerSQLiteConnStrMaker</code>:</p>
+<pre class="mermaid">graph LR
+    A["conn.go: makeSQLiteConnStr (default: unsupported)"] -->|"build tag: !sqlite_mattn"| B["driver_sqlite_modernc.go<br/>modernc.org/sqlite (pure Go, default)"]
+    A -->|"build tag: sqlite_mattn && sqlite_unlock_notify"| C["driver_sqlite_mattn.go<br/>github.com/mattn/go-sqlite3 (CGO)"]
+    B --> D["registerSQLiteConnStrMaker()"]
+    C --> D
+    D --> E["setting.SupportedDatabaseTypes += sqlite3"]</pre>
+<ul>
+<li><strong><code>models/db/driver_sqlite_modernc.go</code></strong> (<code>//go:build !sqlite_mattn</code>) — the <em>default</em> driver.
+  Uses <code>modernc.org/sqlite</code>, a pure-Go SQLite implementation (no CGO required). Registers itself
+  as the <code>sqlite3</code> SQL driver via <code>sql.Register(sqlDriverSQLite3, &amp;sqlite.Driver{})</code>. Connection
+  string uses <code>_pragma=busy_timeout(...)</code> and <code>_pragma=journal_mode(...)</code> query parameters and
+  <code>_txlock=immediate</code>.</li>
+</ul>
+<pre class="highlight"><code class="language-go">func makeSQLiteConnStrModerncCCGO(opts SQLiteConnStrOptions) (string, string, error) {
+    var params []string
+    params = append(params, fmt.Sprintf("_pragma=busy_timeout(%d)", opts.BusyTimeout))
+    params = append(params, "_txlock=immediate")
+    if opts.JournalMode != "" {
+        params = append(params, fmt.Sprintf("_pragma=journal_mode(%s)", opts.JournalMode))
+    }
+    connStr := fmt.Sprintf("file:%s?%s", opts.FilePath, strings.Join(params, "&amp;"))
+    return sqlDriverSQLite3, connStr, nil
+}</code></pre>
+<ul>
+<li><strong><code>models/db/driver_sqlite_mattn.go</code></strong> (<code>//go:build sqlite_mattn &amp;&amp; sqlite_unlock_notify</code>) —
+  the CGO-based driver using <code>github.com/mattn/go-sqlite3</code>, historically the default before the
+  modernc driver matured. Requires <code>-tags sqlite_mattn,sqlite_unlock_notify</code> at build time.
+  Connection string uses <code>cache=shared</code>, <code>mode=rwc</code>, <code>_busy_timeout=...</code>, and <code>_txlock=immediate</code>.</li>
+</ul>
+<p>Both drivers are functionally interchangeable from the application's perspective — they only
+differ in binary size, build requirements (CGO vs none), and CI/build time, as documented
+directly in the source comments of <code>driver_sqlite_modernc.go</code>.</p>
+<p>If neither build tag applies and SQLite support isn't compiled in at all, <code>makeSQLiteConnStr</code>
+keeps its default value which always errors:</p>
+<pre class="highlight"><code class="language-go">var makeSQLiteConnStr = func(opts SQLiteConnStrOptions) (string, string, error) {
+    return "", "", errors.New(`this Gitea binary was not built with SQLite3 support, get an official release or rebuild with correct "-tags"`)
+}</code></pre>
+<h3 id="postgresql-connection-string-hostport-parsing">PostgreSQL connection string &amp; host/port parsing<a href="#postgresql-connection-string-hostport-parsing" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>makePgSQLConnStr</code> builds a <code>net/url.URL</code> for <code>postgres://user:pass@host:port/dbname?params</code>,
+supporting Unix sockets (detected via a leading <code>/</code> in the host) by putting the socket
+directory into the <code>host</code> query parameter (libpq convention) instead of the URL host segment.
+<code>parsePgSQLHostPort</code> handles <code>host:port</code>, bare host (falls back to port <code>5432</code>), and IPv6
+bracket-stripping.</p>
+<h3 id="mssql-hostport-parsing">MSSQL host/port parsing<a href="#mssql-hostport-parsing" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>parseMSSQLHostPort</code> accepts both <code>host:port</code> and <code>host,port</code> (SQL Server's native connection
+string convention), defaulting host to <code>127.0.0.1</code> and port to <code>"0"</code> (dynamic port) if unset.</p>
+<h2 id="sessions-transactions-context-contextgo">Sessions, Transactions &amp; Context (<code>context.go</code>)<a href="#sessions-transactions-context-contextgo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The <code>db</code> package threads the "current" <code>Engine</code> (which may be a plain engine session, or an
+active transaction session) through <code>context.Context</code>, using an unexported context key:</p>
+<pre class="highlight"><code class="language-go">var contextKeyEngine = contextKey{"engine"}
+
+func GetEngine(ctx context.Context) Engine {
+    if engine, ok := ctx.Value(contextKeyEngine).(Engine); ok {
+        contextSafetyCheck(engine)
+        return engine
+    }
+    return xormEngine.Context(ctx)
+}</code></pre>
+<p>Any model/service function that needs to run a query calls <code>db.GetEngine(ctx)</code> — if the
+context already carries a transaction (because the caller wrapped it in <code>db.WithTx</code>), the
+same transaction is reused; otherwise a lightweight non-transactional session bound to <code>ctx</code>
+is created from the global <code>xormEngine</code>.</p>
+<h3 id="contextsafetycheck"><code>contextSafetyCheck</code><a href="#contextsafetycheck" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>In non-production or testing builds, <code>GetEngine</code> calls <code>contextSafetyCheck</code>, which uses
+<code>runtime.Callers</code> to detect a dangerous pattern: reusing a context-bound engine <strong>inside</strong>
+an <code>Iterate</code> callback, which XORM implements with <code>autoResetStatement=false</code> sessions —
+calling <code>GetEngine(ctx)</code> again inside such an iterator would corrupt query results. This
+lookup table of "denied" caller program counters is computed once via <code>sync.Once</code> and then
+checked on every call, cheaply, for the lifetime of the process.</p>
+<h3 id="transactions-txcontext-and-withtx">Transactions: <code>TxContext</code> and <code>WithTx</code><a href="#transactions-txcontext-and-withtx" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Two APIs exist for running code within a transaction:</p>
+<ul>
+<li><strong><code>WithTx</code> (recommended for new code)</strong> — automatically begins a transaction (or reuses an
+  existing one from the parent context), runs the callback, and commits/rolls back for you:</li>
+</ul>
+<pre class="highlight"><code class="language-go">func WithTx(parentCtx context.Context, f func(ctx context.Context) error) error {
+    if sess := getTransactionSession(parentCtx); sess != nil {
+        err := f(withContextEngine(parentCtx, sess))
+        if err != nil {
+            _ = sess.Close() // rollback immediately
+        }
+        return err
+    }
+    return txWithNoCheck(parentCtx, f)
+}</code></pre>
+<p><code>txWithNoCheck</code> begins a brand-new session, runs <code>f</code>, and calls <code>sess.Commit()</code> if <code>f</code>
+  returned no error (deferring <code>sess.Close()</code> regardless).</p>
+<ul>
+<li><strong><code>TxContext</code> (legacy pattern, still used in older code)</strong> — returns a <code>context.Context</code>
+  plus a <code>Committer</code> that the caller must explicitly <code>Commit()</code>/<code>Close()</code>:</li>
+</ul>
+<pre class="highlight"><code class="language-go">ctx, committer, err := db.TxContext(parentCtx)
+if err != nil { return err }
+defer committer.Close()
+// ... perform DB operations using ctx ...
+return committer.Commit()</code></pre>
+<p>If a transaction is already active in <code>parentCtx</code>, <code>TxContext</code> returns a <code>*halfCommitter</code>
+  wrapping the existing session's committer: calling <code>Commit()</code> on it is a no-op (the <em>outer</em>
+  transaction owner is responsible for the real commit), but calling <code>Close()</code> without a prior
+  <code>Commit()</code> immediately rolls back the <strong>entire</strong> outer transaction — this "poison the whole
+  transaction on error" behavior is intentional and documented at length in the code comments.</p>
+<p><code>WithTx2[T]</code> is a generic variant of <code>WithTx</code> that also returns a typed value alongside the
+error, useful for functions that both mutate and return data within one transaction.</p>
+<p><code>InTransaction(ctx)</code> reports whether the current context is inside an active transaction, by
+checking whether the context-bound engine is a <code>*xorm.Session</code> with <code>IsInTx() == true</code>.</p>
+<h3 id="context_committer_testgo-testing-halfcommitter"><code>context_committer_test.go</code> — testing <code>halfCommitter</code><a href="#context_committer_testgo-testing-halfcommitter" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Because <code>halfCommitter</code> is unexported, its behavior is tested from within the <code>db</code> package
+itself (<code>package db</code>, not <code>db_test</code>) using a <code>MockCommitter</code> that records the sequence of
+<code>Commit</code>/<code>Close</code> calls. Three scenarios are verified:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Expected call sequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Success: <code>f</code> returns nil, caller commits then closes</td>
+<td><code>commit</code>, <code>close</code></td>
+</tr>
+<tr>
+<td>Failure: <code>f</code> returns an error, caller only closes</td>
+<td><code>close</code>, <code>close</code> (rollback then defer-close)</td>
+</tr>
+<tr>
+<td>Caller commits explicitly then closes redundantly</td>
+<td><code>close</code>, <code>close</code></td>
+</tr>
+</tbody>
+</table>
+<pre class="highlight"><code class="language-go">testWithCommitter := func(committer Committer, f func(committer Committer) error) {
+    if err := f(&amp;halfCommitter{committer: committer}); err == nil {
+        committer.Commit()
+    }
+    committer.Close()
+}</code></pre>
+<h3 id="generic-crud-helpers">Generic CRUD helpers<a href="#generic-crud-helpers" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>context.go</code> also exposes a set of small generic helper functions built on top of <code>GetEngine</code>,
+used pervasively across <code>models/*</code> to avoid writing repetitive XORM session code:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Signature</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Insert</code></td>
+<td><code>Insert(ctx, beans ...any) error</code></td>
+<td>Inserts one or more beans</td>
+</tr>
+<tr>
+<td><code>Exec</code></td>
+<td><code>Exec(ctx, sqlAndArgs ...any) (sql.Result, error)</code></td>
+<td>Raw SQL execution</td>
+</tr>
+<tr>
+<td><code>Get[T]</code></td>
+<td><code>Get[T](ctx, cond builder.Cond) (*T, bool, error)</code></td>
+<td>Fetch one row matching a condition</td>
+</tr>
+<tr>
+<td><code>GetByID[T]</code></td>
+<td><code>GetByID[T](ctx, id int64) (*T, bool, error)</code></td>
+<td>Fetch by primary key</td>
+</tr>
+<tr>
+<td><code>Exist[T]</code> / <code>ExistByID[T]</code></td>
+<td>—</td>
+<td>Existence checks</td>
+</tr>
+<tr>
+<td><code>DeleteByID[T]</code> / <code>DeleteByIDs[T]</code></td>
+<td>—</td>
+<td>Delete by primary key(s), skipping auto-time columns</td>
+</tr>
+<tr>
+<td><code>Delete[T]</code></td>
+<td><code>Delete[T](ctx, opts FindOptions) (int64, error)</code></td>
+<td>Delete matching a <code>FindOptions</code> condition</td>
+</tr>
+<tr>
+<td><code>DeleteByBean</code></td>
+<td><code>DeleteByBean(ctx, bean any) (int64, error)</code></td>
+<td>Delete using non-zero fields of a bean as the condition</td>
+</tr>
+<tr>
+<td><code>FindIDs</code></td>
+<td><code>FindIDs(ctx, tableName, idCol string, cond builder.Cond) ([]int64, error)</code></td>
+<td>Fetch a column of IDs</td>
+</tr>
+<tr>
+<td><code>DecrByIDs</code></td>
+<td>—</td>
+<td>Atomically decrement a column for a set of IDs</td>
+</tr>
+<tr>
+<td><code>DeleteBeans</code> / <code>TruncateBeans</code></td>
+<td>—</td>
+<td>Batch delete/truncate for multiple bean types</td>
+</tr>
+<tr>
+<td><code>CountByBean</code></td>
+<td><code>CountByBean(ctx, bean any) (int64, error)</code></td>
+<td>Count rows matching bean's non-zero fields</td>
+</tr>
+</tbody>
+</table>
+<p><code>Get</code>/<code>GetByID</code>/<code>Exist</code>/<code>ExistByID</code>/<code>Delete*</code> all <code>panic</code> if given an invalid/empty condition
+— this is a deliberate guard against accidentally deleting or matching an entire table due to
+a programming mistake (an empty <code>builder.Cond</code> matches everything).</p>
+<h2 id="pagination-modelsdblistgo-and-modelsdbpaginator">Pagination (<code>models/db/list.go</code> and <code>models/db/paginator/</code>)<a href="#pagination-modelsdblistgo-and-modelsdbpaginator" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Pagination is modeled through a small <code>Paginator</code> interface:</p>
+<pre class="highlight"><code class="language-go">type Paginator interface {
+    GetSkipTake() (skip, take int)
+    IsListAll() bool
+}</code></pre>
+<p><code>ListOptions</code> is the standard page/pageSize implementation used throughout the REST API and
+web UI:</p>
+<pre class="highlight"><code class="language-go">type ListOptions struct {
+    PageSize int
+    Page     int  // start from 1
+    ListAll  bool // if true, then PageSize and Page will not be taken
+}
+
+func (opts *ListOptions) GetSkipTake() (skip, take int) {
+    opts.SetDefaultValues()
+    return (opts.Page - 1) * opts.PageSize, opts.PageSize
+}
+
+func (opts *ListOptions) SetDefaultValues() {
+    if opts.PageSize &lt;= 0 {
+        opts.PageSize = setting.API.DefaultPagingNum
+    }
+    if opts.PageSize &gt; setting.API.MaxResponseItems {
+        opts.PageSize = setting.API.MaxResponseItems
+    }
+    if opts.Page &lt;= 0 {
+        opts.Page = 1
+    }
+}</code></pre>
+<p><code>ListOptionsAll = ListOptions{ListAll: true}</code> is a convenient shared sentinel for "fetch
+everything." <code>AbsoluteListOptions</code> is a variant that takes pre-clamped <code>skip</code>/<code>take</code> values
+directly (used, for example, for internal APIs that need explicit offsets rather than
+page numbers):</p>
+<pre class="highlight"><code class="language-go">func NewAbsoluteListOptions(skip, take int) *AbsoluteListOptions {
+    if skip &lt; 0 { skip = 0 }
+    if take &lt;= 0 { take = setting.API.DefaultPagingNum }
+    if take &gt; setting.API.MaxResponseItems { take = setting.API.MaxResponseItems }
+    return &amp;AbsoluteListOptions{skip, take}
+}</code></pre>
+<p><code>SetSessionPagination(sess, p)</code> applies <code>p.GetSkipTake()</code> directly to an XORM session's
+<code>Limit(...)</code> call — the lowest-level plumbing point most list queries eventually go through.</p>
+<h3 id="findoptions-and-the-generic-findcountfindandcount"><code>FindOptions</code> and the generic <code>Find</code>/<code>Count</code>/<code>FindAndCount</code><a href="#findoptions-and-the-generic-findcountfindandcount" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Beyond plain pagination, <code>list.go</code> defines a richer <code>FindOptions</code> interface that most
+model-level "list criteria" structs implement:</p>
+<pre class="highlight"><code class="language-go">type FindOptions interface {
+    GetPage() int
+    GetPageSize() int
+    IsListAll() bool
+    ToConds() builder.Cond
+}</code></pre>
+<p>Optional extension interfaces let a caller's options struct also contribute joins
+(<code>FindOptionsJoin.ToJoins() []JoinFunc</code>) or ordering (<code>FindOptionsOrder.ToOrders() string</code>).
+The generic functions <code>Find[T]</code>, <code>Count[T]</code>, and <code>FindAndCount[T]</code> compose all of this
+automatically:</p>
+<pre class="highlight"><code class="language-go">func Find[T any](ctx context.Context, opts FindOptions) ([]*T, error) {
+    sess := GetEngine(ctx).Where(opts.ToConds())
+    // ... apply joins if FindOptionsJoin ...
+    // ... apply order if FindOptionsOrder ...
+    // ... apply Limit(pageSize, offset) unless IsListAll() ...
+    objects := make([]*T, 0, findPageSize)
+    return objects, sess.Find(&amp;objects)
+}</code></pre>
+<p>This pattern lets each model package define a small, self-contained "options" struct (e.g.
+<code>repo_search.SearchRepoOptions</code>) that implements <code>ToConds()</code>/<code>ToOrders()</code>/<code>ToJoins()</code>, and get
+consistent, safe pagination for free.</p>
+<h3 id="modelsdbpaginator"><code>models/db/paginator/</code><a href="#modelsdbpaginator" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The <code>paginator</code> sub-package is currently a placeholder (<code>paginator.go</code> contains only a comment)
+whose stated purpose is to eventually host the pagination types from <code>models/db/list.go</code>
+without creating an import cycle:</p>
+<pre class="highlight"><code class="language-go">package paginator
+
+// dummy only. in the future, the models/db/list_options.go should be moved here to decouple from db package
+// otherwise the unit test will cause cycle import</code></pre>
+<p>Its tests (<code>paginator_test.go</code>, <code>main_test.go</code>) already exercise <code>db.ListOptions</code> and
+<code>db.NewAbsoluteListOptions</code> from outside the <code>db</code> package (via <code>import "gitea.dev/models/db"</code>),
+validating <code>GetSkipTake()</code> behavior for both positive and non-positive (defaulted) inputs — this
+external test package is exactly why the migration to <code>paginator</code> is planned, to avoid pulling
+<code>db</code> (and its many transitive dependencies) into pagination-only consumers.</p>
+<h2 id="consistency-checks-consistencygo">Consistency Checks (<code>consistency.go</code>)<a href="#consistency-checks-consistencygo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>models/db/consistency.go</code> provides two generic helpers for finding and removing "orphaned"
+rows — rows in a <code>subject</code> table whose referenced row in a <code>refObject</code> table no longer exists:</p>
+<pre class="highlight"><code class="language-go">func CountOrphanedObjects(ctx context.Context, subject, refObject, joinCond string) (int64, error) {
+    return GetEngine(ctx).
+        Table("`"+subject+"`").
+        Join("LEFT", "`"+refObject+"`", joinCond).
+        Where(builder.IsNull{"`" + refObject + "`.id"}).
+        Select("COUNT(`" + subject + "`.`id`)").
+        Count()
+}
+
+func DeleteOrphanedObjects(ctx context.Context, subject, refObject, joinCond string) error {
+    subQuery := builder.Select("`"+subject+"`.id").
+        From("`" + subject + "`").
+        Join("LEFT", "`"+refObject+"`", joinCond).
+        Where(builder.IsNull{"`" + refObject + "`.id"})
+    b := builder.Delete(builder.In("id", subQuery)).From("`" + subject + "`")
+    _, err := GetEngine(ctx).Exec(b)
+    return err
+}</code></pre>
+<p>Both use a <code>LEFT JOIN ... WHERE ref.id IS NULL</code> pattern to identify rows in <code>subject</code> that no
+longer have a matching row in <code>refObject</code>. These are consumed by:</p>
+<ul>
+<li><strong><code>services/doctor/dbconsistency.go</code></strong> — the <code>gitea doctor</code> command's generic "check for
+  orphaned rows" logic across dozens of table pairs (e.g., <code>action</code> orphaned from <code>repository</code>,
+  <code>attachment</code> orphaned from <code>issue</code>, etc.), driven by a declarative list of
+  <code>(subject, refObject, joinCond)</code> tuples.</li>
+<li><strong><code>services/doctor/repository.go</code></strong> — specifically checks for repositories whose owning user
+  no longer exists: <code>db.CountOrphanedObjects(ctx, "repository", "user", "repository.owner_id=</code>user<code>.id")</code>.</li>
+<li>Unit tests such as <code>models/db/engine_test.go</code>'s <code>TestDeleteOrphanedObjects</code> and
+  <code>models/issues/pull_test.go</code>'s <code>testDeleteOrphanedObjects</code>, which validate the pull-request/
+  issue relationship stays consistent.</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> table/column names are directly interpolated into the SQL string (wrapped in
+backticks) rather than parameterized, because table/column identifiers cannot be bound as
+SQL parameters. Callers must only pass trusted, hard-coded identifiers — never user input —
+to these functions.</p>
+</blockquote>
+<h2 id="related-pages">Related Pages<a href="#related-pages" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="migrations.html">Migrations</a> — how schema changes are applied on top of the engine described here.</li>
+<li><a href="README.html">Database &amp; Models overview</a> — high-level orientation for the <code>models/</code> package.</li>
+</ul>
+<div class="page-nav">
+<a href="README.html"><div class="nav-label">← Previous</div><div class="nav-title">Database & Models</div></a>
+<a href="issues-and-pulls-model.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Issues & Pull Requests Model</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#overview" class="" data-anchor="overview">Overview</a>
+<a href="#engine-interfaces-enginego" class="" data-anchor="engine-interfaces-enginego">Engine Interfaces (engine.go)</a>
+<a href="#engine-initialization-engine_initgo" class="" data-anchor="engine-initialization-engine_initgo">Engine Initialization (engine_init.go)</a>
+<a href="#call-sites" class="toc-h3" data-anchor="call-sites">Call sites</a>
+<a href="#slow-query-tracing-hook-engine_hookgo" class="" data-anchor="slow-query-tracing-hook-engine_hookgo">Slow Query &amp; Tracing Hook (engine_hook.go)</a>
+<a href="#connection-strings-driver-selection-conngo" class="" data-anchor="connection-strings-driver-selection-conngo">Connection Strings &amp; Driver Selection (conn.go)</a>
+<a href="#sqlite-drivers-mattn-vs-modernc-pluggable-via-build-tags" class="toc-h3" data-anchor="sqlite-drivers-mattn-vs-modernc-pluggable-via-build-tags">SQLite Drivers: mattn vs modernc (pluggable via build tags)</a>
+<a href="#postgresql-connection-string-hostport-parsing" class="toc-h3" data-anchor="postgresql-connection-string-hostport-parsing">PostgreSQL connection string &amp; host/port parsing</a>
+<a href="#mssql-hostport-parsing" class="toc-h3" data-anchor="mssql-hostport-parsing">MSSQL host/port parsing</a>
+<a href="#sessions-transactions-context-contextgo" class="" data-anchor="sessions-transactions-context-contextgo">Sessions, Transactions &amp; Context (context.go)</a>
+<a href="#contextsafetycheck" class="toc-h3" data-anchor="contextsafetycheck">contextSafetyCheck</a>
+<a href="#transactions-txcontext-and-withtx" class="toc-h3" data-anchor="transactions-txcontext-and-withtx">Transactions: TxContext and WithTx</a>
+<a href="#context_committer_testgo-testing-halfcommitter" class="toc-h3" data-anchor="context_committer_testgo-testing-halfcommitter">context_committer_test.go — testing halfCommitter</a>
+<a href="#generic-crud-helpers" class="toc-h3" data-anchor="generic-crud-helpers">Generic CRUD helpers</a>
+<a href="#pagination-modelsdblistgo-and-modelsdbpaginator" class="" data-anchor="pagination-modelsdblistgo-and-modelsdbpaginator">Pagination (models/db/list.go and models/db/paginator/)</a>
+<a href="#findoptions-and-the-generic-findcountfindandcount" class="toc-h3" data-anchor="findoptions-and-the-generic-findcountfindandcount">FindOptions and the generic Find/Count/FindAndCount</a>
+<a href="#modelsdbpaginator" class="toc-h3" data-anchor="modelsdbpaginator">models/db/paginator/</a>
+<a href="#consistency-checks-consistencygo" class="" data-anchor="consistency-checks-consistencygo">Consistency Checks (consistency.go)</a>
+<a href="#related-pages" class="" data-anchor="related-pages">Related Pages</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

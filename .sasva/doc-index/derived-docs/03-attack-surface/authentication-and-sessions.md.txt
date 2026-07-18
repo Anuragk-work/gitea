@@ -1,0 +1,517 @@
+=== FILE: derived-docs/03-attack-surface/authentication-and-sessions.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Authentication & Session Security Gitea accepts credentials through an unusually wide number of front doors: browser sessions, HTTP Basic, personal access tokens (PATs), OAuth2 bearer tokens, LDAP/PAM/SMTP-backed password login, SSPI/Kerberos, reverse-proxy header trust, and HTTP-signature auth for ActivityPub federation.
+
+# Authentication & Session Security
+
+Gitea accepts credentials through an unusually wide number of front doors: browser sessions,
+HTTP Basic, personal access tokens (PATs), OAuth2 bearer tokens, LDAP/PAM/SMTP-backed password
+login, SSPI/Kerberos, reverse-proxy header trust, and HTTP-signature auth for ActivityPub
+federation. All of it funnels through one small interface and a small number of ordered
+"auth chains" per surface. This page maps that entire authentication and session-security
+surface — what verifies identity, how sessions/tokens are minted and protected, how 2FA and
+replay protection work, and where a scanner operator (Trivy/opengrep) should focus attention.
+
+This page synthesizes `docs/08-services/auth-providers.md`, `docs/11-authentication/README.md`,
+`docs/02-architecture/request-lifecycle.md`, `docs/06-web-routers/web-routes.md`, and
+`docs/07-rest-api/api-conventions-and-swagger.md`.
+
+## The Core Abstraction: `auth.Method`
+
+Every authentication mechanism in Gitea implements one interface, described in
+[Authentication & Authorization](../../docs/08-services/auth-providers.md):
+
+```go
+// Method represents an authentication method (plugin) for HTTP requests.
+type Method interface {
+    Verify(http *http.Request, w http.ResponseWriter, store DataStore, sess SessionStore) (*user_model.User, error)
+    Name() string
+}
+```
+
+Contract semantics matter for security review:
+
+- **`(nil, nil)`** — this method doesn't apply to the request (no matching header/cookie); the
+  chain tries the next method.
+- **`(nil, err)`** — the method recognized its credential format but verification *failed*
+  (bad password, expired/replayed token). This is a hard failure, but other methods further
+  down the chain may still succeed and override it.
+- **`(user, nil)`** — success.
+
+Two optional extension interfaces sit on top of a login **`Source`** (the admin-configured
+credential backend, distinct from a `Method`):
+
+```go
+type PasswordAuthenticator interface {
+    Authenticate(ctx context.Context, user *user_model.User, login, password string) (*user_model.User, error)
+}
+type SynchronizableSource interface {
+    Sync(ctx context.Context, updateExisting bool) error
+}
+```
+
+> **Method vs. Source, don't conflate them when triaging a finding.** An `auth.Method`
+> verifies an *HTTP request* (session cookie, bearer token, header, signature). An
+> `auth.Source` is an admin-configured *credential backend* (LDAP server, SMTP server, OAuth2
+> app, PAM service, SSPI domain). `Basic`/`Session` call into the active `Source`s via
+> `UserSignIn`; OAuth2/SSPI use their `Source` purely for configuration.
+
+## Provider Catalog
+
+| Method / Source | File(s) | Kind | Notes |
+|---|---|---|---|
+| `Session` | `services/auth/session.go` | HTTP `Method` | Reads `uid` from the signed cookie session |
+| `Basic` | `services/auth/basic.go` | HTTP `Method` | HTTP Basic header; also re-used to validate PATs, OAuth2 access tokens, and Action task tokens |
+| `OAuth2` | `services/auth/oauth2.go` | HTTP `Method` | Bearer token/JWT in header or `token`/`access_token` query param |
+| `ReverseProxy` | `services/auth/reverseproxy.go` | HTTP `Method` | Trusts a header set by an upstream proxy (e.g. `X-WEBAUTH-USER`) |
+| `SSPI` | `services/auth/sspi.go` | HTTP `Method` | Windows SPNEGO/Kerberos negotiation, login-page only |
+| `HTTPSign` | `services/auth/httpsign.go` | HTTP `Method` | HTTP Signature (`Signature` header) using SSH keys/certs — federation/ActivityPub |
+| `Group` | `services/auth/group.go` | Composite `Method` | Runs a list of `Method`s in order, first success wins |
+| LDAP (`LDAP`/`DLDAP`) | `services/auth/source/ldap/*` | Login **Source** | Bind-DN or direct-bind LDAP via `go-ldap` |
+| PAM | `services/auth/source/pam/*` | Login **Source** | Delegates to the OS PAM stack |
+| SMTP | `services/auth/source/smtp/*` | Login **Source** | Authenticates against an SMTP server (PLAIN/LOGIN/CRAM-MD5) |
+| OAuth2 provider | `services/auth/source/oauth2/*` | Login **Source** | Wraps `github.com/markbates/goth` (GitHub, GitLab, Google, generic OIDC, ...) |
+| DB | `services/auth/source/db` | Login **Source** | Internal database password auth (default) |
+| SSPI config | `services/auth/source/sspi` | Login **Source** | Configuration consumed by the `SSPI` `Method` |
+
+Every one of these is a distinct attack surface with a different credential format, which
+means a single SAST pass (opengrep) or dependency scan (Trivy) won't cover them uniformly —
+see [Scanning Guidance](#scanning-guidance-for-trivy--opengrep) below.
+
+## Per-Surface Auth Chains
+
+The **order of methods in a chain matters** — some methods (reverse proxy, SSPI) create a new
+session or short-circuit the chain, so ordering bugs are a realistic authentication-bypass
+class to look for when reviewing chain-construction code.
+
+### Web UI chain (`routers/web/web.go` → `newWebAuthMiddleware`)
+
+```go
+group := auth_service.NewGroup()
+if allowOAuth2 {
+    group.Add(&auth_service.OAuth2{})
+}
+if allowBasic {
+    group.Add(&auth_service.Basic{})
+}
+if setting.Service.EnableReverseProxyAuth {
+    // reverse-proxy should be before Session, otherwise the header
+    // will be ignored if the user has already logged in
+    group.Add(&auth_service.ReverseProxy{CreateSession: !isSessionless})
+}
+group.Add(&auth_service.Session{})
+if enableSSPI {
+    // it MUST be the last, see the comment of SSPI
+    group.Add(&auth_service.SSPI{CreateSession: !isSessionless})
+}
+```
+
+### REST API chain (`routers/api/v1/api.go` → `buildAuthGroup`)
+
+```go
+func buildAuthGroup() *auth.Group {
+    group := auth.NewGroup(
+        &auth.OAuth2{},
+        &auth.HTTPSign{},
+        &auth.Basic{}, // FIXME: should be removed once basic auth in API isn't allowed
+    )
+    if setting.Service.EnableReverseProxyAuthAPI {
+        group.Add(&auth.ReverseProxy{})
+    }
+    return group
+}
+```
+
+> The `FIXME` comment in the upstream source itself flags Basic Auth on the API as a
+> known-undesirable legacy allowance — worth tracking as a standing hardening item rather than
+> a "new" finding if a scanner surfaces it.
+
+### Package registry API chain (`routers/api/packages/api.go`)
+
+Each package registry endpoint calls `verifyAuth(r, []auth.Method{...}, opts)` with a
+registry-specific method list (e.g. NuGet's own API-key `Method` wrapping
+`Basic.VerifyAuthToken`), and `ReverseProxy` is appended automatically when
+`EnableReverseProxyAuth` is set.
+
+```mermaid
+flowchart TD
+    A[Incoming HTTP request] --> B{Route type}
+    B -->|Web UI| C[Web Auth Group]
+    B -->|REST API /api/v1| D[API Auth Group]
+    B -->|Package Registry| E[Package Auth Group]
+
+    C --> C1[OAuth2 Bearer?] -->|no match| C2[Basic Auth?]
+    C2 -->|no match| C3[ReverseProxy header?]
+    C3 -->|no match| C4[Session cookie?]
+    C4 -->|no match| C5[SSPI/SPNEGO last]
+    C5 -->|no match| C6[Anonymous]
+
+    D --> D1[OAuth2 Bearer?] -->|no match| D2[HTTPSign header?]
+    D2 -->|no match| D3[Basic Auth?]
+    D3 -->|no match| D4[ReverseProxy if enabled]
+    D4 -->|no match| D6[Anonymous / 401]
+
+    C1 -->|match| U["ctx.Doer (*user_model.User)"]
+    C2 -->|match| U
+    C3 -->|match| U
+    C4 -->|match| U
+    C5 -->|match| U
+    D1 -->|match| U
+    D2 -->|match| U
+    D3 -->|match| U
+    D4 -->|match| U
+
+    U --> P["Permission / Access Mode checks (see authorization-permission-model.md)"]
+```
+
+`common.AuthShared` (`routers/common/auth.go`) is the shared glue: it calls
+`authMethod.Verify(...)`, stores `ctx.Doer`/`ctx.IsSigned`/`ctx.IsBasicAuth`, and refreshes the
+request locale to the signed-in user's language, per
+[Request Lifecycle](../../docs/02-architecture/request-lifecycle.md).
+
+## Session Establishment & Fixation Protection
+
+`Session` (`services/auth/session.go`) is deliberately simple: it reads a `uid` key from the
+session store (backed by `modules/session`, provider selectable via `[session] PROVIDER` —
+`memory`/`file`/`db`/`redis`) and loads the `User` by ID. It returns `(nil, nil)` when there's
+no session, letting later/earlier methods take over.
+
+The session-writing side lives in `handleSignIn` (`services/auth/auth.go`), which — per
+[Auth Providers](../../docs/08-services/auth-providers.md) — **regenerates the session ID on
+sign-in** (classic session-fixation mitigation), clears stale two-factor/OpenID keys, and
+stores `uid`/`uname`.
+
+Per [Request Lifecycle](../../docs/02-architecture/request-lifecycle.md), the session
+middleware (`common.MustInitSessioner()`) is installed globally, ahead of the auth-method
+group, so every request — even unauthenticated ones — carries a session-capable context.
+Routes that must remain sessionless (git-over-HTTP clone/push, RSS feeds, attachment
+downloads) explicitly opt out via `webAuth.AllowBasic`/`webAuth.AllowOAuth2` pre-middlewares
+so the `Session` method doesn't force a cookie to be created for non-browser clients.
+
+### Cross-Origin / CSRF Protection
+
+Rather than the classic CSRF-token-in-every-form pattern, Gitea's `verifyAuthWithOptions`
+(`routers/web/web.go`) calls Go's standard-library **Fetch Metadata** check:
+
+```go
+http.NewCrossOriginProtection().Check(ctx.Req)
+```
+
+This inspects the `Sec-Fetch-Site` header to reject cross-site browser navigations, per
+[Request Lifecycle](../../docs/02-architecture/request-lifecycle.md#5-authorization--csrf--feature-checks).
+It is skipped when `SignOutRequired` or `DisableCrossOriginProtection` is set, and explicitly
+disabled for routes that must accept legitimately cross-origin, non-browser traffic — e.g. Git
+Smart HTTP (`optSignInFromAnyOrigin`), because `git clone`/`push` traffic never sends a
+`Sec-Fetch-Site` header and isn't a CSRF risk by construction (per
+[Web Router & Server-Rendered UI](../../docs/06-web-routers/web-routes.md)).
+
+> **Review angle**: any new route added with `optSignInFromAnyOrigin` (or an equivalent
+> CSRF-disabling option) that *does* accept browser-originated state-changing requests would
+> reintroduce a CSRF gap — this is a good opengrep custom-rule target (flag any use of
+> `DisableCrossOriginProtection` / `optSignInFromAnyOrigin` for manual review).
+
+## Basic Auth: the Multi-Credential Fallback Path
+
+`Basic.VerifyAuthToken` (`services/auth/basic.go`) is more than "HTTP Basic" — it's the shared
+verification routine reused by other integrations (e.g. NuGet's `X-NuGet-ApiKey`). It tries,
+in order:
+
+1. **OAuth2 access token** — parses a JWT-shaped token and resolves the `OAuth2Grant`.
+2. **Personal Access Token** — looks up a PAT by its last-eight-chars index, then verifies the
+   full token via a constant-time hash comparison.
+3. **Actions task token** — used by CI runners.
+4. **Username/password fallback** — only if `setting.Service.EnableBasicAuth` is true; calls
+   `UserSignIn`, then enforces 2FA: **WebAuthn-enrolled accounts are rejected outright** for
+   Basic auth (`"basic authorization is not allowed while WebAuthn enrolled"`), and
+   TOTP-enrolled accounts must supply a valid `X-Gitea-OTP` header, verified via atomic
+   single-use consumption to prevent replay.
+
+This layering means "Basic Auth is disabled" (`ENABLE_BASIC_AUTHENTICATION=false`) does *not*
+disable PAT or OAuth2-bearer-via-Basic-header usage — only the raw username/password fallback
+step 4. Scanners and reviewers checking "is password-over-Basic-Auth possible" need to check
+this specific branch, not just whether the `Basic` method is registered in the chain.
+
+## Personal Access Tokens & OAuth2 Scopes
+
+Modeled by `AccessToken` (`models/auth/access_token.go`), per
+[Auth Providers](../../docs/08-services/auth-providers.md):
+
+```go
+type AccessToken struct {
+    ID             int64 `xorm:"pk autoincr"`
+    UID            int64 `xorm:"INDEX"`
+    Name           string
+    Token          string `xorm:"-"`          // only available at creation time
+    TokenHash      string `xorm:"UNIQUE"`      // sha256+salt of token, persisted
+    TokenSalt      string
+    TokenLastEight string `xorm:"INDEX token_last_eight"` // fast index lookup
+    Scope          AccessTokenScope
+    ...
+}
+```
+
+Tokens are **never stored in plaintext**: `NewAccessToken` generates a random token and stores
+only a salted hash plus a `TokenLastEight` index shortcut; `GetAccessTokenBySHA` looks up
+candidates by the index and does a **constant-time** comparison (`crypto/subtle`), with an
+optional LRU cache to skip repeated hash work for hot tokens.
+
+### Scope model
+
+| Category | Read scope | Write scope |
+|---|---|---|
+| ActivityPub | `read:activitypub` | `write:activitypub` |
+| Admin | `read:admin` | `write:admin` |
+| Misc | `read:misc` | `write:misc` |
+| Notification | `read:notification` | `write:notification` |
+| Organization | `read:organization` | `write:organization` |
+| Package | `read:package` | `write:package` |
+| Issue | `read:issue` | `write:issue` |
+| Repository | `read:repository` | `write:repository` |
+| User | `read:user` | `write:user` |
+
+Write scope always implies read scope for the same category. `AccessTokenScopePublicOnly`
+further restricts a token to public repos/orgs regardless of other granted scopes.
+
+Two independent gates apply to every token-authenticated request, per
+[Auth Providers](../../docs/08-services/auth-providers.md):
+
+1. **Token scope** — does the token's scope cover the category/verb needed (`write:repository`
+   for a push-like operation)? Enforced by `reqToken`/`tokenRequiresScopes` in
+   `routers/api/v1` (see [API Conventions & Swagger](../../docs/07-rest-api/api-conventions-and-swagger.md)).
+2. **Repository/org access mode** — does the authenticated user's `AccessMode` for the target
+   resource meet the requirement? A token with `write:repository` scope still cannot write to
+   a repo the user has no write access to.
+
+Session/Basic-password logins skip gate 1 entirely (`GetAccessScope` returns
+`AccessTokenScopeAll`), so only the access-mode gate (gate 2) applies — see
+[Authorization & Permission Model](authorization-permission-model.md) for the full mechanics
+of gate 2.
+
+```mermaid
+graph LR
+    A[auth.Method chain] -->|resolves| B["ctx.Doer (*user_model.User)"]
+    B --> C{Token-based request?}
+    C -->|yes| D["Check AccessTokenScope<br/>(GetAccessScope / grant.Scope)"]
+    C -->|no| E[Skip scope check]
+    D --> F
+    E --> F["Compute Permission via access.AccessLevel/AccessLevelUnit"]
+    F --> G["Permission.CanAccess(mode, unitType)"]
+    G -->|true| H[Request proceeds]
+    G -->|false| I[403 Forbidden]
+```
+
+### API authentication schemes (Swagger-declared)
+
+Per [API Conventions & Swagger](../../docs/07-rest-api/api-conventions-and-swagger.md), the
+REST API's `securityDefinitions` document these named schemes:
+
+| Scheme | Where | Status | Notes |
+|---|---|---|---|
+| `BasicAuth` | `Authorization: Basic ...` | Active | Username/password, or username + PAT-as-password; combine with `TOTPHeader` if 2FA enabled |
+| `AuthorizationHeaderToken` | `Authorization: token <token>` | **Recommended** | Modern preferred way to send a PAT/OAuth2 token |
+| `Token` | `?token=<token>` query param | Deprecated (removal targeted for 1.23) | Triggers `X-Gitea-Warning` response header |
+| `AccessToken` | `?access_token=<token>` query param | Deprecated (removal targeted for 1.23) | Same idea, alternate param name |
+| `SudoParam`/`SudoHeader` | `?sudo=<user>` / `Sudo: <user>` | Admin-only | Perform a request "as" another user |
+| `TOTPHeader` | `X-GITEA-OTP: <code>` | Conditional | Required with `BasicAuth` for 2FA-enabled accounts |
+
+> **Hardening note carried from the source docs**: token-in-query-string schemes (`Token`,
+> `AccessToken`) are flagged for removal upstream because query strings leak into access logs,
+> proxy logs, and browser history. If `[security]`/route configuration still allows
+> `?token=`/`?access_token=` (i.e. `DisableQueryAuthToken` is not set), treat any log-scanning
+> or shoulder-surfing exposure of tokens as an expected, documented risk rather than a novel
+> finding — but it's a legitimate item to flag in a security review of a specific deployment.
+
+## Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs
+
+Persistent "remember me" login cookies use a **separate mechanism** from both sessions and
+PATs: `models/auth/auth_token.go` + `services/auth/auth_token.go`, modeled after
+[Paragon Initiative's secure remember-me design](https://paragonie.com/blog/2015/04/secure-authentication-php-with-long-term-persistence),
+per [Auth Providers](../../docs/08-services/auth-providers.md). Each cookie value is `id:token`;
+the server stores only `TokenHash = sha256(token)` keyed by `id`.
+
+- `CheckAuthToken` verifies the hash in **constant time** on every use.
+- `RegenerateAuthToken` **rotates the hash on every login**, keeping the same `id`.
+- If an attacker replays a stolen (already-used) token, the hash mismatch triggers
+  `DeleteAuthTokenByID` — the device's remember-me token is immediately revoked, forcing
+  re-authentication. This is a **theft-detection** property, not just theft-prevention.
+
+## Two-Factor Authentication
+
+Gitea supports two independent 2FA mechanisms; a user may enroll in either or both, per
+[Auth Providers](../../docs/08-services/auth-providers.md):
+
+### TOTP
+
+Modeled by `TwoFactor` (`models/auth/twofactor.go`). The shared secret is **AES-encrypted at
+rest** (key derived from `setting.SecretKey` via MD5) and Base64-encoded in the `Secret`
+column. Validation uses `github.com/pquerna/otp/totp`, and — critically — passcodes are
+**single-use**: `ValidateAndConsumeTOTP` performs a conditional `UPDATE` (`last_used_passcode
+<> ?` or `IS NULL`) so a captured OTP cannot be replayed within its validity window even under
+concurrent requests (the `UPDATE`'s row lock serializes racing attempts). A scratch/recovery
+token (ambiguity-free Base32 alphabet) is available as a backup.
+
+> **MD5-derived key note**: the source docs explicitly describe the TOTP secret's
+> AES-encryption key as "derived from `setting.SecretKey` via MD5". MD5-as-a-KDF is a
+> reasonable target for an opengrep custom rule or manual crypto review — even though it's not
+> used for signature/hash verification here (just symmetric-key derivation), it's the kind of
+> primitive-choice a SAST tool tuned for weak-crypto detection should surface for
+> confirmation, not automatic assumption of exploitability.
+
+### WebAuthn / Passkeys
+
+Modeled by `WebAuthnCredential` (`models/auth/webauthn.go`), backed by
+`github.com/go-webauthn/webauthn`, initialized once at startup with `RPDisplayName`, `RPID`
+(`setting.Domain`), and `RPOrigins`. As noted above, **WebAuthn-enrolled accounts cannot use
+Basic Auth at all** — WebAuthn's challenge-response ceremony can't be satisfied by a
+header-only credential, so such users must use session login, OAuth2, or an `X-Gitea-OTP`
+(TOTP) path if also enrolled in TOTP.
+
+## Credential-Backend (Source) Details
+
+### LDAP (`services/auth/source/ldap`)
+
+Two flavors — `LDAP` (bind-DN search+bind) and `DLDAP` (direct/simple bind) — built on
+`github.com/go-ldap/ldap`. Security-relevant fields: `BindDN`/`BindPassword` are **encrypted
+at rest** via `secret.EncryptSecret` when the source config is persisted (`ToDB`).
+`source_authenticate.go` implements `PasswordAuthenticator.Authenticate`; `source_sync.go`
+implements periodic external-user sync (create/update/deactivate local users from LDAP search
+results).
+
+### PAM (`services/auth/source/pam`)
+
+Delegates username/password validation to the host's PAM stack. Config is just `ServiceName`
+and `EmailDomain` (used to synthesize an email for auto-created users, since PAM carries no
+email attribute).
+
+### SMTP (`services/auth/source/smtp`)
+
+Authenticates by opening an SMTP connection and performing SMTP AUTH (PLAIN/LOGIN/CRAM-MD5).
+Supports `AllowedDomains` restriction and `ForceSMTPS`/`SkipVerify` TLS controls — the latter
+is a direct, reviewable TLS-downgrade knob if misconfigured in `app.ini`.
+
+### OAuth2 login source (`services/auth/source/oauth2`)
+
+Configures an external OAuth2/OIDC identity provider via `github.com/markbates/goth`.
+`source_callout.go` performs the redirect to the provider's authorization endpoint;
+`routers/web/auth/oauth.go` handles the callback, token exchange, and user
+creation/linking/admin-or-restricted-group derivation from claims. `source_sync.go` refreshes
+stored OAuth2 refresh tokens and disables users whose upstream grant has been revoked
+(`invalid_grant`).
+
+### SSPI (`services/auth/sspi.go`)
+
+Implements Windows Integrated Authentication (SPNEGO/Kerberos). Only activates for
+`POST /user/login?auth_with_sspi=1`, so it can't interfere with any other route, and — because
+a failed negotiation returns `401` immediately — **must be the last method in the chain**, or
+it would short-circuit before Session/Basic/OAuth2 get a chance to run.
+
+### HTTPSign (`services/auth/httpsign.go`)
+
+Implements HTTP Signatures for ActivityPub federation, where the caller signs the request with
+an SSH key pair. Two verification paths: `VerifyPubKey` (registered `PublicKey` by fingerprint)
+and `VerifyCert` (SSH certificate signed by a trusted CA, matched against `TrustedUserCAKeys`).
+
+## Group Sync — External Groups → Teams
+
+When users authenticate via LDAP or OAuth2/OIDC, Gitea can auto-manage Organization/Team
+membership from group claims/attributes, implemented centrally in
+`services/auth/source/source_group_sync.go`. Configuration shape is a JSON mapping
+(`GroupTeamMap`): `{"<external-group>": {"<gitea-org>": ["<team1>", "<team2>"]}}`.
+
+Security-relevant behaviors:
+
+- `GroupTeamMapRemoval` controls whether membership is **revoked** when the user is no longer
+  in the source group — if unset, membership only ever grows, which can be a slow privilege
+  creep if group membership on the IdP side isn't audited.
+- For OAuth2, `AdminGroup`/`RestrictedGroup` claims can **promote a user to admin or restrict
+  them**, based purely on trusting the identity provider's claims — misconfiguration of these
+  claim names, or a compromised/misconfigured IdP, is a direct path to privilege escalation.
+- **Organizations and teams are never auto-created** by group sync — if the mapped org/team
+  doesn't exist, the mapping entry is silently skipped with a log warning, which limits blast
+  radius but also means silent policy drift is possible if an admin renames a team.
+
+```mermaid
+sequenceDiagram
+    participant IdP as LDAP/OAuth2 Provider
+    participant Src as auth.Source (LDAP/OAuth2)
+    participant Sync as source.SyncGroupsToTeams(Cached)
+    participant Org as organization.Team
+
+    IdP->>Src: returns user's groups (LDAP attr / OIDC claim)
+    Src->>Sync: sourceUserGroups, GroupTeamMap, GroupTeamMapRemoval
+    Sync->>Sync: resolveMappedMemberships() -> add-set / remove-set
+    alt performRemoval
+        Sync->>Org: RemoveTeamMember for mapped teams user no longer belongs to
+    end
+    Sync->>Org: AddTeamMember for mapped teams user now belongs to
+    Org-->>Sync: membership updated
+```
+
+## Password / Credential Login Flow (`UserSignIn`)
+
+`services/auth/signin.go` implements the shared username/password validation path used by
+both `Basic.Verify` and the `/user/login` web form, per
+[Auth Providers](../../docs/08-services/auth-providers.md):
+
+```mermaid
+flowchart TD
+    A["UserSignIn(ctx, username, password)"] --> B{Contains '@'?}
+    B -->|yes| C[Look up EmailAddress; must be activated]
+    B -->|no| D[Look up User by lower-cased name]
+    C --> E{User found?}
+    D --> E
+    E -->|yes, has LoginSource| F["source.Cfg.(PasswordAuthenticator).Authenticate()"]
+    F -->|success + not ProhibitLogin| G[Return user, source]
+    F -->|fail| H[ErrUserNotExist / auth error]
+    E -->|no exact match| I[Iterate ALL active sources]
+    I --> J["authenticator.Authenticate(ctx, nil, username, password)"]
+    J -->|success| G
+    J -->|fail for all sources| H
+```
+
+> **Timing-side-channel consideration for reviewers**: branch `E -->|no exact match| I` means
+> that when no user record matches, Gitea iterates *every* active source attempting
+> authentication anyway (rather than failing fast). This is a defensible mitigation against
+> username-enumeration-via-timing, and should not be "fixed" into an early return without
+> considering that trade-off if it ever surfaces in a diff under review.
+
+## Authentication → Authorization Handoff
+
+Authentication only establishes **who** is making the request (`ctx.Doer`). **What** they can
+do is a wholly separate authorization step built on `AccessMode`/`Access`/`Permission` — see
+[Authorization & Permission Model](authorization-permission-model.md) for the full mechanics
+of that handoff, including the diagram of how `ctx.Doer` becomes a concrete allow/deny decision
+per repository unit.
+
+## Scanning Guidance for Trivy & Opengrep
+
+This surface is unusually rich in credential handling, which makes it a high-value target for
+both scanner families:
+
+| Concern | Best tool | What to point it at |
+|---|---|---|
+| Vulnerable auth-related Go dependencies (`go-ldap`, `goth`, `go-webauthn`, `pquerna/otp`, `go-fed/httpsig`) | **Trivy** (SCA) | `go.mod`/`go.sum` — see [Existing CI Security Tooling](../02-ci-security-tooling/existing-security-tooling-in-ci.md) for how `govulncheck` already partially covers this |
+| Hardcoded secrets / tokens / bind passwords committed to config or code | **opengrep** (secret detection) | Repo-wide grep for `BindPassword`, `LDAP_BIND_PASSWORD`, `LFS_JWT_SECRET`, `SECRET_KEY`, `INTERNAL_TOKEN` patterns in `app.ini`-style files and Go source |
+| Weak crypto primitive choice (e.g. MD5-derived key material) | **opengrep** (SAST) | `models/auth/twofactor.go`-style patterns — flag MD5/SHA1 used for anything key-derivation or signature adjacent, for manual confirmation |
+| CSRF-protection bypass routes | **opengrep** (custom rule) | Any use of `DisableCrossOriginProtection` / `optSignInFromAnyOrigin` outside of the documented git-smart-HTTP/API cases |
+| Auth-chain ordering regressions | **Manual/code review**, not a scanner | Diffs touching `newWebAuthMiddleware`, `buildAuthGroup`, or any `Group.Add(...)` call order |
+| Config-level hardening (`ENABLE_BASIC_AUTHENTICATION`, `DisableQueryAuthToken`, reverse-proxy trust flags) | **opengrep/manual config lint** | See [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) |
+
+See [Running Trivy and Opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md) for how
+to actually wire these checks into this repository's pipeline.
+
+## Cross-References
+
+- [Authorization & Permission Model](authorization-permission-model.md) — what happens *after*
+  `ctx.Doer` is resolved: `AccessMode`, the `Access` cache table, and unit-aware `Permission`.
+- [Input Handling & XSS Defense](input-handling-and-xss-defense.md) — sanitization applied to
+  user-controlled content once a request is authenticated.
+- [SSRF, Webhooks & Outbound Requests](ssrf-webhooks-and-outbound-requests.md) — LFS JWT auth
+  and webhook signing, which reuse concepts introduced on this page (JWT bearer tokens, HMAC
+  signing) in an outbound direction.
+- [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) —
+  the `[service]`/`[security]`/`[session]` `app.ini` knobs referenced throughout this page.
+- [Existing CI Security Tooling](../02-ci-security-tooling/existing-security-tooling-in-ci.md) —
+  what's already automated against the dependencies underpinning this auth surface.
+- [Running Trivy and Opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md) — concrete
+  scan configuration guidance referenced in the table above.

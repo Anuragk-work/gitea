@@ -1,0 +1,334 @@
+# GitHub Workflows & Actions
+
+Gitea's continuous integration and release pipelines are entirely defined under `.github/workflows/*.yml`, with shared logic factored into reusable composite actions under `.github/actions/*`. This page catalogs every workflow and custom action, what triggers it, and what it runs.
+
+## Workflow Catalog
+
+| Workflow file | Trigger | Purpose |
+|---|---|---|
+| `pull-compliance.yml` | `pull_request` | Lint + fast build/checks gate for every PR (backend/frontend lint, `checks-backend`, cross-compile smoke builds) |
+| `pull-db-tests.yml` | `pull_request` | Full backend integration test matrix across SQLite/MySQL/PostgreSQL/MSSQL, plus unit tests |
+| `pull-e2e-tests.yml` | `pull_request` | Playwright end-to-end browser tests |
+| `pull-docker-dryrun.yml` | `pull_request` | Builds (but doesn't push) Docker images for amd64/arm64/riscv64 when Docker-related files change |
+| `pull-labeler.yml` | `pull_request_target` | Auto-labels PRs and lints PR titles |
+| `files-changed.yml` | `workflow_call` (reusable) | Computes path-filter outputs (`backend`, `frontend`, `docker`, …) consumed by other workflows to skip irrelevant jobs |
+| `release-nightly.yml` | `push` to `main`/`release/v*` | Builds & signs nightly release binaries, publishes nightly Docker images |
+| `release-nightly-snapcraft.yml` | `push` to `main`, manual | Builds and publishes the nightly Snap to the `edge` channel |
+| `release-tag-rc.yml` | `push` tag `v1*-rc*` | Builds, signs, and publishes release-candidate binaries/artifacts |
+| `release-tag-version.yml` | `push` tag `v1.*` (excl. `-rc`/`-dev`) | Builds, signs, and publishes stable release binaries + Docker images |
+| `cron-licenses.yml` | scheduled (disabled)/manual | Regenerates `go-licenses.json` and `.gitignore` files, commits back to `main` |
+| `cron-renovate.yml` | hourly schedule, manual | Runs self-hosted Renovate bot for dependency updates |
+| `cron-translations.yml` | daily schedule, manual | Pulls translations from Crowdin and commits updated locale files |
+| `cache-seeder.yml` | `push` to `main` (path-filtered) | Pre-warms Go module/build/lint caches so PR runs start warm |
+| `giteabot.yml` | PR/review events, `push` to `main`, schedule, manual | Runs the GiteaBot maintenance bot (labels, merge queue, lgtm, feedback nudges, etc.) |
+| `giteabot-backport.yml` | (label-triggered PR automation) | Drives automated backport PR creation |
+
+```mermaid
+graph LR
+  PR[Pull Request opened/updated] --> FC[files-changed.yml]
+  FC --> PC[pull-compliance.yml]
+  FC --> PDB[pull-db-tests.yml]
+  FC --> PE2E[pull-e2e-tests.yml]
+  FC --> PDD[pull-docker-dryrun.yml]
+  Push[Push to main] --> CS[cache-seeder.yml]
+  Push --> RN[release-nightly.yml]
+  Push --> RNS[release-nightly-snapcraft.yml]
+  Tag["Push tag v1*-rc*"] --> RTRC[release-tag-rc.yml]
+  Tag2["Push tag v1.*"] --> RTV[release-tag-version.yml]
+```
+
+## `files-changed.yml` — Path-Filter Gatekeeper
+
+Nearly every PR workflow starts by calling this **reusable workflow** (`uses: ./.github/workflows/files-changed.yml`) to avoid running expensive jobs when irrelevant files changed. It uses [`dorny/paths-filter`](https://github.com/dorny/paths-filter) to compute boolean outputs:
+
+```yaml
+outputs:
+  backend:    ${{ jobs.detect.outputs.backend }}
+  frontend:   ${{ jobs.detect.outputs.frontend }}
+  docs:       ${{ jobs.detect.outputs.docs }}
+  actions:    ${{ jobs.detect.outputs.actions }}
+  templates:  ${{ jobs.detect.outputs.templates }}
+  docker:     ${{ jobs.detect.outputs.docker }}
+  dockerfile: ${{ jobs.detect.outputs.dockerfile }}
+  swagger:    ${{ jobs.detect.outputs.swagger }}
+  yaml:       ${{ jobs.detect.outputs.yaml }}
+  json:       ${{ jobs.detect.outputs.json }}
+  e2e:        ${{ jobs.detect.outputs.e2e }}
+  shell:      ${{ jobs.detect.outputs.shell }}
+```
+
+The `backend` filter, for example, matches `**/*.go`, `templates/**/*.tmpl`, `go.mod`/`go.sum`, `Makefile`, `.golangci.yml`, fixtures, and integration test data — any of these trigger the full backend test matrix. Downstream jobs gate on these outputs, e.g.:
+
+```yaml
+lint-backend:
+  if: needs.files-changed.outputs.backend == 'true' || needs.files-changed.outputs.actions == 'true'
+  needs: files-changed
+```
+
+## `pull-compliance.yml` — Fast PR Gate
+
+Runs on every `pull_request`. Jobs (all gated by `files-changed` outputs):
+
+| Job | What it does |
+|---|---|
+| `lint-backend` | `go-setup` → `make deps-backend deps-tools` → `TAGS="bindata" make generate-go` → `make lint-backend` |
+| `lint-on-demand` | Runs targeted linters only for changed file categories: `lint-spell` always; `lint-templates`/`lint-yaml` if templates/yaml/actions changed; `lint-md`/`lint-swagger`/`lint-json` if docs/swagger/json changed; `lint-actions` if `.github` changed; `lint-shell` if shell scripts changed |
+| `checks-backend` | `make --always-make checks-backend` (forces the `go-licenses` target to always run) |
+| `frontend` | `make deps-frontend lint-frontend checks-frontend test-frontend frontend` — the full frontend pipeline |
+| `backend` | Cross-compile smoke tests: builds `linux/arm64` (with `gogit`), `windows/amd64` (with `gogit`), and `linux/386` directly with `go build` (not `xgo`) to validate CGO-disabled cross-compilation without invoking the full release pipeline |
+
+```yaml
+- name: build-backend-arm64
+  run: go build -o gitea_linux_arm64
+  env:
+    GOOS: linux
+    GOARCH: arm64
+    TAGS: bindata gogit
+```
+
+## `pull-db-tests.yml` — Database Integration Matrix
+
+Runs the full backend integration and unit test suite across every supported database. All jobs are gated on `needs.files-changed.outputs.backend == 'true'`.
+
+| Job | Database | Race detector | Runs `test-migration`? | Notes |
+|---|---|---|---|---|
+| `test-pgsql-shard-1` | PostgreSQL 14 | Yes (`-race -timeout=40m`) | Yes (`run-migration: "true"`) | Shard 1 of 2 (`TEST_SHARD=1`, `TEST_TOTAL_SHARDS=2`) via `.github/actions/pgsql-shard`; spins up `pgsql`, `ldap` (`gitea/test-openldap`), and `minio` service containers |
+| `test-pgsql-shard-2` | PostgreSQL 14 | Yes | No | Shard 2 of 2 via the same composite action; same service containers, migration step skipped to avoid running it twice |
+| `test-sqlite` | SQLite | **No** — intentionally disabled; sqlite's driver has large generated Go code that makes race-instrumented builds extremely slow | Yes, as a separate `GITEA_TEST_DATABASE=sqlite make test-migration` step before `make test-integration` | Runs with `TAGS=bindata gogit` and `GOEXPERIMENT` unset; no extra service containers |
+| `test-unit` | N/A (unit only, not `tests/integration/`) | Yes, twice (`-race -timeout=20m`) — once with default tags, once with `TAGS=bindata gogit` (`GITEA_TEST_CI_SKIP_EXTERNAL=true`) | No | Spins up `elasticsearch`, `meilisearch`, `redis`, `minio`, and an Azurite emulator (`devstoreaccount1.azurite.local`) service containers; runs `make test-backend` twice as above; finishes with `make test-check` to catch stray files left in the source tree |
+| `test-mysql` | MySQL 8.4 (bitnami image) | No | Yes (`GITEA_TEST_DATABASE=mysql make test-migration`) | Spins up `mysql` (tmpfs-backed data dir), `elasticsearch`, and `smtpimap` service containers |
+| `test-mssql` | MSSQL 2019 | No | Yes (`GITEA_TEST_DATABASE=mssql make test-migration`) | Spins up `mssql` and an Azurite emulator service container |
+
+All six jobs are independent and run in parallel on their own `ubuntu-latest` runner — PostgreSQL is deliberately the only database whose integration suite runs under `-race` (about 60% slower), so the matrix trades full race coverage on one engine against faster, race-free coverage on the other three plus the dedicated `test-unit` job (which does run `-race`, but only for `make test-backend`, not `tests/integration/`).
+
+Example service-container wiring for the pgsql shard job:
+
+```yaml
+services:
+  pgsql:
+    image: postgres:14
+    env: { POSTGRES_DB: test, POSTGRES_PASSWORD: postgres }
+    ports: ["5432:5432"]
+  ldap:
+    image: gitea/test-openldap:latest@sha256:...
+    ports: ["389:389", "636:636"]
+  minio:
+    image: bitnamilegacy/minio:2025.7.23
+    ports: ["9000:9000"]
+steps:
+  - uses: ./.github/actions/pgsql-shard
+    with: { shard: 1, total-shards: 2, run-migration: "true" }
+```
+
+## `pull-e2e-tests.yml` — Playwright E2E
+
+Gated on backend, frontend, *or* e2e file changes. Builds both frontend and backend (`TAGS: bindata`), then:
+
+```yaml
+- run: make playwright
+- run: make test-e2e
+  timeout-minutes: 10
+  env:
+    TAGS: bindata
+    FORCE_COLOR: 1
+    GITEA_TEST_E2E_DEBUG: 1
+```
+
+`make test-e2e` itself depends on `playwright frontend backend` in the Makefile (see [Makefile & Build System](makefile-and-build.md#test-targets)).
+
+## `pull-docker-dryrun.yml` — Container Build Validation
+
+Validates that both `Dockerfile` and `Dockerfile.rootless` still build for multiple architectures, **without pushing** anything:
+
+```yaml
+container-amd64:
+  if: needs.files-changed.outputs.docker == 'true'
+  steps:
+    - uses: ./.github/actions/docker-dryrun
+      with: { platform: linux/amd64 }
+container-arm64:
+  if: needs.files-changed.outputs.dockerfile == 'true'
+  steps:
+    - uses: ./.github/actions/docker-dryrun
+      with: { platform: linux/arm64 }
+container-riscv64: # same shape, linux/riscv64
+```
+
+The `amd64` build runs whenever **any** docker-related file changes (fast, ~4 min, native arch). The `arm64`/`riscv64` builds — which require slow QEMU emulation (40-50 minutes) — only run when the `Dockerfile`(s) themselves change, to keep PR turnaround reasonable. See [Docker & Packaging](docker-and-packaging.md) for the Dockerfile internals this validates.
+
+## Release Workflows
+
+Gitea has **three** independent release pipelines, all triggered by a `git push` of either a branch or a tag, and all sharing the same shape: a **binary** job (cross-compile via `make release` / `xgo`, sign, publish) running in parallel with a **container** job (multi-arch Docker build/push). The diagram below traces every trigger through to its final published artifact.
+
+```mermaid
+graph TD
+  subgraph Trigger
+    T1["push to main / release/v*"]
+    T2["push tag v1*-rc*"]
+    T3["push tag v1.* (excl. -rc / -dev)"]
+  end
+
+  T1 --> WF1["release-nightly.yml"]
+  T1 --> WF4["release-nightly-snapcraft.yml"]
+  T2 --> WF2["release-tag-rc.yml"]
+  T3 --> WF3["release-tag-version.yml"]
+
+  subgraph "binary job (namespace-profile-gitea-release-binary)"
+    WF1 --> B1["checkout + git fetch --unshallow --tags"]
+    WF2 --> B1
+    WF3 --> B1
+    B1 --> B2["setup-go + node-setup"]
+    B2 --> B3["make deps-frontend deps-backend"]
+    B3 --> B4["make release  TAGS=bindata<br/>(xgo cross-compile: windows/linux/darwin/freebsd)"]
+    B4 --> B5["Install Cosign + import GPG key<br/>(GPGSIGN_KEY / GPGSIGN_PASSPHRASE secrets)"]
+    B5 --> B6["for each dist/release/* artifact:<br/>cosign sign-blob --bundle *.sigstore.json<br/>gpg --detach-sign -> *.asc"]
+  end
+
+  B6 --> S1{"Which workflow?"}
+  S1 -->|"nightly"| S2["aws s3 sync dist/release<br/>s3://.../gitea/&lt;branch&gt;-nightly"]
+  S1 -->|"rc"| S3["aws s3 sync dist/release<br/>s3://.../gitea/&lt;version&gt;<br/>+ gh release create --draft --notes-from-tag"]
+  S1 -->|"stable"| S4["aws s3 sync dist/release<br/>s3://.../gitea/&lt;version&gt;<br/>+ gh release create --notes-from-tag (published)"]
+
+  subgraph "container job (namespace-profile-gitea-release-docker)"
+    WF1 --> C1["checkout + git fetch --unshallow --tags"]
+    WF2 --> C1
+    WF3 --> C1
+    C1 --> C2["docker/setup-qemu-action + setup-buildx-action"]
+    C2 --> C3["docker/metadata-action<br/>(regular tags + '-rootless' flavor tags)"]
+    C3 --> C4["login: Docker Hub + GHCR"]
+    C4 --> C5["build-push-action: Dockerfile<br/>linux/amd64,arm64,riscv64 → push"]
+    C4 --> C6["build-push-action: Dockerfile.rootless<br/>linux/amd64,arm64,riscv64 → push"]
+    C5 --> C7["gitea/gitea:&lt;tag&gt; + ghcr.io/go-gitea/gitea:&lt;tag&gt;"]
+    C6 --> C8["gitea/gitea:&lt;tag&gt;-rootless + ghcr.io/go-gitea/gitea:&lt;tag&gt;-rootless"]
+  end
+
+  WF4 --> N1["snapcraft build matrix<br/>(ubuntu-24.04 amd64 / ubuntu-24.04-arm)"]
+  N1 --> N2["snapcore/action-build"]
+  N2 --> N3["snapcore/action-publish → latest/edge channel"]
+```
+
+**Tag/branch → artifact destination summary:**
+
+| Trigger | Workflow | Binary destination | Container destination |
+|---|---|---|---|
+| Push to `main` / `release/v*` | `release-nightly.yml` | S3 `gitea/<branch>-nightly/`, Sigstore + GPG signed | `gitea/gitea:<branch>-nightly`, `ghcr.io/go-gitea/gitea:<branch>-nightly` (+`-rootless`) |
+| Push to `main` (or manual) | `release-nightly-snapcraft.yml` | — | Snap Store `latest/edge` channel |
+| Push tag `v1*-rc*` | `release-tag-rc.yml` | S3 `gitea/<version>/` + **draft** GitHub Release | `gitea/gitea:<version>`, `ghcr.io/go-gitea/gitea:<version>` (+`-rootless`) |
+| Push tag `v1.*` (excl. `-rc`/`-dev`) | `release-tag-version.yml` | S3 `gitea/<version>/` + **published** GitHub Release | `gitea/gitea:<version>`, `ghcr.io/go-gitea/gitea:<version>` (+`-rootless`) |
+
+All three tag/branch-triggered pipelines reuse the exact same `make release` cross-compile machinery documented in [Makefile & Build System → Cross-Compilation via xgo](makefile-and-build.md#cross-compilation-via-xgo), and the same Dockerfiles documented in [Docker & Packaging](docker-and-packaging.md).
+
+### `release-nightly.yml`
+
+Triggered on every push to `main` or `release/v*` branches. Two parallel jobs:
+
+- **`nightly-binary`** (runs on the self-hosted `namespace-profile-gitea-release-binary` runner):
+  1. `git fetch --unshallow --quiet --tags --force` (needed for accurate `git describe` versioning)
+  2. `make deps-frontend deps-backend`
+  3. `make release` with `TAGS=bindata` — this is the same `xgo`-based cross-compile pipeline described in [Makefile & Build System → Cross-Compilation via xgo](makefile-and-build.md#cross-compilation-via-xgo)
+  4. Installs Cosign, imports a GPG signing key (`GPGSIGN_KEY`/`GPGSIGN_PASSPHRASE` secrets), then for every artifact in `dist/release/*`: creates a Sigstore bundle (`cosign sign-blob ... --bundle *.sigstore.json`) **and** a detached GPG signature (`*.asc`)
+  5. Computes a cleaned branch name (e.g. `main-nightly`, `v1.22-nightly`) and uploads all `dist/release` artifacts to S3 under that prefix
+
+- **`nightly-container`** (runs on `namespace-profile-gitea-release-docker`):
+  1. Sets up QEMU + Buildx for multi-arch builds
+  2. Computes Docker tags/annotations via `docker/metadata-action` for both the regular and `-rootless`-suffixed image flavors
+  3. Logs into Docker Hub and GHCR
+  4. Builds and pushes `linux/amd64,linux/arm64,linux/riscv64` images for **both** `Dockerfile` and `Dockerfile.rootless`, using separate registry-backed BuildKit cache scopes (`buildcache-rootful` / `buildcache-rootless`)
+
+### `release-tag-rc.yml` and `release-tag-version.yml`
+
+Structurally near-identical to `release-nightly.yml`'s `nightly-binary` job (fetch tags → `make release` → Cosign + GPG sign → upload to S3), but triggered by pushing a Git tag instead of a branch push:
+
+- `release-tag-rc.yml` fires on tags matching `v1*-rc*` (release candidates)
+- `release-tag-version.yml` fires on tags matching `v1.*` while excluding `v1*-rc*` and `v1*-dev` (stable releases), and additionally has `packages: write` permission to publish Docker images to GHCR
+
+### `release-nightly-snapcraft.yml`
+
+Builds and publishes the Snap package (see [Docker & Packaging → Snapcraft Packaging](docker-and-packaging.md#snapcraft-packaging)) on every push to `main` or manual dispatch, using a matrix of `ubuntu-24.04` (amd64) and `ubuntu-24.04-arm` runners:
+
+```yaml
+steps:
+  - uses: actions/checkout@... 
+    with: { fetch-depth: 0 }
+  - uses: snapcore/action-build@...
+    id: build
+  - uses: snapcore/action-publish@...
+    env: { SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }} }
+    with: { snap: ${{ steps.build.outputs.snap }}, release: latest/edge }
+```
+
+## Cron / Scheduled Workflows
+
+| Workflow | Schedule | What it does |
+|---|---|---|
+| `cron-licenses.yml` | Weekly (currently commented out — manual dispatch only) | `make generate-gitignore`, then commits the regenerated licenses/gitignore files back to `main` via `appleboy/git-push-action` using a deploy key |
+| `cron-renovate.yml` | Hourly (`23 * * * *`) | Runs a self-hosted [Renovate](https://docs.renovatebot.com/) instance against `renovate.json5`, restricted to `go-gitea/gitea`; allows a whitelisted set of post-upgrade commands (`make tidy`, `make svg`, `make generate-codemirror-languages`) |
+| `cron-translations.yml` | Daily at `00:07 UTC` | Pulls translations from Crowdin (`crowdin/github-action`), runs `./build/update-locales.sh`, and commits the result to `main` |
+
+Both `cron-licenses.yml` and `cron-translations.yml` guard with `if: github.repository == 'go-gitea/gitea'` to avoid running on forks, and push using a dedicated `DEPLOY_KEY` secret with the `GiteaBot`/`teabot@gitea.io` identity.
+
+## `cache-seeder.yml` — Build Cache Warmup
+
+Populates the Go module/build/lint caches scoped to `main` so that PR runs restore-only and start "warm." Triggered by pushes to `main` that touch `go.sum`, `.golangci.yml`, or the cache/setup action files themselves. Two jobs:
+
+- **`gobuild`**: builds the backend with both `TAGS=bindata` and `TAGS="bindata gogit"`, then warms the **test compile** cache for both tag sets (`GOTEST_FLAGS: -race -list=^$$ -count=1` — compiles tests without running any), and finally warms the **integration test compile** cache for three tag/race combinations.
+- **`lint`**: runs `make generate-go` + `make lint-backend` under a matrix (currently just `{tags: bindata, target: lint-backend}`) with `lint-cache: "true"` to populate the `golangci-lint` cache.
+
+The extensive header comment in the file explains the cache-scoping model precisely — see [`.github/actions/go-cache`](#go-cache) below for the restore/save split this depends on.
+
+## `giteabot.yml` and `giteabot-backport.yml` — PR Automation Bot
+
+`giteabot.yml` runs the [`go-gitea/giteabot`](https://github.com/go-gitea/giteabot) action across a wide set of triggers: `push` to `main` (to promptly re-run merge-queue maintenance), `pull_request_target` (label/status maintenance — deliberately annotated `zizmor: ignore[dangerous-triggers]` since it only runs a pinned action and never checks out PR HEAD code), `pull_request_review`, a daily cron backstop, and `workflow_dispatch` for manual debugging.
+
+```yaml
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request_target' || ...) && format('pr-{0}', github.event.pull_request.number) || 'maintenance') }}
+  cancel-in-progress: false
+
+jobs:
+  giteabot:
+    steps:
+      - uses: go-gitea/giteabot@912675d47455ac93be82d8bda4667a02b20a6fe4 # v1.0.4
+        with:
+          github_token: ${{ secrets.GITEABOT_TOKEN || github.token }}
+          checks: ${{ github.event.inputs.checks || 'labels,merge_queue,lock,feedback,last_call,milestones,lgtm,translation_comment,pr_actions' }}
+```
+
+The default `checks` list drives: label syncing, merge-queue promotion, PR locking, contributor feedback nudges, "last call" reminders, milestone assignment, `lgtm` label management, translation-PR comments, and other bot-triggered PR actions. `giteabot-backport.yml` handles the separate automated-backport-PR-creation flow triggered by backport labels.
+
+`pull-labeler.yml` is a related but distinct workflow: it uses `actions/labeler` (path-based auto-labeling with `sync-labels: true`) plus a `pr-title` job that lints PR titles for non-draft PRs.
+
+## Custom Composite Actions (`.github/actions/`)
+
+| Action | Purpose |
+|---|---|
+| `docker-dryrun` | Sets up QEMU + Buildx, then builds (without pushing) both the regular and rootless Docker images for a given `platform` input |
+| `free-disk-space` | Removes preinstalled toolchains unused by Gitea (`/usr/local/lib/android`, `/usr/local/.ghcup`, `/opt/ghc`, `/usr/share/dotnet`) in parallel background `rm -rf`s to free space before large cache restores |
+| `go-cache` | Restores (and, on `cache-seeder` only, saves) the Go module cache (`~/go/pkg/mod`), Go build cache (`~/.cache/go-build`), and optionally the `golangci-lint` cache (`~/.cache/golangci-lint`), keyed by `hashFiles('go.sum')` (and `.golangci.yml` for the lint cache) |
+| `go-setup` | Composite entrypoint: calls `free-disk-space`, then `actions/setup-go` (with built-in Go caching disabled — `cache: false` — since `go-cache` handles it manually), then conditionally `go-cache` |
+| `node-setup` | Sets up `pnpm` via `pnpm/action-setup`, then `actions/setup-node` with Node 26, optionally caching pnpm downloads keyed on `pnpm-lock.yaml` |
+| `pgsql-shard` | Runs one shard of the PostgreSQL integration test suite: adds `/etc/hosts` entries for `pgsql`/`ldap`/`minio` (skipped inside containers), `make deps-backend`, `make backend` (`TAGS=bindata`), optionally `make test-migration`, then `make test-integration` with `-race`, `TEST_LDAP=1`, and `TEST_SHARD`/`TEST_TOTAL_SHARDS` inputs for splitting the suite |
+
+### `go-cache` Restore/Save Split
+
+The `go-cache` action deliberately only **saves** caches when running inside the `cache-seeder` workflow, and only **restores** (via `actions/cache/restore`, with `restore-keys` fallback) everywhere else:
+
+```yaml
+- if: ${{ github.workflow == 'cache-seeder' }}
+  uses: actions/cache@...
+  with: { path: ~/go/pkg/mod, key: gomod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }} }
+- if: ${{ github.workflow != 'cache-seeder' }}
+  uses: actions/cache/restore@...
+  with:
+    path: ~/go/pkg/mod
+    key: gomod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}
+    restore-keys: gomod-${{ runner.os }}-${{ runner.arch }}
+```
+
+This avoids cache-key contention: only `cache-seeder`'s `gobuild` job ever writes the cache (populated by pushes to `main`), so PR runs always get a clean, bounded-size warm start via `restore-keys` fallback instead of every PR job racing to write its own cache entry.
+
+## Related Pages
+
+- [Makefile & Build System](makefile-and-build.md) — the `make` targets that every workflow above ultimately invokes
+- [Docker & Packaging](docker-and-packaging.md) — the Dockerfiles validated by `pull-docker-dryrun.yml` and published by `release-nightly.yml`
+- [Actions Architecture](../14-actions-ci/actions-architecture.md) — Gitea's own built-in Actions CI system (distinct from the GitHub-hosted workflows described here, which build *Gitea itself*)

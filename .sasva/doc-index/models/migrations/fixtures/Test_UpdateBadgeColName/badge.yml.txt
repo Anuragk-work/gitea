@@ -1,0 +1,8 @@
+=== FILE: models/migrations/fixtures/Test_UpdateBadgeColName/badge.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] - id: 1 description: the badge image_url: https://gitea.com/myimage.png
+
+-
+  id: 1
+  description: the badge
+  image_url: https://gitea.com/myimage.png

@@ -1,0 +1,262 @@
+# Third-Party Integrations
+
+Beyond outgoing webhooks (covered in [Webhook Delivery Pipeline](webhook-delivery-pipeline.md)
+and [Webhook Event Types & Payloads](webhook-event-types-and-payloads.md)), Gitea exposes and
+consumes several other integration surfaces that let external systems act on behalf of a user
+or pull/push data in and out of a Gitea instance. This page documents:
+
+1. **OAuth2 application registration** — Gitea as an OAuth2/OIDC *provider* for third-party
+   apps (CLIs, mobile apps, other SaaS products) that want to act on a user's behalf.
+2. **External issue tracker / external wiki units** — redirecting a repository's Issues/Wiki
+   tab to a third-party system instead of Gitea's own.
+3. **Repository migration & mirroring downloaders** — pulling repository data (and, for some
+   services, issues/PRs/releases/labels) from other Git hosting services.
+4. **Package registry protocol endpoints** — Gitea acting as a drop-in registry for existing
+   third-party package-manager clients (npm, Docker, Cargo, NuGet, ...).
+5. **Inbound webhook-style consumers** — the reverse direction, where Gitea itself receives
+   calls from CI systems / other tools (commit statuses, mirrored pushes).
+
+Verified against `models/auth/oauth2.go`, `routers/web/user/setting/oauth2*.go`,
+`routers/web/admin/applications.go`, `routers/web/org/setting_oauth2.go`,
+`models/repo/repo_unit.go`, `services/migrations/`, and `routers/api/packages/`.
+
+## 1. OAuth2 application registration
+
+Gitea can act as a full OAuth2 (+ OpenID Connect) **provider**, issuing access/refresh/ID
+tokens to third-party applications that register an `OAuth2Application`. This is the mechanism
+by which external tools integrate with a Gitea instance *as the logged-in user*, without ever
+seeing that user's password — e.g. a desktop Git client offering "Sign in with Gitea", a mobile
+app, a CI/CD SaaS product, or an internal company tool.
+
+> This is the deep-dive summary for the integrations page; the full technical treatment of the
+> Authorization Code + PKCE flow, `OAuth2Grant`, scopes, and every OAuth2 provider endpoint
+> lives in
+> [Access Tokens & OAuth2 Applications](../11-authentication/tokens-and-oauth-apps.md#oauth2-applications--gitea-as-a-provider).
+> This section focuses on the *registration* surface — who can register an app, at what scope,
+> and through which UI/route.
+
+### Registration scopes: user, organization, and instance-wide
+
+Three distinct places let someone register an OAuth2 application, all sharing the same
+`OAuth2CommonHandlers` struct (`routers/web/user/setting/oauth2_common.go`) parameterized by an
+`OwnerID`:
+
+| Registration scope | `OwnerID` | Entry point | Who can register | Route handler wrapper |
+|---|---|---|---|---|
+| **Personal** | the user's own ID | `/user/settings/applications` | Any signed-in user, for apps acting on their own behalf | `routers/web/user/setting/oauth2.go` |
+| **Organization** | the org's user ID | `/org/{org}/settings/applications` | Organization owners, for apps that should be available to (and grantable by) org members | `routers/web/org/setting_oauth2.go` |
+| **Instance-wide (global/builtin-style)** | `0` | `/-/admin/applications` | Site administrators only | `routers/web/admin/applications.go` |
+
+```go
+// routers/web/admin/applications.go
+func newOAuth2CommonHandlers() *user_setting.OAuth2CommonHandlers {
+    return &user_setting.OAuth2CommonHandlers{
+        OwnerID:            0,
+        BasePathList:       setting.AppSubURL + "/-/admin/applications",
+        BasePathEditPrefix: setting.AppSubURL + "/-/admin/applications/oauth2",
+        TplAppEdit:         tplSettingsOauth2ApplicationEdit,
+    }
+}
+```
+
+Regardless of scope, registration funnels through the same model constructor:
+
+```go
+// models/auth/oauth2.go (via OAuth2CommonHandlers.AddApp)
+app, err := auth.CreateOAuth2Application(ctx, auth.CreateOAuth2ApplicationOptions{
+    Name:                       form.Name,
+    RedirectURIs:               util.SplitTrimSpace(form.RedirectURIs, "\n"),
+    UserID:                     oa.OwnerID,
+    ConfidentialClient:         form.ConfidentialClient,
+    SkipSecondaryAuthorization: form.SkipSecondaryAuthorization,
+})
+```
+
+The registration form (`forms.EditOAuth2ApplicationForm`) collects:
+
+| Field | Purpose |
+|---|---|
+| `Name` | Human-readable application name shown on the consent screen |
+| `RedirectURIs` | Newline-separated list of allowed OAuth2 `redirect_uri` values — the authorization endpoint rejects any redirect not in this list |
+| `ConfidentialClient` | Whether the app can securely hold a `ClientSecret` (server-side apps) vs. must use PKCE (native/SPA/CLI apps) |
+| `SkipSecondaryAuthorization` | Lets a trusted first-party integration skip the repeat "Authorize this application?" consent prompt |
+
+On success, the newly generated `ClientID`/`ClientSecret` pair is shown to the registrant
+**exactly once** (`app.GenerateClientSecret(ctx)` — the plaintext secret is never persisted, only
+its hash), the same one-time-reveal pattern used for personal access tokens.
+
+### Instance-wide "builtin" applications
+
+Separately from user-registered apps, `auth.BuiltinApplications()` hardcodes a small,
+fixed set of pre-registered `OAuth2Application`s for Gitea's own first-party tooling:
+`git-credential-oauth`, Git Credential Manager, and the `tea` CLI, each with a pre-set
+`http(s)://127.0.0.1` redirect URI so those tools work out of the box against any Gitea
+instance without an administrator needing to register them manually. `Init(ctx)`
+(called during application start-up) reconciles the DB against
+`setting.OAuth2.DefaultApplications` — administrators can trim this list in `app.ini` to
+disable specific builtin integrations instance-wide. The admin applications page
+(`/-/admin/applications`) surfaces both the DB-registered global apps and this builtin list
+(`ctx.Data["BuiltinApplications"]`) for visibility, though builtin apps are not editable through
+the UI.
+
+### Consuming the registration: what a third party does with it
+
+Once registered, a third-party application's typical flow (fully detailed in
+[Access Tokens & OAuth2 Applications](../11-authentication/tokens-and-oauth-apps.md)) is:
+
+1. Redirect the user to `/login/oauth/authorize` with `client_id`, `redirect_uri`,
+   `response_type=code`, `scope`, and (for public clients) a PKCE `code_challenge`.
+2. The user reviews and approves a consent screen (unless `SkipSecondaryAuthorization` and a
+   prior grant exists), creating/updating an `OAuth2Grant` row.
+3. Gitea redirects back to `redirect_uri` with a short-lived `code`.
+4. The third party exchanges the code (plus `client_secret` for confidential clients, or
+   `code_verifier` for PKCE) at `/login/oauth/access_token` for access/refresh/ID tokens.
+5. The access token is then used exactly like a scoped Personal Access Token on subsequent API
+   calls (`Authorization: Bearer <token>`), and `/login/oauth/userinfo` /
+   `/.well-known/openid-configuration` provide standard OIDC discovery/userinfo support for
+   identity-focused integrations (e.g. "Login with Gitea" SSO buttons on other products).
+
+### Revocation & audit surface
+
+Every OAuth2 grant a user has approved (for any application, at any registration scope they can
+see) is listed on their own applications settings page (`ctx.Data["Grants"]`,
+`GetOAuth2GrantsByUserID`) with a **Revoke** action (`RevokeOAuth2Grant` /
+`OAuth2CommonHandlers.RevokeGrant`) — revoking immediately invalidates every access/refresh
+token tied to that grant, since token validation re-loads the grant by ID on every request.
+
+## 2. External issue tracker & external wiki
+
+A repository can delegate its **Issues** and/or **Wiki** unit entirely to a third-party system
+instead of using Gitea's built-in tracker/wiki — the repo's "Issues" and "Wiki" tabs simply
+become external links, and Gitea does no data storage or synchronization for that unit at all.
+This is the simplest possible "integration": a redirect, configured per-repository through
+`RepoUnit.Config`:
+
+```go
+// models/repo/repo_unit.go
+type ExternalWikiConfig struct {
+    ExternalWikiURL string
+}
+
+type ExternalTrackerConfig struct {
+    ExternalTrackerURL           string
+    ExternalTrackerFormat        string // e.g. "https://issues.example.com/{user}/{repo}/issues/{index}"
+    ExternalTrackerStyle         string // "numeric" | "alphanumeric" | "regexp"
+    ExternalTrackerRegexpPattern string // used when Style == "regexp", to recognize issue refs in commit messages
+}
+```
+
+When `unit.TypeExternalTracker` is enabled for a repo, its `ExternalTrackerFormat` is injected
+into the Markdown-rendering metas map (`metas["format"]`, `metas["style"]`,
+`metas["regexp"]` — see `repo.go`'s `ComposeCommentMetas`) so that references like `#123` inside
+commit messages, issue bodies, and PR descriptions are rewritten as links to the external
+tracker rather than to Gitea's own (disabled) issue tracker. This makes the integration
+transparent throughout the rest of the UI — a repo using an external tracker still gets
+clickable issue references everywhere Gitea would normally cross-link its own issues.
+
+## 3. Repository migration & mirroring — pulling from other Git hosts
+
+`services/migrations/` implements a pluggable `Downloader`/`DownloaderFactory` architecture
+(interfaces defined in `modules/migration`) used both for one-time repository migration
+(`repo.MigrateRepository`) and for continuously-synced pull mirrors (see
+[Repository Lifecycle](../12-repository-management/repository-lifecycle.md#pull--push-mirroring--servicesmirror)).
+
+```go
+// services/migrations/migrate.go
+var factories []base.DownloaderFactory
+
+func RegisterDownloaderFactory(factory base.DownloaderFactory) {
+    factories = append(factories, factory)
+}
+```
+
+Each supported third-party Git hosting service registers its own factory in an `init()`,
+mirroring the same "self-registering plugin" pattern webhooks use for `RegisterWebhookRequester`:
+
+| Service | File | What is imported (beyond the raw git objects) |
+|---|---|---|
+| GitHub | `services/migrations/github.go` | Issues, PRs, comments, labels, milestones, releases, reviews (via GitHub's REST/GraphQL API) |
+| GitLab | `services/migrations/gitlab.go` | Issues, MRs, comments, labels, milestones, releases |
+| Gitea (instance-to-instance) | `services/migrations/gitea_downloader.go` | Full-fidelity import using Gitea's own API — the richest supported migration source |
+| Gogs | `services/migrations/gogs.go` | Issues, PRs (limited by the Gogs API's own feature set) |
+| OneDev | `services/migrations/onedev.go` | Issues, PRs |
+| Codebase | `services/migrations/codebase.go` | Issues |
+| GitBucket | `services/migrations/gitbucket.go` | Issues, PRs (GitHub-API-compatible) |
+| AWS CodeCommit | `services/migrations/codecommit.go` | Git data only (CodeCommit has no issue tracker to import from) |
+| Plain Git (any other host) | `services/migrations/git.go` | Git data only — the generic fallback downloader for any Git-speaking remote |
+
+`base.MigrateOptions` (the shared options struct) carries the source `GitServiceType`, remote
+URL, and credentials (`AuthUsername`/`AuthPassword`/`AuthToken`), plus flags selecting which
+data classes to import (`Issues`, `PullRequests`, `Labels`, `Milestones`, `Comments`,
+`Releases`, `Wiki`, `LFS`). `migrate.go`'s `NewDownloader` picks the matching factory by
+`opts.GitServiceType` and produces a `Downloader` bound to that specific remote repo; the
+generic `gitea_uploader.go` then replays whatever the downloader yields into a freshly created
+local Gitea repository.
+
+`IsMigrateURLAllowed` gates *where* a migration/mirror source may point — local filesystem
+paths require `doer.CanImportLocal()`, and any HTTP(S)/git remote is checked against
+`security.ALLOWED_HOST_LIST` / `security.BLOCKED_HOST_LIST` (the same allow/deny-list mechanism
+used for outgoing webhooks' SSRF protection) before any network connection is attempted.
+
+> See [Repository Lifecycle](../12-repository-management/repository-lifecycle.md) for how a
+> completed migration/mirror-sync feeds back into the standard repository model, and
+> [Services Layer](../08-services/README.md) for the broader services architecture.
+
+## 4. Package registry protocol endpoints — Gitea as a drop-in registry
+
+`routers/api/packages/` implements the *actual wire protocols* of numerous package-manager
+ecosystems (npm, Docker/OCI, Cargo, Composer, Maven, NuGet, PyPI, Helm, Conda, Debian, RPM,
+Conan, Go proxy, Vagrant, Chef, and more), so that unmodified third-party package-manager
+**clients** (`npm publish`, `docker push`, `cargo publish`, `dotnet nuget push`, ...) can treat a
+Gitea instance as their registry with zero client-side plugin/configuration beyond a
+credentials/URL change. This is the mirror image of the OAuth2 provider section above: instead
+of a third-party *application* authenticating a *user*, here a third-party *CLI tool*
+authenticates against Gitea using ecosystem-native credential conventions (`.npmrc` tokens,
+`~/.cargo/credentials`, Basic Auth, NuGet API keys, `docker login`, ...) that those tools already
+know how to send.
+
+This surface is documented in full — routes, per-ecosystem auth middleware, and the OCI
+container-registry token-exchange flow — in
+[Packages & Actions API](../07-rest-api/packages-and-actions-api.md#packages-registry-api-routersapipackages).
+It is mentioned here because, architecturally, it is Gitea's largest and most protocol-diverse
+third-party integration surface, even though it is not built on the webhook/OAuth2 machinery
+described elsewhere on this page.
+
+## 5. Inbound integrations: commit statuses from CI systems
+
+The reverse direction — external systems pushing data *into* Gitea rather than Gitea notifying
+*out* — is most commonly exercised by CI/CD systems reporting build results back onto a commit,
+via the commit status API (`POST /repos/{owner}/{repo}/statuses/{sha}`, modeled by
+`git_model.CommitStatus`). A typical third-party CI integration:
+
+1. Registers an outgoing webhook (`push` and/or `pull_request` events) on the repository so it
+   is notified when there's new work to build — see
+   [Webhook Delivery Pipeline](webhook-delivery-pipeline.md).
+2. Runs its build/test pipeline against the referenced commit.
+3. Reports the outcome back via the commit status API, which Gitea then surfaces on the commit,
+   PR checks list, and (via `notify.CreateCommitStatus` — see
+   [Notifications, Mailer & Webhooks](../09-core-modules/notify-mailer-webhook.md)) fans back out
+   to a `status` webhook event and, for a matching branch, potentially blocks merge via branch
+   protection required-status-check rules (see
+   [Branch Protection & Merge](../13-issues-pullrequests/branch-protection-and-merge.md)).
+
+This "outgoing webhook notifies → external system does work → external system calls back via
+API" round trip is the canonical integration pattern for third-party CI/CD, code-quality, and
+security-scanning tools that don't use Gitea Actions directly.
+
+## Related pages
+
+* [Webhook Delivery Pipeline](webhook-delivery-pipeline.md) — the outgoing-webhook mechanics
+  referenced throughout this page
+* [Webhook Event Types & Payloads](webhook-event-types-and-payloads.md) — supported webhook
+  target types and full payload schemas
+* [Access Tokens & OAuth2 Applications](../11-authentication/tokens-and-oauth-apps.md) — the
+  full OAuth2 provider flow (Authorization Code + PKCE, grants, scopes, endpoints)
+* [Packages & Actions API](../07-rest-api/packages-and-actions-api.md) — the package registry
+  protocol endpoints in full detail
+* [Repository Lifecycle](../12-repository-management/repository-lifecycle.md) — migration and
+  pull/push mirror mechanics
+* [Branch Protection & Merge](../13-issues-pullrequests/branch-protection-and-merge.md) —
+  required-status-check enforcement that CI integrations typically hook into
+* [Authentication Sources](../11-authentication/auth-sources.md) — Gitea as an OAuth2/OIDC
+  *client* against an external IdP (the inverse relationship to section 1 of this page)

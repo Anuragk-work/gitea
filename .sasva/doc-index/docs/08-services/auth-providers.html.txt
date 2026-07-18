@@ -1,0 +1,1099 @@
+=== FILE: docs/08-services/auth-providers.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Authentication & Authorization</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"> <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authentication & Authorization</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../08-services/README.html">Services</a> &rsaquo; Authentication & Authorization</div>
+<h1>Authentication & Authorization</h1>
+<h1 id="authentication-authorization">Authentication &amp; Authorization</h1>
+<p>Gitea supports a wide range of authentication mechanisms — from classic username/password
+login, to personal access tokens, OAuth2 (via <code>goth</code>), LDAP, PAM, SMTP, SSPI (Windows domain
+auth via SPNEGO), reverse-proxy header auth, and HTTP-signature auth for federation (ActivityPub).
+All of these are unified behind a single <code>auth.Method</code> interface and composed into ordered
+<strong>auth chains</strong> that are evaluated per request. This page documents that architecture, the
+individual providers, access tokens/scopes, group-to-team synchronization, WebAuthn/TOTP 2FA,
+and how authentication results feed into the permission (access mode) system.</p>
+<blockquote>
+<p>Source root: <a href="../../services/auth"><code>services/auth</code></a>, providers under
+<a href="../../services/auth/source"><code>services/auth/source/*</code></a>, models in
+<a href="../../models/auth"><code>models/auth</code></a>, and web-auth session glue in
+<a href="../../routers/web/web.go"><code>routers/web/web.go</code></a> / <a href="../../routers/api/v1/api.go"><code>routers/api/v1/api.go</code></a>.</p>
+<p><strong>Consolidation note:</strong> an earlier documentation pass planned two separate pages —
+<code>auth-providers.md</code> and <code>authentication-providers.md</code> — for this topic. Re-verification found
+that only this file (<code>auth-providers.md</code>) was ever created, and it is already the single
+canonical target for every cross-reference to authentication material elsewhere in the docs
+tree (<code>docs/11-authentication/README.md</code>, <code>docs/04-configuration/README.md</code>,
+<code>docs/04-configuration/settings-catalog.md</code>, <code>docs/07-rest-api/README.md</code>,
+<code>docs/16-cli-admin/cli-commands.md</code>, <code>docs/index.md</code>, and the services catalogs themselves).
+No <code>authentication-providers.md</code> file exists on disk, so there is no overlap or duplicate
+content to consolidate — this page remains the sole, authoritative source for authentication
+providers, auth chains, tokens/scopes, and permission resolution. If a future contributor is
+tempted to add a new <code>authentication-providers.md</code>, it should instead be a redirect stub
+pointing back here, or its content should be merged into this file, to avoid re-introducing
+the duplication this note was written to rule out.</p>
+</blockquote>
+<h2 id="the-authmethod-interface">The <code>auth.Method</code> Interface<a href="#the-authmethod-interface" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Every authentication mechanism implements a single, small interface defined in
+<a href="../../services/auth/interface.go"><code>services/auth/interface.go</code></a>:</p>
+<pre class="highlight"><code class="language-go">// Method represents an authentication method (plugin) for HTTP requests.
+type Method interface {
+    // Verify tries to verify the authentication data contained in the request.
+    // If verification succeeds, it returns either an existing user object (with id &gt; 0)
+    // or a new user object (with id = 0) populated with the information that was found
+    // in the authentication data (username or email).
+    Verify(http *http.Request, w http.ResponseWriter, store DataStore, sess SessionStore) (*user_model.User, error)
+
+    Name() string
+}</code></pre>
+<p>Key contract details:</p>
+<ul>
+<li><strong>Returning <code>(nil, nil)</code></strong> means "this method is not applicable to the request" (e.g. no
+  <code>Authorization</code> header present) — the caller should try the next method in the chain.</li>
+<li><strong>Returning <code>(nil, err)</code></strong> means the method recognized its own credential format but
+  verification failed (bad password, expired token, etc.) — this is a hard failure that other
+  methods may still attempt to override if they succeed.</li>
+<li><strong>Returning <code>(user, nil)</code></strong> is a successful authentication.</li>
+</ul>
+<p>Two additional optional interfaces extend a login <code>Source</code>'s configuration object
+(<code>auth.Source.Cfg</code>, see <a href="../../models/auth/source.go"><code>models/auth/source.go</code></a>):</p>
+<pre class="highlight"><code class="language-go">// PasswordAuthenticator represents a source of authentication
+type PasswordAuthenticator interface {
+    Authenticate(ctx context.Context, user *user_model.User, login, password string) (*user_model.User, error)
+}
+
+// SynchronizableSource represents a source that can synchronize users
+type SynchronizableSource interface {
+    Sync(ctx context.Context, updateExisting bool) error
+}</code></pre>
+<p><code>PasswordAuthenticator</code> is implemented by LDAP, SMTP, PAM and the internal DB source, and is
+used by <code>UserSignIn</code> (username/password login flow). <code>SynchronizableSource</code> is implemented by
+LDAP and OAuth2 sources and is invoked by the periodic "sync external users" cron task
+(<code>services/auth/sync.go</code> wires it to <code>cron</code>).</p>
+<h2 id="provider-catalog">Provider Catalog<a href="#provider-catalog" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Method / Source</th>
+<th>File(s)</th>
+<th>Kind</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Session</code></td>
+<td><code>services/auth/session.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Reads <code>uid</code> from the signed cookie session</td>
+</tr>
+<tr>
+<td><code>Basic</code></td>
+<td><code>services/auth/basic.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>HTTP Basic header; also re-used to validate PATs, OAuth2 access tokens, and Action task tokens</td>
+</tr>
+<tr>
+<td><code>OAuth2</code></td>
+<td><code>services/auth/oauth2.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Bearer token/JWT in header or <code>token</code>/<code>access_token</code> query param</td>
+</tr>
+<tr>
+<td><code>ReverseProxy</code></td>
+<td><code>services/auth/reverseproxy.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Trusts a header set by an upstream proxy (e.g. <code>X-WEBAUTH-USER</code>)</td>
+</tr>
+<tr>
+<td><code>SSPI</code></td>
+<td><code>services/auth/sspi.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Windows SPNEGO/Kerberos negotiation, login-page only</td>
+</tr>
+<tr>
+<td><code>HTTPSign</code></td>
+<td><code>services/auth/httpsign.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>HTTP Signature (<code>Signature</code> header) using SSH keys or SSH certificates — used for federation/ActivityPub</td>
+</tr>
+<tr>
+<td><code>Group</code></td>
+<td><code>services/auth/group.go</code></td>
+<td>HTTP <code>Method</code> (composite)</td>
+<td>Runs a list of <code>Method</code>s in order, first success wins</td>
+</tr>
+<tr>
+<td>LDAP (<code>LDAP</code>/<code>DLDAP</code>)</td>
+<td><code>services/auth/source/ldap/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Bind-DN or direct-bind LDAP, via <code>go-ldap</code></td>
+</tr>
+<tr>
+<td>PAM</td>
+<td><code>services/auth/source/pam/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Delegates to the OS's PAM stack via <code>modules/auth/pam</code></td>
+</tr>
+<tr>
+<td>SMTP</td>
+<td><code>services/auth/source/smtp/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Authenticates against an SMTP server (PLAIN/LOGIN/CRAM-MD5)</td>
+</tr>
+<tr>
+<td>OAuth2 provider</td>
+<td><code>services/auth/source/oauth2/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Wraps <code>github.com/markbates/goth</code> providers (GitHub, GitLab, Google, OIDC generic, etc.)</td>
+</tr>
+<tr>
+<td>DB</td>
+<td><code>services/auth/source/db</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Internal database password auth (the default)</td>
+</tr>
+<tr>
+<td>SSPI config</td>
+<td><code>services/auth/source/sspi</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Configuration object consumed by the <code>SSPI</code> <code>Method</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>There are two related but distinct concepts named "auth method"/"source" in Gitea:
+an <strong><code>auth.Method</code></strong> verifies an incoming <em>HTTP request</em> (session cookie, bearer token,
+header, signature, ...). A <strong><code>auth.Source</code></strong> (<code>models/auth/source.go</code>) is an admin-configured
+<em>credential backend</em> (LDAP server, SMTP server, OAuth2 app, PAM service, SSPI domain) used to
+validate a username/password pair or to redirect/callback for OAuth2. <code>Basic</code>/<code>Session</code> call
+into the active <code>Source</code>s via <code>UserSignIn</code>; OAuth2/SSPI use their <code>Source</code> for configuration.</p>
+</blockquote>
+<h2 id="per-request-auth-method-chain-group">Per-Request Auth Method Chain (<code>Group</code>)<a href="#per-request-auth-method-chain-group" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Multiple <code>Method</code>s are combined into a <code>Group</code> (<code>services/auth/group.go</code>), which is itself a
+<code>Method</code>. <code>Group.Verify</code> iterates its members in order:</p>
+<pre class="highlight"><code class="language-go">func (b *Group) Verify(req *http.Request, w http.ResponseWriter, store DataStore, sess SessionStore) (*user_model.User, error) {
+    var retErr error
+    for _, m := range b.methods {
+        user, err := m.Verify(req, w, store, sess)
+        if err != nil {
+            if retErr == nil {
+                retErr = err
+            }
+            continue // try other methods; some share the same protocol
+        }
+        if user != nil {
+            if store.GetData()["AuthedMethod"] == nil {
+                store.GetData()["AuthedMethod"] = m.Name()
+            }
+            return user, nil
+        }
+    }
+    return nil, retErr
+}</code></pre>
+<p>The <strong>order of methods matters</strong> because some methods (e.g. reverse proxy, SSPI) create a new
+session or the effect depends on which method runs first when multiple could apply to the same
+header. Gitea builds different chains depending on the surface:</p>
+<h3 id="web-ui-chain-routerswebwebgo-newwebauthmiddleware">Web UI chain (<code>routers/web/web.go</code> → <code>newWebAuthMiddleware</code>)<a href="#web-ui-chain-routerswebwebgo-newwebauthmiddleware" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">group := auth_service.NewGroup()
+if allowOAuth2 {
+    group.Add(&amp;auth_service.OAuth2{})
+}
+if allowBasic {
+    group.Add(&amp;auth_service.Basic{})
+}
+if setting.Service.EnableReverseProxyAuth {
+    // reverse-proxy should be before Session, otherwise the header
+    // will be ignored if the user has already logged in
+    group.Add(&amp;auth_service.ReverseProxy{CreateSession: !isSessionless})
+}
+group.Add(&amp;auth_service.Session{})
+if enableSSPI {
+    // it MUST be the last, see the comment of SSPI
+    group.Add(&amp;auth_service.SSPI{CreateSession: !isSessionless})
+}</code></pre>
+<p><code>allowOAuth2</code>/<code>allowBasic</code> are per-route flags set by the <code>AllowOAuth2</code>/<code>AllowBasic</code>
+pre-middlewares (used for routes like Git-over-HTTP and RSS/attachment downloads that must
+support sessionless auth).</p>
+<h3 id="rest-api-chain-routersapiv1apigo-buildauthgroup">REST API chain (<code>routers/api/v1/api.go</code> → <code>buildAuthGroup</code>)<a href="#rest-api-chain-routersapiv1apigo-buildauthgroup" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">func buildAuthGroup() *auth.Group {
+    group := auth.NewGroup(
+        &amp;auth.OAuth2{},
+        &amp;auth.HTTPSign{},
+        &amp;auth.Basic{}, // FIXME: should be removed once basic auth in API isn't allowed
+    )
+    if setting.Service.EnableReverseProxyAuthAPI {
+        group.Add(&amp;auth.ReverseProxy{})
+    }
+    return group
+}</code></pre>
+<h3 id="package-registry-api-chain-routersapipackagesapigo">Package registry API chain (<code>routers/api/packages/api.go</code>)<a href="#package-registry-api-chain-routersapipackagesapigo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Each package registry endpoint calls <code>verifyAuth(r, []auth.Method{...}, opts)</code> with a
+registry-specific method list (e.g. NuGet's own API-key <code>Method</code> that wraps <code>Basic.VerifyAuthToken</code>,
+see <code>routers/api/packages/nuget/auth.go</code>), and <code>ReverseProxy</code> is appended automatically when
+<code>EnableReverseProxyAuth</code> is set.</p>
+<pre class="mermaid">flowchart TD
+    A[Incoming HTTP request] --> B{Route type}
+    B -->|Web UI| C[Web Auth Group]
+    B -->|REST API /api/v1| D[API Auth Group]
+    B -->|Package Registry| E[Package Auth Group]
+
+    C --> C1[OAuth2 Bearer?] -->|no match| C2[Basic Auth?]
+    C2 -->|no match| C3[ReverseProxy header?]
+    C3 -->|no match| C4[Session cookie?]
+    C4 -->|no match| C5[SSPI/SPNEGO last]
+    C5 -->|no match| C6[Anonymous]
+
+    D --> D1[OAuth2 Bearer?] -->|no match| D2[HTTPSign header?]
+    D2 -->|no match| D3[Basic Auth?]
+    D3 -->|no match| D4[ReverseProxy if enabled]
+    D4 -->|no match| D6[Anonymous / 401]
+
+    C1 -->|match| U[user_model.User]
+    C2 -->|match| U
+    C3 -->|match| U
+    C4 -->|match| U
+    C5 -->|match| U
+    D1 -->|match| U
+    D2 -->|match| U
+    D3 -->|match| U
+    D4 -->|match| U
+
+    U --> P[Permission / Access Mode checks]</pre>
+<p><code>common.AuthShared</code> (<code>routers/common/auth.go</code>) is the shared glue that calls
+<code>authMethod.Verify(...)</code> (where <code>authMethod</code> is usually the <code>Group</code>), stores <code>ctx.Doer</code>,
+<code>ctx.IsSigned</code>, <code>IsBasicAuth</code>, and refreshes the request locale to the signed-in user's language.</p>
+<h2 id="provider-details">Provider Details<a href="#provider-details" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="session-servicesauthsessiongo">Session (<code>services/auth/session.go</code>)<a href="#session-servicesauthsessiongo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The simplest method: reads the <code>uid</code> key from the session store (backed by
+<code>modules/session</code>), loads the <code>User</code> by ID, and returns it. Returns <code>(nil, nil)</code> if there is
+no session or no <code>uid</code> key — allowing later/earlier methods to take over. Session data is
+established by <code>handleSignIn</code> in <code>services/auth/auth.go</code>, which regenerates the session ID
+(session-fixation protection), clears stale two-factor/OpenID keys, and stores <code>uid</code>/<code>uname</code>.</p>
+<h3 id="basic-servicesauthbasicgo">Basic (<code>services/auth/basic.go</code>)<a href="#basic-servicesauthbasicgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Parses the <code>Authorization: Basic ...</code> header (and the legacy <code>x-oauth-basic</code> password
+convention where the token is placed in the username field). <code>Basic.VerifyAuthToken</code> is reused
+by other integrations (e.g. NuGet's <code>X-NuGet-ApiKey</code>) and tries, in order:</p>
+<ol>
+<li><strong>OAuth2 access token</strong> — <code>GetOAuthAccessTokenScopeAndUserID</code> parses a JWT-shaped token
+   and resolves the <code>OAuth2Grant</code>.</li>
+<li><strong>Personal Access Token</strong> — <code>auth_model.GetAccessTokenBySHA</code> looks up a PAT by its
+   last-eight-chars index then verifies the full SHA constant-time.</li>
+<li><strong>Actions task token</strong> — <code>actions_model.GetRunningTaskByToken</code>, used by CI runners.</li>
+<li><strong>Username/password fallback</strong> — only if <code>setting.Service.EnableBasicAuth</code> is true, calls
+   <code>UserSignIn</code>, then enforces 2FA: WebAuthn-enrolled accounts are rejected outright for Basic
+   auth (<code>"basic authorization is not allowed while WebAuthn enrolled"</code>), and TOTP-enrolled
+   accounts must supply a valid <code>X-Gitea-OTP</code> header, verified via
+   <code>TwoFactor.ValidateAndConsumeTOTP</code> (atomic single-use consumption to prevent replay).</li>
+</ol>
+<p><code>GetAccessScope(store)</code> derives the effective <code>AccessTokenScope</code> for the request from
+<code>store.GetData()["ApiTokenScope"]</code>/<code>LoginMethod</code> — <code>Basic</code>/session logins get
+<code>AccessTokenScopeAll</code>, while <code>ActionTokenMethodName</code> gets no scope (enforced separately).</p>
+<h3 id="oauth2-bearer-tokens-servicesauthoauth2go">OAuth2 bearer tokens (<code>services/auth/oauth2.go</code>)<a href="#oauth2-bearer-tokens-servicesauthoauth2go" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Distinct from the OAuth2 login <em>Source</em> below — this <code>Method</code> authenticates <strong>API requests</strong>
+carrying a bearer token, either:</p>
+<ul>
+<li>in the query string as <code>token=</code>/<code>access_token=</code> (unless <code>DisableQueryAuthToken</code>), or</li>
+<li>in the <code>Authorization: Bearer &lt;token&gt;</code> header.</li>
+</ul>
+<p><code>userFromToken</code> classifies the token:</p>
+<ol>
+<li>If it contains a <code>.</code> (JWT-shaped): try Actions task JWT (<code>actions.TokenToTaskID</code>), then
+   OAuth2 access token (<code>GetOAuthAccessTokenScopeAndUserID</code>).</li>
+<li>Otherwise: treat it as a Personal Access Token SHA, falling back to an Actions task token.</li>
+</ol>
+<h3 id="reverseproxy-servicesauthreverseproxygo">ReverseProxy (<code>services/auth/reverseproxy.go</code>)<a href="#reverseproxy-servicesauthreverseproxygo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Trusts a reverse proxy (e.g. an SSO gateway) to have already authenticated the caller and to
+populate <code>setting.ReverseProxyAuthUser</code> (default <code>X-WEBAUTH-USER</code>) with the username, and
+optionally <code>setting.ReverseProxyAuthEmail</code>/<code>...AuthFullName</code>. If the user doesn't exist and
+<code>EnableReverseProxyAutoRegister</code> is set, a new active user is auto-created (<code>newUser</code>). When
+<code>CreateSession</code> is true and no matching session already exists, it calls <code>handleSignIn</code> to
+establish a normal cookie session — this is why <code>ReverseProxy</code> must run <strong>before</strong> <code>Session</code> in
+the chain (otherwise a stale session for a different user could shadow the header).</p>
+<h3 id="sspi-servicesauthsspigo">SSPI (<code>services/auth/sspi.go</code>)<a href="#sspi-servicesauthsspigo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Implements Windows Integrated Authentication (SPNEGO/Kerberos) for domain-joined Windows
+clients, backed by the platform-specific <code>sspiauth_windows.go</code> (real implementation) /
+<code>sspiauth_posix.go</code> (stub) and the <code>websspi</code>-style <code>SSPIAuth</code> interface:</p>
+<pre class="highlight"><code class="language-go">type SSPIAuth interface {
+    AppendAuthenticateHeader(w http.ResponseWriter, data string)
+    Authenticate(r *http.Request, w http.ResponseWriter) (userInfo *SSPIUserInfo, outToken string, err error)
+}</code></pre>
+<p><code>shouldAuthenticate</code> only activates for <code>POST /user/login?auth_with_sspi=1</code> — so SSPI never
+interferes with any other route. Negotiation may require multiple round-trips, during which the
+method writes a <code>401</code> with a <code>WWW-Authenticate</code> negotiate header and re-renders the sign-in
+template. On success, <code>sanitizeUsername</code> strips NETBIOS domain prefixes / UPN suffixes
+(<code>stripDomainNames</code>) and replaces separators (<code>replaceSeparators</code>) according to the configured
+<code>sspi.Source</code>. Because a failed negotiation returns <code>401</code> immediately, <strong>SSPI must be the last
+method in the chain</strong> — otherwise it would short-circuit before Session/Basic/OAuth2 get a
+chance to run.</p>
+<h3 id="httpsign-servicesauthhttpsigngo">HTTPSign (<code>services/auth/httpsign.go</code>)<a href="#httpsign-servicesauthhttpsigngo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Implements <a href="https://github.com/go-fed/httpsig">HTTP Signatures</a> verification, primarily used
+for <strong>ActivityPub federation</strong> requests where the caller signs the request with an SSH key
+pair instead of presenting a bearer credential. Two verification paths:</p>
+<ul>
+<li><strong><code>VerifyPubKey</code></strong> — looks up a registered <code>PublicKey</code> by the signature's <code>keyId</code> fingerprint
+  and verifies the signature against it (ED25519 or RSA/SHA-256/512, matched from the SSH key
+  type).</li>
+<li><strong><code>VerifyCert</code></strong> (when <code>X-Ssh-Certificate</code> is present and <code>setting.SSH.TrustedUserCAKeys</code> is
+  configured) — parses an SSH certificate, validates it was signed by a trusted CA
+  (<code>IsUserAuthority</code>), verifies the HTTP signature against the certificate's public key, then
+  matches one of the certificate's <code>ValidPrincipals</code> against a registered <code>PublicKey</code>.</li>
+</ul>
+<p>On success, the resolved key's <code>OwnerID</code> becomes <code>ctx.Doer</code>, and <code>store.GetData()["IsApiToken"]</code>
+is set (so downstream code treats it like an API-token authenticated request rather than an
+interactive session).</p>
+<h3 id="ldap-servicesauthsourceldap">LDAP (<code>services/auth/source/ldap</code>)<a href="#ldap-servicesauthsourceldap" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Two flavors selected by <code>auth.LDAP</code> (bind-DN search+bind) vs <code>auth.DLDAP</code> (direct/simple bind),
+both backed by the same <code>Source</code> struct (<code>source.go</code>) built on <code>github.com/go-ldap/ldap</code>.
+Notable fields: <code>BindDN</code>/<code>BindPassword</code> (encrypted at rest via <code>secret.EncryptSecret</code> in
+<code>ToDB</code>), <code>UserBase</code>/<code>Filter</code>/<code>AdminFilter</code>/<code>RestrictedFilter</code>, SSH key &amp; avatar attribute
+mapping, and the group-sync fields <code>GroupsEnabled</code>, <code>GroupDN</code>, <code>GroupFilter</code>, <code>GroupMemberUID</code>,
+<code>UserUID</code>, <code>GroupTeamMap</code>, <code>GroupTeamMapRemoval</code> (see <a href="#group-sync">Group Sync</a> below).
+<code>source_authenticate.go</code> implements <code>PasswordAuthenticator.Authenticate</code> (bind as the user, or
+bind as <code>BindDN</code> then search); <code>source_sync.go</code> implements <code>SynchronizableSource.Sync</code> used by
+the periodic external-user sync job to create/update/deactivate local users from LDAP search
+results.</p>
+<h3 id="pam-servicesauthsourcepam">PAM (<code>services/auth/source/pam</code>)<a href="#pam-servicesauthsourcepam" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Delegates username/password validation to the host's PAM stack via <code>modules/auth/pam</code>
+(<code>pam.Auth(serviceName, userName, passwd)</code>, with a <code>pam_stub.go</code> fallback on platforms without
+cgo/PAM support). Config is just <code>ServiceName</code> (the PAM service, e.g. <code>system-auth</code>) and
+<code>EmailDomain</code> (used to synthesize an email address for auto-created users, since PAM has no
+email attribute).</p>
+<h3 id="smtp-servicesauthsourcesmtp">SMTP (<code>services/auth/source/smtp</code>)<a href="#smtp-servicesauthsourcesmtp" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Authenticates by opening an SMTP connection to <code>Host:Port</code> and performing SMTP AUTH
+(<code>Auth</code> field selects PLAIN/LOGIN/CRAM-MD5) with the supplied credentials — if the server
+accepts the login, the user is authenticated. Supports <code>AllowedDomains</code> restriction,
+<code>ForceSMTPS</code>/<code>SkipVerify</code> TLS controls, and <code>HeloHostname</code>/<code>DisableHelo</code>.</p>
+<h3 id="oauth2-login-source-servicesauthsourceoauth2">OAuth2 login source (<code>services/auth/source/oauth2</code>)<a href="#oauth2-login-source-servicesauthsourceoauth2" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>This is the <strong>login Source</strong>, distinct from the bearer-token <code>Method</code> above — it configures an
+external OAuth2/OIDC identity provider using <code>github.com/markbates/goth</code>. <code>providers.go</code> /
+<code>providers_base.go</code> / <code>providers_custom.go</code> / <code>providers_openid.go</code> / <code>providers_simple.go</code>
+register/build <code>goth.Provider</code>s (GitHub, GitLab, Google, Bitbucket, generic OpenID Connect,
+etc.). <code>source_callout.go</code> performs the redirect ("callout") to the provider's authorization
+endpoint; <code>routers/web/auth/oauth.go</code> handles the callback, token exchange, user
+creation/linking, and admin/restricted-group derivation
+(<code>getUserAdminAndRestrictedFromGroupClaims</code>). <code>source_sync.go</code> implements <code>Sync</code> to refresh
+stored OAuth2 refresh tokens for accounts, disabling users whose grant has been revoked
+upstream (<code>invalid_grant</code>).</p>
+<h2 id="access-tokens-scopes">Access Tokens &amp; Scopes<a href="#access-tokens-scopes" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Personal Access Tokens (PATs) are modeled by <code>AccessToken</code> in
+<a href="../../models/auth/access_token.go"><code>models/auth/access_token.go</code></a>:</p>
+<pre class="highlight"><code class="language-go">type AccessToken struct {
+    ID             int64 `xorm:"pk autoincr"`
+    UID            int64 `xorm:"INDEX"`
+    Name           string
+    Token          string `xorm:"-"`          // only available at creation time
+    TokenHash      string `xorm:"UNIQUE"`      // sha256+salt of token, persisted
+    TokenSalt      string
+    TokenLastEight string `xorm:"INDEX token_last_eight"` // fast index lookup
+    Scope          AccessTokenScope
+    ...
+}</code></pre>
+<p>Tokens are never stored in plaintext: <code>NewAccessToken</code> generates a random token, stores its
+<code>TokenLastEight</code> (an index shortcut) and a salted hash (<code>HashToken</code>); <code>GetAccessTokenBySHA</code>
+looks candidates up by the last-eight index and does a constant-time hash comparison
+(<code>crypto/subtle</code>), with an optional LRU cache (<code>successfulAccessTokenCache</code>,
+sized by <code>setting.SuccessfulTokensCacheSize</code>) to skip repeated hash work for hot tokens.</p>
+<h3 id="scopes-modelsauthaccess_token_scopego">Scopes (<code>models/auth/access_token_scope.go</code>)<a href="#scopes-modelsauthaccess_token_scopego" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Scopes are modeled as a bitmap under the hood for fast checks, but represented publicly as
+category-based strings, e.g. <code>read:repository</code>, <code>write:organization</code>, or the special values
+<code>all</code> and <code>public-only</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Read scope</th>
+<th>Write scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ActivityPub</td>
+<td><code>read:activitypub</code></td>
+<td><code>write:activitypub</code></td>
+</tr>
+<tr>
+<td>Admin</td>
+<td><code>read:admin</code></td>
+<td><code>write:admin</code></td>
+</tr>
+<tr>
+<td>Misc</td>
+<td><code>read:misc</code></td>
+<td><code>write:misc</code></td>
+</tr>
+<tr>
+<td>Notification</td>
+<td><code>read:notification</code></td>
+<td><code>write:notification</code></td>
+</tr>
+<tr>
+<td>Organization</td>
+<td><code>read:organization</code></td>
+<td><code>write:organization</code></td>
+</tr>
+<tr>
+<td>Package</td>
+<td><code>read:package</code></td>
+<td><code>write:package</code></td>
+</tr>
+<tr>
+<td>Issue</td>
+<td><code>read:issue</code></td>
+<td><code>write:issue</code></td>
+</tr>
+<tr>
+<td>Repository</td>
+<td><code>read:repository</code></td>
+<td><code>write:repository</code></td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>read:user</code></td>
+<td><code>write:user</code></td>
+</tr>
+</tbody>
+</table>
+<p>Write scope always implies read scope for the same category (bitwise OR of the read bit into
+the write constant). <code>AccessTokenScopePublicOnly</code> further restricts a token to public
+repos/orgs regardless of other scopes granted — enforced, e.g., in the packages API
+(<code>routers/api/packages/api.go</code>) by rejecting access to non-public package owners for
+public-only tokens.</p>
+<p>OAuth2 access tokens (issued to OAuth2 Applications, distinct from PATs) reuse the same
+<code>AccessTokenScope</code> type; <code>oauth2_provider.GrantAdditionalScopes(grant.Scope)</code> expands an
+<code>OAuth2Grant</code>'s scope into the equivalent <code>AccessTokenScope</code>.</p>
+<h3 id="auth-tokens-remember-me-cookies">Auth Tokens (Remember-Me cookies)<a href="#auth-tokens-remember-me-cookies" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Persistent "remember me" login cookies use a <strong>separate</strong> mechanism,
+<a href="../../models/auth/auth_token.go"><code>models/auth/auth_token.go</code></a> +
+<a href="../../services/auth/auth_token.go"><code>services/auth/auth_token.go</code></a>, inspired by
+<a href="https://paragonie.com/blog/2015/04/secure-authentication-php-with-long-term-persistence">Paragon Initiative's secure remember-me design</a>.
+Each cookie value is <code>id:token</code>; the server stores only <code>TokenHash = sha256(token)</code> keyed by
+<code>id</code>. On each use, <code>CheckAuthToken</code> verifies the hash in constant time, and
+<code>RegenerateAuthToken</code> <strong>rotates the hash on every login</strong> while keeping the same <code>id</code> — if an
+attacker replays a stolen (already-used) token, the hash mismatch triggers <code>DeleteAuthTokenByID</code>,
+immediately revoking that device's remember-me token and forcing re-authentication.</p>
+<h2 id="webauthn-passkeys-and-totp-two-factor-auth">WebAuthn / Passkeys and TOTP (Two-Factor Auth)<a href="#webauthn-passkeys-and-totp-two-factor-auth" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea supports two independent 2FA mechanisms, and a user may be enrolled in either or both:</p>
+<h3 id="totp-time-based-one-time-password">TOTP (Time-based One-Time Password)<a href="#totp-time-based-one-time-password" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Modeled by <code>TwoFactor</code> in <a href="../../models/auth/twofactor.go"><code>models/auth/twofactor.go</code></a>. The
+shared secret is AES-encrypted at rest (key derived from <code>setting.SecretKey</code> via MD5, see
+<code>getEncryptionKey</code>) and Base64-encoded in the <code>Secret</code> column. Validation uses
+<code>github.com/pquerna/otp/totp</code>, and — critically — passcodes are <strong>single-use</strong>:
+<code>ValidateAndConsumeTOTP</code> performs a conditional UPDATE (<code>last_used_passcode &lt;&gt; ?</code> or <code>IS NULL</code>)
+so a captured OTP cannot be replayed within its validity window, even under concurrent
+requests (the UPDATE's row lock serializes racers). A scratch/recovery token
+(<code>GenerateScratchToken</code>, using an ambiguity-free Base32 alphabet) is available as a backup.</p>
+<h3 id="webauthn-passkeys">WebAuthn / Passkeys<a href="#webauthn-passkeys" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Modeled by <code>WebAuthnCredential</code> in <code>models/auth/webauthn.go</code>, and wired up via
+<a href="../../modules/auth/webauthn/webauthn.go"><code>modules/auth/webauthn/webauthn.go</code></a>, which
+initializes a single global <code>webauthn.WebAuthn</code> instance (from <code>github.com/go-webauthn/webauthn</code>)
+at startup (<code>auth.Init()</code> calls <code>webauthn.Init()</code>):</p>
+<pre class="highlight"><code class="language-go">WebAuthn = &amp;webauthn.WebAuthn{
+    Config: &amp;webauthn.Config{
+        RPDisplayName: setting.AppName,
+        RPID:          setting.Domain,
+        RPOrigins:     []string{appURL},
+        AuthenticatorSelection: protocol.AuthenticatorSelection{
+            UserVerification: protocol.VerificationDiscouraged,
+        },
+        AttestationPreference: protocol.PreferDirectAttestation,
+    },
+}</code></pre>
+<p>The package's <code>user</code> wrapper adapts a Gitea <code>*user_model.User</code> to the <code>webauthn.User</code>
+interface (<code>WebAuthnID</code>, <code>WebAuthnName</code>, <code>WebAuthnDisplayName</code>, <code>WebAuthnCredentials</code> — the
+latter loading stored credentials from the DB). WebAuthn registration/assertion ceremonies
+themselves (challenge generation, session storage of <code>webauthn.SessionData</code> via <code>gob</code>, and
+credential creation) are driven from the web routers under <code>routers/web/auth</code> and
+<code>routers/web/user/setting/security</code> (out of scope here, but they build on this module).</p>
+<blockquote>
+<p><strong>Interaction with Basic auth</strong>: <code>Basic.Verify</code> explicitly <strong>rejects</strong> Basic authentication
+for any user with WebAuthn credentials registered (<code>hasWebAuthn</code>) — WebAuthn cannot be
+satisfied over a header-only credential, so such users must use session login, OAuth2, or a
+PAT instead. Users with only TOTP enrolled can still use Basic auth by supplying the
+<code>X-Gitea-OTP</code> header.</p>
+</blockquote>
+<p><code>HasTwoFactorOrWebAuthn</code> and <code>DisableTwoFactor</code> (in <code>twofactor.go</code>) provide unified
+enable/disable-all-2FA helpers used by account security settings and admin tooling.</p>
+<h2 id="group-sync-mapping-external-groups-to-teams">Group Sync — Mapping External Groups to Teams<a href="#group-sync-mapping-external-groups-to-teams" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>When users authenticate via LDAP or OAuth2/OIDC, Gitea can automatically manage their
+Organization/Team memberships based on group claims/attributes returned by the identity
+provider. This is implemented centrally in
+<a href="../../services/auth/source/source_group_sync.go"><code>services/auth/source/source_group_sync.go</code></a>
+and driven by each source's configuration.</p>
+<h3 id="configuration-shape">Configuration shape<a href="#configuration-shape" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Both LDAP and OAuth2 sources share the same JSON mapping shape, configured as a string field
+<code>GroupTeamMap</code> and parsed with <code>modules/auth.UnmarshalGroupTeamMapping</code>:</p>
+<pre class="highlight"><code class="language-go">func UnmarshalGroupTeamMapping(raw string) (map[string]map[string][]string, error) {
+    groupTeamMapping := make(map[string]map[string][]string)
+    if raw == "" {
+        return groupTeamMapping, nil
+    }
+    return groupTeamMapping, json.Unmarshal([]byte(raw), &amp;groupTeamMapping)
+}</code></pre>
+<p>i.e. <code>{ "&lt;external-group-name&gt;": { "&lt;gitea-org-name&gt;": ["&lt;team1&gt;", "&lt;team2&gt;", ...] } }</code>.
+Example (from the LDAP admin CLI tests):</p>
+<pre class="highlight"><code class="language-json">{"cn=my-group,cn=groups,dc=example,dc=org": {"MyGiteaOrganization": ["MyGiteaTeam1", "MyGiteaTeam2"]}}</code></pre>
+<p>For LDAP this maps an LDAP group DN/CN to one or more Gitea org/team pairs
+(<code>GroupTeamMap</code>), with <code>GroupTeamMapRemoval</code> controlling whether membership is revoked
+when the user is no longer in the source group. For OAuth2, <code>GroupClaimName</code> selects which
+claim in the ID token / userinfo response carries the group list (parsed via
+<code>claimValueToStringSet</code>, which accepts a <code>[]string</code>, a <code>[]any</code>, or a delimited string), and
+<code>AdminGroup</code>/<code>RestrictedGroup</code> can additionally promote/restrict a user based on group
+membership (<code>getUserAdminAndRestrictedFromGroupClaims</code> in <code>routers/web/auth/oauth.go</code>).</p>
+<h3 id="core-sync-algorithm">Core sync algorithm<a href="#core-sync-algorithm" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">func SyncGroupsToTeamsCached(ctx context.Context, user *user_model.User,
+    sourceUserGroups container.Set[string],
+    sourceGroupTeamMapping map[string]map[string][]string,
+    performRemoval bool,
+    orgCache map[string]*organization.Organization,
+    teamCache map[string]*organization.Team) error {
+
+    membershipsToAdd, membershipsToRemove := resolveMappedMemberships(sourceUserGroups, sourceGroupTeamMapping)
+
+    if performRemoval {
+        syncGroupsToTeamsCached(ctx, user, membershipsToRemove, syncRemove, orgCache, teamCache)
+    }
+    return syncGroupsToTeamsCached(ctx, user, membershipsToAdd, syncAdd, orgCache, teamCache)
+}</code></pre>
+<p><code>resolveMappedMemberships</code> partitions every configured <code>(group → org/team)</code> rule into "add"
+(the authenticated user <em>is</em> currently a member of that external group) or "remove" (they are
+not) sets. <code>syncGroupsToTeamsCached</code> then resolves each org/team by name (using the supplied
+caches to avoid repeated DB lookups across many users in a bulk sync), checks current
+membership via <code>organization.IsTeamMember</code>, and calls <code>org_service.AddTeamMember</code> /
+<code>RemoveTeamMember</code> as needed. <strong>Organizations and teams are never auto-created</strong> — if the
+mapped org/team doesn't exist yet, a warning is logged and that mapping entry is skipped, so
+admins must pre-create the target orgs/teams.</p>
+<pre class="mermaid">sequenceDiagram
+    participant IdP as LDAP/OAuth2 Provider
+    participant Src as auth.Source (LDAP/OAuth2)
+    participant Sync as source.SyncGroupsToTeams(Cached)
+    participant Org as organization.Team
+
+    IdP->>Src: returns user's groups (LDAP attr / OIDC claim)
+    Src->>Sync: sourceUserGroups, GroupTeamMap, GroupTeamMapRemoval
+    Sync->>Sync: resolveMappedMemberships() -> add-set / remove-set
+    alt performRemoval
+        Sync->>Org: RemoveTeamMember for mapped teams user no longer belongs to
+    end
+    Sync->>Org: AddTeamMember for mapped teams user now belongs to
+    Org-->>Sync: membership updated</pre>
+<h3 id="call-sites">Call sites<a href="#call-sites" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>File</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LDAP interactive login</td>
+<td><code>services/auth/source/ldap/source_authenticate.go</code></td>
+<td>Runs synchronously after successful bind</td>
+</tr>
+<tr>
+<td>LDAP bulk sync (cron)</td>
+<td><code>services/auth/source/ldap/source_sync.go</code></td>
+<td>Uses <code>SyncGroupsToTeamsCached</code> with per-run caches for efficiency across all synced users</td>
+</tr>
+<tr>
+<td>OAuth2 new-account auto-registration</td>
+<td><code>routers/web/auth/oauth.go</code> (<code>syncGroupsToTeams</code>)</td>
+<td>Runs once right after the user record is created</td>
+</tr>
+<tr>
+<td>OAuth2 existing-account login</td>
+<td><code>routers/web/auth/oauth.go</code> (<code>handleOAuth2SignIn</code> path)</td>
+<td>Re-evaluates group claims on every login</td>
+</tr>
+<tr>
+<td>OAuth2 account linking</td>
+<td><code>routers/web/auth/linkaccount.go</code></td>
+<td>Runs when a goth identity is linked to an existing local account</td>
+</tr>
+</tbody>
+</table>
+<h2 id="password-credential-login-flow-usersignin">Password / Credential Login Flow (<code>UserSignIn</code>)<a href="#password-credential-login-flow-usersignin" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><a href="../../services/auth/signin.go"><code>services/auth/signin.go</code></a> implements the shared
+username/password validation path used by <code>Basic.Verify</code> and the <code>/user/login</code> web form:</p>
+<pre class="mermaid">flowchart TD
+    A["UserSignIn(ctx, username, password)"] --> B{Contains '@'?}
+    B -->|yes| C[Look up EmailAddress; must be activated]
+    B -->|no| D[Look up User by lower-cased name]
+    C --> E{User found?}
+    D --> E
+    E -->|yes, has LoginSource| F["source.Cfg.(PasswordAuthenticator).Authenticate()"]
+    F -->|success + not ProhibitLogin| G[Return user, source]
+    F -->|fail| H[ErrUserNotExist / auth error]
+    E -->|no exact match| I[Iterate ALL active sources]
+    I --> J["authenticator.Authenticate(ctx, nil, username, password)"]
+    J -->|success| G
+    J -->|fail for all sources| H</pre>
+<p>Every active <code>auth.Source</code> whose <code>Cfg</code> implements <code>PasswordAuthenticator</code> is imported for its
+side-effecting <code>init()</code> registration via blank imports in <code>signin.go</code>:</p>
+<pre class="highlight"><code class="language-go">_ "gitea.dev/services/auth/source/db"   // internal DB password auth
+_ "gitea.dev/services/auth/source/ldap" // LDAP
+_ "gitea.dev/services/auth/source/pam"  // PAM
+_ "gitea.dev/services/auth/source/sspi" // SSPI</code></pre>
+<p>(SMTP and OAuth2 are imported directly since <code>signin.go</code> references their exported error
+values / structs.) Each <code>Source.Cfg</code> type registers itself against a <code>Type</code> via
+<code>auth.RegisterTypeConfig</code> in its own <code>init()</code> (see <code>services/auth/source/ldap/source.go</code>,
+<code>.../pam/source.go</code>, etc.), so <code>models/auth/source.go</code>'s generic <code>Source</code> struct can deserialize
+the correct concrete config type when loaded from the DB.</p>
+<h2 id="permission-enforcement-from-doer-to-accessmode">Permission Enforcement: from <code>Doer</code> to <code>AccessMode</code><a href="#permission-enforcement-from-doer-to-accessmode" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Authentication only establishes <strong>who</strong> is making the request (<code>ctx.Doer</code>); <strong>what</strong> they are
+allowed to do is a separate authorization step built on
+<a href="../../models/perm/access_mode.go"><code>models/perm/access_mode.go</code></a> and
+<a href="../../models/perm/access/repo_permission.go"><code>models/perm/access/repo_permission.go</code></a>.</p>
+<p><code>AccessMode</code> is a simple ordered enum:</p>
+<pre class="highlight"><code class="language-go">type AccessMode int
+
+const (
+    AccessModeNone AccessMode = iota // 0: no access
+    AccessModeRead                   // 1: read access
+    AccessModeWrite                  // 2: write access
+    AccessModeAdmin                  // 3: admin access
+    AccessModeOwner                  // 4: owner access
+)</code></pre>
+<p>Because the levels are ordered integers, checks are simple comparisons (<code>&gt;=</code>). The
+<code>Permission</code> struct (<code>repo_permission.go</code>) aggregates:</p>
+<ul>
+<li><code>AccessMode</code> — the user's overall access level to the repository (owner/collaborator/team
+  membership resolved elsewhere, e.g. <code>access.AccessLevel(ctx, user, repo)</code>).</li>
+<li><code>unitsMode</code> — a per-<code>unit.Type</code> override map (e.g. a team might grant write to Issues but
+  only read to Code).</li>
+<li><code>everyoneAccessMode</code> / <code>anonymousAccessMode</code> — minimum access every signed-in user, or even
+  anonymous visitors, get for specific units (used for public repos with open issue trackers,
+  etc.).</li>
+</ul>
+<pre class="highlight"><code class="language-go">func (p *Permission) UnitAccessMode(unitType unit.Type) perm_model.AccessMode {
+    if m, ok := p.unitsMode[unitType]; ok {
+        return util.Iif(p.AccessMode &gt;= perm_model.AccessModeAdmin, p.AccessMode, m)
+    }
+    unitDefaultAccessMode := max(p.AccessMode, p.anonymousAccessMode[unitType], p.everyoneAccessMode[unitType])
+    hasUnit := slices.ContainsFunc(p.units, func(u *repo_model.RepoUnit) bool { return u.Type == unitType })
+    return util.Iif(hasUnit, unitDefaultAccessMode, perm_model.AccessModeNone)
+}
+
+func (p *Permission) CanAccess(mode perm_model.AccessMode, unitType unit.Type) bool {
+    return p.UnitAccessMode(unitType) &gt;= mode
+}</code></pre>
+<p><code>AccessLevel</code>/<code>AccessLevelUnit</code> (top-level functions in <code>repo_permission.go</code>) compute a
+<code>Permission</code> for a given <code>(user, repo)</code> pair by consulting collaborator records, team unit
+permissions, and repo visibility — this is the point where the authenticated <code>Doer</code> from the
+auth chain is translated into concrete allow/deny decisions for a specific repository and unit
+(code, issues, pull requests, wiki, packages, actions, etc.).</p>
+<h3 id="where-scope-and-access-mode-intersect">Where scope and access mode intersect<a href="#where-scope-and-access-mode-intersect" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>For <strong>API-token-authenticated</strong> requests, two independent gates must both pass:</p>
+<ol>
+<li><strong>Token scope</strong> — does <code>GetAccessScope(store)</code> (or the OAuth2 grant's scope) include the
+   category/verb needed for this endpoint (e.g. <code>write:repository</code>)? Enforced by API route
+   middlewares such as <code>reqToken</code>/<code>tokenRequiresScopes</code> in <code>routers/api/v1</code> and the packages
+   API's <code>tokenRequiresScope</code> check shown above.</li>
+<li><strong>Repository/org access mode</strong> — does the authenticated user's <code>AccessMode</code> for this
+   resource meet the unit's required mode (<code>Permission.CanAccess</code>)? A token with
+   <code>write:repository</code> scope still cannot write to a repository the user has no write access to.</li>
+</ol>
+<p>For <strong>session/basic password</strong> logins, <code>GetAccessScope</code> simply returns
+<code>AccessTokenScopeAll</code>, so only the access-mode gate applies — matching normal web UI behavior.</p>
+<pre class="mermaid">graph LR
+    A[auth.Method chain] -->|resolves| B["ctx.Doer (*user_model.User)"]
+    B --> C{Token-based request?}
+    C -->|yes| D["Check AccessTokenScope\n(GetAccessScope / grant.Scope)"]
+    C -->|no| E[Skip scope check]
+    D --> F
+    E --> F["Compute Permission via access.AccessLevel/AccessLevelUnit"]
+    F --> G["Permission.CanAccess(mode, unitType)"]
+    G -->|true| H[Request proceeds]
+    G -->|false| I[403 Forbidden]</pre>
+<h2 id="related-pages">Related Pages<a href="#related-pages" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="README.html">Services Layer Overview</a></li>
+<li><a href="../05-database-models/README.html">Database Models</a> — for <code>models/auth</code>, <code>models/perm</code>
+  entity definitions</li>
+<li><a href="../06-web-routers/README.html">Web Routers</a> — for how <code>newWebAuthMiddleware</code>,
+  <code>verifyAuthWithOptions</code>, and route-level <code>reqSignIn</code>/<code>reqToken</code> guards are wired up</li>
+<li><a href="../07-rest-api/README.html">REST API</a> — for endpoint-level scope enforcement</li>
+</ul>
+<div class="page-nav">
+<a href="README.html"><div class="nav-label">← Previous</div><div class="nav-title">Services</div></a>
+<a href="services-catalog-full.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Services Catalog (Full)</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#the-authmethod-interface" class="" data-anchor="the-authmethod-interface">The auth.Method Interface</a>
+<a href="#provider-catalog" class="" data-anchor="provider-catalog">Provider Catalog</a>
+<a href="#per-request-auth-method-chain-group" class="" data-anchor="per-request-auth-method-chain-group">Per-Request Auth Method Chain (Group)</a>
+<a href="#web-ui-chain-routerswebwebgo-newwebauthmiddleware" class="toc-h3" data-anchor="web-ui-chain-routerswebwebgo-newwebauthmiddleware">Web UI chain (routers/web/web.go → newWebAuthMiddleware)</a>
+<a href="#rest-api-chain-routersapiv1apigo-buildauthgroup" class="toc-h3" data-anchor="rest-api-chain-routersapiv1apigo-buildauthgroup">REST API chain (routers/api/v1/api.go → buildAuthGroup)</a>
+<a href="#package-registry-api-chain-routersapipackagesapigo" class="toc-h3" data-anchor="package-registry-api-chain-routersapipackagesapigo">Package registry API chain (routers/api/packages/api.go)</a>
+<a href="#provider-details" class="" data-anchor="provider-details">Provider Details</a>
+<a href="#session-servicesauthsessiongo" class="toc-h3" data-anchor="session-servicesauthsessiongo">Session (services/auth/session.go)</a>
+<a href="#basic-servicesauthbasicgo" class="toc-h3" data-anchor="basic-servicesauthbasicgo">Basic (services/auth/basic.go)</a>
+<a href="#oauth2-bearer-tokens-servicesauthoauth2go" class="toc-h3" data-anchor="oauth2-bearer-tokens-servicesauthoauth2go">OAuth2 bearer tokens (services/auth/oauth2.go)</a>
+<a href="#reverseproxy-servicesauthreverseproxygo" class="toc-h3" data-anchor="reverseproxy-servicesauthreverseproxygo">ReverseProxy (services/auth/reverseproxy.go)</a>
+<a href="#sspi-servicesauthsspigo" class="toc-h3" data-anchor="sspi-servicesauthsspigo">SSPI (services/auth/sspi.go)</a>
+<a href="#httpsign-servicesauthhttpsigngo" class="toc-h3" data-anchor="httpsign-servicesauthhttpsigngo">HTTPSign (services/auth/httpsign.go)</a>
+<a href="#ldap-servicesauthsourceldap" class="toc-h3" data-anchor="ldap-servicesauthsourceldap">LDAP (services/auth/source/ldap)</a>
+<a href="#pam-servicesauthsourcepam" class="toc-h3" data-anchor="pam-servicesauthsourcepam">PAM (services/auth/source/pam)</a>
+<a href="#smtp-servicesauthsourcesmtp" class="toc-h3" data-anchor="smtp-servicesauthsourcesmtp">SMTP (services/auth/source/smtp)</a>
+<a href="#oauth2-login-source-servicesauthsourceoauth2" class="toc-h3" data-anchor="oauth2-login-source-servicesauthsourceoauth2">OAuth2 login source (services/auth/source/oauth2)</a>
+<a href="#access-tokens-scopes" class="" data-anchor="access-tokens-scopes">Access Tokens &amp; Scopes</a>
+<a href="#scopes-modelsauthaccess_token_scopego" class="toc-h3" data-anchor="scopes-modelsauthaccess_token_scopego">Scopes (models/auth/access_token_scope.go)</a>
+<a href="#auth-tokens-remember-me-cookies" class="toc-h3" data-anchor="auth-tokens-remember-me-cookies">Auth Tokens (Remember-Me cookies)</a>
+<a href="#webauthn-passkeys-and-totp-two-factor-auth" class="" data-anchor="webauthn-passkeys-and-totp-two-factor-auth">WebAuthn / Passkeys and TOTP (Two-Factor Auth)</a>
+<a href="#totp-time-based-one-time-password" class="toc-h3" data-anchor="totp-time-based-one-time-password">TOTP (Time-based One-Time Password)</a>
+<a href="#webauthn-passkeys" class="toc-h3" data-anchor="webauthn-passkeys">WebAuthn / Passkeys</a>
+<a href="#group-sync-mapping-external-groups-to-teams" class="" data-anchor="group-sync-mapping-external-groups-to-teams">Group Sync — Mapping External Groups to Teams</a>
+<a href="#configuration-shape" class="toc-h3" data-anchor="configuration-shape">Configuration shape</a>
+<a href="#core-sync-algorithm" class="toc-h3" data-anchor="core-sync-algorithm">Core sync algorithm</a>
+<a href="#call-sites" class="toc-h3" data-anchor="call-sites">Call sites</a>
+<a href="#password-credential-login-flow-usersignin" class="" data-anchor="password-credential-login-flow-usersignin">Password / Credential Login Flow (UserSignIn)</a>
+<a href="#permission-enforcement-from-doer-to-accessmode" class="" data-anchor="permission-enforcement-from-doer-to-accessmode">Permission Enforcement: from Doer to AccessMode</a>
+<a href="#where-scope-and-access-mode-intersect" class="toc-h3" data-anchor="where-scope-and-access-mode-intersect">Where scope and access mode intersect</a>
+<a href="#related-pages" class="" data-anchor="related-pages">Related Pages</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

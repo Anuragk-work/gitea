@@ -1,0 +1,766 @@
+=== FILE: docs/09-core-modules/notify-mailer-webhook.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Notifications, Mailer & Webhooks Gitea's notification system is the "nervous system" that connects domain events (an issue opened, a pull request merged, a push received, a release published, ...) to every downstream consumer that cares about them: outgoing e-mail, outgoing webhooks (Slack, Discord, Matrix, generic JSON, ...), the in-app notification inbox, the live "bell icon" badge updates in the web UI, and Gitea Actions workflow triggers.
+
+# Notifications, Mailer & Webhooks
+
+Gitea's notification system is the "nervous system" that connects domain events (an issue
+opened, a pull request merged, a push received, a release published, ...) to every
+downstream consumer that cares about them: outgoing e-mail, outgoing webhooks (Slack,
+Discord, Matrix, generic JSON, ...), the in-app notification inbox, the live "bell icon"
+badge updates in the web UI, and Gitea Actions workflow triggers.
+
+All of this fans out from a single, small abstraction: the `notify.Notifier` interface in
+`services/notify/`.
+
+## The `notify.Notifiable` / `Notifier` pattern
+
+The core of the system lives in three files:
+
+| File | Purpose |
+|------|---------|
+| `services/notify/notifier.go` | Defines the `Notifier` interface — one method per domain event |
+| `services/notify/notify.go` | Holds the global notifier registry and the fan-out dispatch functions |
+| `services/notify/null.go` | `NullNotifier` — a no-op base implementation so notifiers only override what they need |
+
+### The `Notifier` interface
+
+`Notifier` declares one method per notifiable domain event — issue/PR lifecycle, comments,
+wiki pages, releases, pushes, packages, commit statuses, and Actions workflow/job status
+changes:
+
+```go
+// services/notify/notifier.go
+type Notifier interface {
+	Run()
+
+	AdoptRepository(ctx context.Context, doer, u *user_model.User, repo *repo_model.Repository)
+	CreateRepository(ctx context.Context, doer, u *user_model.User, repo *repo_model.Repository)
+	// ... fork/rename/transfer/delete repository ...
+
+	NewIssue(ctx context.Context, issue *issues_model.Issue, mentions []*user_model.User)
+	IssueChangeStatus(ctx context.Context, doer *user_model.User, commitID string, issue *issues_model.Issue, actionComment *issues_model.Comment, closeOrReopen bool)
+	IssueChangeAssignee(ctx context.Context, doer *user_model.User, issue *issues_model.Issue, assignee *user_model.User, removed bool, comment *issues_model.Comment)
+	// ... more issue events ...
+
+	NewPullRequest(ctx context.Context, pr *issues_model.PullRequest, mentions []*user_model.User)
+	MergePullRequest(ctx context.Context, doer *user_model.User, pr *issues_model.PullRequest)
+	PullRequestReview(ctx context.Context, pr *issues_model.PullRequest, review *issues_model.Review, comment *issues_model.Comment, mentions []*user_model.User)
+	// ... more PR events ...
+
+	CreateIssueComment(ctx context.Context, doer *user_model.User, repo *repo_model.Repository,
+		issue *issues_model.Issue, comment *issues_model.Comment, mentions []*user_model.User)
+
+	NewWikiPage(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page, comment string)
+	NewRelease(ctx context.Context, rel *repo_model.Release)
+	PushCommits(ctx context.Context, pusher *user_model.User, repo *repo_model.Repository, opts *repository.PushUpdateOptions, commits *repository.PushCommits)
+	PackageCreate(ctx context.Context, doer *user_model.User, pd *packages_model.PackageDescriptor)
+	CreateCommitStatus(ctx context.Context, repo *repo_model.Repository, commit *repository.PushCommit, sender *user_model.User, status *git_model.CommitStatus)
+	WorkflowRunStatusUpdate(ctx context.Context, repo *repo_model.Repository, sender *user_model.User, run *actions_model.ActionRun)
+	WorkflowJobStatusUpdate(ctx context.Context, repo *repo_model.Repository, sender *user_model.User, job *actions_model.ActionRunJob, task *actions_model.ActionTask)
+}
+```
+
+`Run()` is called once per notifier when it is registered, and is typically used to start a
+background worker/queue consumer.
+
+### Registration
+
+`RegisterNotifier` appends a notifier implementation to a package-level slice and starts its
+background loop:
+
+```go
+// services/notify/notify.go
+var notifiers []Notifier
+
+func RegisterNotifier(notifier Notifier) {
+	go notifier.Run()
+	notifiers = append(notifiers, notifier)
+}
+```
+
+Each subsystem registers itself during application start-up (see `routers/init.go` and each
+package's own `init()`/`Init()` function):
+
+| Notifier | Registered from | Responsibility |
+|----------|------------------|-----------------|
+| `webhook.webhookNotifier` | `services/webhook/notifier.go` `init()` | Enqueues outgoing webhook deliveries |
+| `mailer.mailNotifier` | `services/mailer/mailer.go` `NewContext()` (if `Service.EnableNotifyMail`) | Sends transactional e-mail |
+| `uinotification.notificationService` | `services/uinotification/notify.go` `Init()` (called from `routers/init.go`) | Writes rows to the in-app notification inbox and (indirectly, via the DB + `eventsource` poller) drives SSE badge updates |
+| `actions.actionsNotifier` | `services/actions/init.go` `Init()` | Detects and triggers matching Gitea Actions workflows |
+| `feed.Notifier` | `services/feed/notifier.go` `init()` | Writes rows to the activity/feed timeline |
+| `automerge.Notifier` | `services/automerge/automerge.go` `init()` | Watches for merge-readiness to complete auto-merge |
+| `indexer` notifier | `services/indexer/indexer.go` `init()` | Keeps the issue/code search index up to date |
+| `mirror.mirrorNotifier` | `services/mirror/notifier.go` `init()` | Schedules push-mirror syncs |
+
+> Notifiers are simply appended to a slice at start-up; there is no plugin system or dynamic
+> loading — adding a new notifier means writing a new Go package that implements (part of)
+> the `Notifier` interface (typically by embedding `notify.NullNotifier` and overriding only
+> the methods it cares about) and registering it during initialization.
+
+### Dispatch functions
+
+`services/notify/notify.go` also defines one exported function per event, which is the
+public API the rest of the codebase calls. Each function simply loops over the registered
+notifiers and calls the matching method — this is the fan-out point:
+
+```go
+// NewIssue notifies new issue to notifiers
+func NewIssue(ctx context.Context, issue *issues_model.Issue, mentions []*user_model.User) {
+	for _, notifier := range notifiers {
+		notifier.NewIssue(ctx, issue, mentions)
+	}
+}
+
+// CreateIssueComment notifies issue comment related message to notifiers
+func CreateIssueComment(ctx context.Context, doer *user_model.User, repo *repo_model.Repository,
+	issue *issues_model.Issue, comment *issues_model.Comment, mentions []*user_model.User,
+) {
+	if !shouldSendCommentChangeNotification(ctx, comment) {
+		return
+	}
+	for _, notifier := range notifiers {
+		notifier.CreateIssueComment(ctx, doer, repo, issue, comment, mentions)
+	}
+}
+```
+
+Business logic (e.g. `services/issue`, `services/pull`, `services/repository`) calls these
+`notify.XXX(...)` functions synchronously right after the corresponding database
+transaction commits. The dispatch loop itself is synchronous and in-process; each notifier
+implementation is responsible for offloading slow work (network calls, mail delivery) onto
+its own background queue so that the calling HTTP/git request is not blocked.
+
+## Fan-out architecture
+
+```mermaid
+flowchart LR
+    subgraph Domain["Domain services"]
+        A["issue_service.NewIssue()"]
+    end
+
+    A -->|"notify.NewIssue(ctx, issue, mentions)"| N["notify.notifiers[] fan-out loop<br/>(services/notify/notify.go)"]
+
+    N --> W["webhookNotifier<br/>services/webhook"]
+    N --> M["mailNotifier<br/>services/mailer"]
+    N --> U["notificationService (UI inbox)<br/>services/uinotification"]
+    N --> AC["actionsNotifier<br/>services/actions"]
+    N --> F["feed.Notifier (activity feed)<br/>services/feed"]
+
+    W -->|PrepareWebhooks + HookTask row| WQ["webhook_sender queue"]
+    WQ -->|Deliver()| HTTP["HTTP POST to configured webhook URL<br/>(Slack/Discord/Matrix/Generic...)"]
+
+    M -->|render templates/mail/*.tmpl| MQ["mail queue"]
+    MQ --> SMTP["SMTP / sendmail"]
+
+    U -->|CreateOrUpdateIssueNotifications| DB[("notification table")]
+    DB -.->|polled every N seconds| ES["eventsource.Manager"]
+    ES -->|"SSE: notification-count event"| Browser["Browser tab(s)<br/>/-/events stream"]
+
+    AC -->|DetectWorkflows + queue run| Runner["Actions runner"]
+```
+
+Every arrow after the fan-out loop happens **independently** — a slow SMTP server does not
+block webhook delivery, and a failing webhook does not prevent the UI notification from
+being created. Each consumer owns its own queue/worker and error handling.
+
+---
+
+## Outgoing webhooks
+
+### Data model
+
+Two persisted models back webhooks, both in `models/webhook/`:
+
+* **`Webhook`** (`models/webhook/webhook.go`) — the configured hook itself: `URL`,
+  `HTTPMethod`, `ContentType` (JSON or form), `Secret`, `Type` (`gitea`, `slack`, `discord`,
+  `dingtalk`, `telegram`, `msteams`, `feishu`, `matrix`, `wechatwork`, `packagist`, ...),
+  the serialized `Events`/`HookEvent` selection, `BranchFilter`, and `IsSystemWebhook` (a
+  webhook applied to *every* repo, configured by an admin).
+* **`HookTask`** (`models/webhook/hooktask.go`) — one row per delivery attempt: `HookID`,
+  `UUID`, `PayloadContent` (the *original* event JSON), `EventType`, `IsDelivered`,
+  `IsSucceed`, and the recorded `RequestInfo`/`ResponseInfo` (URL, headers, body, status)
+  used to render the delivery history in the web UI.
+
+```go
+// models/webhook/hooktask.go
+type HookTask struct {
+	ID             int64  `xorm:"pk autoincr"`
+	HookID         int64  `xorm:"index"`
+	UUID           string `xorm:"unique"`
+	PayloadContent string `xorm:"LONGTEXT"`
+	// PayloadVersion 1: PayloadContent is the JSON as sent to the URL
+	// PayloadVersion 2: PayloadContent is the original event (adjusted at delivery time)
+	PayloadVersion int `xorm:"DEFAULT 1"`
+
+	EventType   webhook_module.HookEventType
+	IsDelivered bool
+	Delivered   timeutil.TimeStampNano
+
+	IsSucceed       bool
+	RequestContent  string        `xorm:"LONGTEXT"`
+	RequestInfo     *HookRequest  `xorm:"-"`
+	ResponseContent string        `xorm:"LONGTEXT"`
+	ResponseInfo    *HookResponse `xorm:"-"`
+}
+```
+
+### Event types (`modules/webhook/`)
+
+`modules/webhook/type.go` defines `HookEventType`, the canonical set of trigger events (the
+same vocabulary used for repo/org webhook subscriptions):
+
+```go
+const (
+	HookEventCreate               HookEventType = "create"
+	HookEventDelete               HookEventType = "delete"
+	HookEventFork                 HookEventType = "fork"
+	HookEventPush                 HookEventType = "push"
+	HookEventIssues               HookEventType = "issues"
+	HookEventIssueComment         HookEventType = "issue_comment"
+	HookEventPullRequest          HookEventType = "pull_request"
+	HookEventPullRequestComment   HookEventType = "pull_request_comment"
+	HookEventPullRequestReviewApproved HookEventType = "pull_request_review_approved"
+	HookEventWiki                 HookEventType = "wiki"
+	HookEventRepository           HookEventType = "repository"
+	HookEventRelease              HookEventType = "release"
+	HookEventPackage              HookEventType = "package"
+	HookEventStatus               HookEventType = "status"
+	HookEventSchedule             HookEventType = "schedule"      // Actions only
+	HookEventWorkflowRun          HookEventType = "workflow_run"  // Actions only
+	HookEventWorkflowJob          HookEventType = "workflow_job"  // Actions only
+	// ...
+)
+```
+
+`modules/webhook/events.go` defines `HookEvent`/`HookEvents`, the struct persisted (as JSON,
+inside `Webhook.Events`) to represent a webhook's subscription: `PushOnly`,
+`SendEverything`, `ChooseEvents` + the individual per-event booleans, plus `BranchFilter`.
+
+### Preparing & queuing a delivery
+
+`services/webhook/webhook.go` is the entry point business logic calls (typically from a
+`Notifier` implementation, see below) to fan a domain event out to every matching webhook:
+
+```go
+// PrepareWebhooks adds new webhooks to task queue for given payload.
+func PrepareWebhooks(ctx context.Context, source EventSource, event webhook_module.HookEventType, p api.Payloader) error {
+	// collects repo-level hooks, owner (user/org) hooks, and admin-defined system hooks
+	...
+	for _, w := range ws {
+		if err := PrepareWebhook(ctx, w, event, p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+```
+
+`PrepareWebhook` performs the gating checks — is the webhook disabled globally
+(`setting.DisableWebhooks`), does the webhook subscribe to this `event`
+(`w.HasEvent(event)`), does the payload's ref match the `BranchFilter` — before creating a
+`HookTask` row and pushing its ID onto the `webhook_sender` queue:
+
+```go
+func PrepareWebhook(ctx context.Context, w *webhook_model.Webhook, event webhook_module.HookEventType, p api.Payloader) error {
+	if setting.DisableWebhooks {
+		return nil
+	}
+	if !w.HasEvent(event) {
+		return nil
+	}
+	if ref := getPayloadRef(p); ref != "" && !checkBranchFilter(w.BranchFilter, ref) {
+		return nil
+	}
+	payload, err := p.JSONPayload()
+	...
+	task, err := webhook_model.CreateHookTask(ctx, &webhook_model.HookTask{
+		HookID:         w.ID,
+		PayloadContent: string(payload),
+		EventType:      event,
+		PayloadVersion: 2,
+	})
+	...
+	return enqueueHookTask(task.ID)
+}
+```
+
+The queue itself (`hookQueue`, a `queue.WorkerPoolQueue[int64]`) is created and started in
+`webhook.Init()`, which is called from `routers/init.go`. A background goroutine
+(`populateWebhookSendingQueue`) also re-enqueues any previously undelivered tasks on
+start-up, so deliveries survive restarts.
+
+### Delivering a webhook (`services/webhook/deliver.go`)
+
+`Deliver(ctx, task)` is the function executed by the queue worker for every `HookTask`:
+
+1. Load the parent `Webhook` row.
+2. Build an `*http.Request` via a per-type `Requester` function (registered with
+   `RegisterWebhookRequester`) — e.g. Slack/Discord/Matrix/MSTeams/Feishu/WeChat
+   Work/DingTalk/Telegram/Packagist each transform the generic Gitea payload into their own
+   JSON schema (see `services/webhook/slack.go`, `discord.go`, `matrix.go`, etc.). If no
+   specific requester is registered (or `PayloadVersion == 1`), `newDefaultRequest` sends the
+   raw Gitea/Gogs-format JSON (or form-encoded payload for `ContentTypeForm`).
+3. Attach signing/identification headers via `addDefaultHeaders` (see below).
+4. Mark the task delivered (`MarkTaskDelivered`, idempotent/atomic against concurrent
+   workers), then execute the HTTP request with `webhookHTTPClient` — an `http.Client` whose
+   `Transport` enforces `security.ALLOWED_HOST_LIST` and honours
+   `[webhook].PROXY_URL`/`PROXY_HOSTS`/`SKIP_TLS_VERIFY` settings.
+5. Record the response status/headers/body (truncated to 1&nbsp;MiB) back onto the task, and
+   update the webhook's `LastStatus` (`HookStatusSucceed`/`HookStatusFail`).
+
+```go
+func Deliver(ctx context.Context, t *webhook_model.HookTask) error {
+	w, err := webhook_model.GetWebhookByID(ctx, t.HookID)
+	...
+	newRequest := webhookRequesters[w.Type]
+	if t.PayloadVersion == 1 || newRequest == nil {
+		newRequest = newDefaultRequest
+	}
+	req, body, err := newRequest(ctx, w, t)
+	...
+	resp, err := webhookHTTPClient.Do(req.WithContext(ctx))
+	...
+	t.IsSucceed = resp.StatusCode/100 == 2
+	...
+}
+```
+
+#### Signature & identification headers
+
+`addDefaultHeaders` (in `deliver.go`) computes HMAC-SHA1 and HMAC-SHA256 signatures over the
+raw payload body using the webhook's `Secret`, and stamps a set of vendor-compatible headers
+so receivers written for GitHub/Gogs also work with Gitea:
+
+| Header | Purpose |
+|--------|---------|
+| `X-Gitea-Delivery` / `X-Gogs-Delivery` / `X-GitHub-Delivery` | Unique `HookTask.UUID` for this delivery |
+| `X-Gitea-Event` / `X-Gogs-Event` / `X-GitHub-Event` | Normalized event name (e.g. `issues`, `pull_request`) |
+| `X-Gitea-Event-Type` | The specific `HookEventType` (e.g. `pull_request_review_approved`) |
+| `X-Gitea-Signature` / `X-Gogs-Signature` | HMAC-SHA256 hex signature |
+| `X-Hub-Signature` | HMAC-SHA1, `sha1=...` (GitHub-compatible) |
+| `X-Hub-Signature-256` | HMAC-SHA256, `sha256=...` (GitHub-compatible) |
+| `X-Gitea-Hook-Installation-Target-Type` / `X-GitHub-Hook-Installation-Target-Type` | `system`, `repository`, `organization`, or `user` |
+
+### Payload formats (`modules/structs/hook.go`)
+
+All outgoing webhook payloads implement the `Payloader` interface:
+
+```go
+type Payloader interface {
+	JSONPayload() ([]byte, error)
+}
+```
+
+Common payload structs (all under `modules/structs/hook.go`) include:
+
+| Payload | Event(s) | Key fields |
+|---------|----------|-----------|
+| `CreatePayload` | `create` | `Sha`, `Ref`, `RefType` (branch/tag), `Repo`, `Sender` |
+| `DeletePayload` | `delete` | `Ref`, `RefType`, `PusherType`, `Repo`, `Sender` |
+| `ForkPayload` | `fork` | `Forkee`, `Repo`, `Sender` |
+| `PushPayload` | `push` | `Ref`, `Before`, `After`, `CompareURL`, `Commits []*PayloadCommit`, `HeadCommit`, `Pusher`, `Sender` |
+| `IssuePayload` | `issues`, `issue_assign`, `issue_label`, `issue_milestone` | `Action HookIssueAction`, `Issue`, `Repository`, `Sender` |
+| `IssueCommentPayload` | `issue_comment`, `pull_request_comment` | `Action`, `Issue`, `PullRequest` (if applicable), `Comment`, `Changes`, `IsPull` |
+| `PullRequestPayload` | `pull_request`, `pull_request_assign/label/milestone/sync`, `pull_request_review_*` | `Action HookIssueAction`, `Index`, `PullRequest`, `Repository`, `Sender` |
+| `RepositoryPayload` | `repository` | `Action` (created/deleted), `Repository`, `Organization`, `Sender` |
+| `ReleasePayload` | `release` | `Action` (published/updated/deleted), `Release`, `Repository`, `Sender` |
+| `PackagePayload` | `package` | package descriptor info |
+| `CommitStatusPayload` | `status` | `SHA`, `State`, `TargetURL`, `Description` |
+| `WorkflowRunPayload` / `WorkflowJobPayload` | `workflow_run` / `workflow_job` (Actions) | `Workflow`/`WorkflowJob`, `PullRequest`, `Organization`, `Repo`, `Sender` |
+
+`PushPayload` example:
+
+```go
+type PushPayload struct {
+	Ref          string            `json:"ref"`
+	Before       string            `json:"before"`
+	After        string            `json:"after"`
+	CompareURL   string            `json:"compare_url"`
+	Commits      []*PayloadCommit  `json:"commits"`
+	TotalCommits int               `json:"total_commits"`
+	HeadCommit   *PayloadCommit    `json:"head_commit"`
+	Repo         *Repository       `json:"repository"`
+	Pusher       *User             `json:"pusher"`
+	Sender       *User             `json:"sender"`
+}
+```
+
+`HookIssueAction` enumerates the specific action carried inside `IssuePayload` /
+`PullRequestPayload`: `opened`, `closed`, `reopened`, `edited`, `deleted`, `assigned`,
+`unassigned`, `label_updated`, `label_cleared`, `synchronized`, `milestoned`,
+`demilestoned`, `reviewed`, `review_requested`, `review_request_removed`.
+
+### The `webhookNotifier`
+
+`services/webhook/notifier.go` implements `notify.Notifier` by embedding
+`notify_service.NullNotifier` and overriding the events it cares about. Each handler loads
+what it needs, builds the appropriate `api.Payloader`, and calls `PrepareWebhooks`:
+
+```go
+func init() {
+	notify_service.RegisterNotifier(NewNotifier())
+}
+
+type webhookNotifier struct {
+	notify_service.NullNotifier
+}
+
+func (m *webhookNotifier) ForkRepository(ctx context.Context, doer *user_model.User, oldRepo, repo *repo_model.Repository) {
+	oldPermission, _ := access_model.GetDoerRepoPermission(ctx, oldRepo, doer)
+	permission, _ := access_model.GetDoerRepoPermission(ctx, repo, doer)
+
+	_ = PrepareWebhooks(ctx, EventSource{Repository: oldRepo}, webhook_module.HookEventFork, &api.ForkPayload{
+		Forkee: convert.ToRepo(ctx, oldRepo, oldPermission),
+		Repo:   convert.ToRepo(ctx, repo, permission),
+		Sender: convert.ToUser(ctx, doer, nil),
+	})
+	// ... also fires a HookEventRepository "created" event if the fork target is an org
+}
+```
+
+### Manual test delivery & the REST API
+
+Webhooks can also be created/edited/tested/deleted through the REST API
+(`routers/api/v1/repo/hook.go`: `ListHooks`, `GetHook`, `CreateHook`, `EditHook`,
+`DeleteHook`, `TestHook`) and the web UI. `TestHook`/the "Test Delivery" button calls
+`PrepareTestWebhook`, which bypasses event-subscription and branch-filter checks so a
+delivery is always attempted — useful for verifying connectivity without needing a real
+event. `ReplayHookTask` lets an admin/repo-owner re-send a previously recorded delivery by
+UUID.
+
+> See also [REST API](../07-rest-api/README.md) for the full webhook management endpoints.
+
+---
+
+## Outgoing e-mail (`services/mailer/`)
+
+### Queueing & sending
+
+`services/mailer/mailer.go` sets up an async mail queue at start-up (`NewContext`, called
+during application init if `setting.MailService != nil`):
+
+```go
+func NewContext(ctx context.Context) {
+	if setting.MailService == nil || mailQueue != nil {
+		return
+	}
+	if setting.Service.EnableNotifyMail {
+		notify_service.RegisterNotifier(NewNotifier())
+	}
+
+	switch setting.MailService.Protocol {
+	case "sendmail":
+		sender = &sender_service.SendmailSender{}
+	case "dummy":
+		sender = &sender_service.DummySender{}
+	default:
+		sender = &sender_service.SMTPSender{}
+	}
+
+	_ = templates.MailRenderer()
+
+	mailQueue = queue.CreateSimpleQueue(graceful.GetManager().ShutdownContext(), "mail", func(items ...*sender_service.Message) []*sender_service.Message {
+		for _, msg := range items {
+			gomailMsg := msg.ToMessage()
+			if err := sender_service.Send(sender, msg); err != nil {
+				log.Error("Failed to send emails %s: %s - %v", gomailMsg.GetGenHeader("To"), msg.Info, err)
+			}
+		}
+		return nil
+	})
+	go graceful.GetManager().RunWithCancel(mailQueue)
+}
+```
+
+`SendAsync` (aliased to `sendAsync`) is the function callers use to push one or more
+`*sender_service.Message` onto the queue without blocking. The actual transport
+implementations (SMTP, `sendmail` binary, or a `dummy` no-op sender for tests) live under
+`services/mailer/sender/`.
+
+### The `mailNotifier`
+
+`services/mailer/notify.go` implements `notify.Notifier` and is the second big fan-out
+consumer, translating domain events into e-mail sends via helper functions in
+`mail_issue.go`, `mail_issue_common.go`, `mail_release.go`, `mail_repo.go`,
+`mail_team_invite.go`, `mail_user.go`, and `mail_workflow_run.go`:
+
+```go
+type mailNotifier struct {
+	notify_service.NullNotifier
+}
+
+func (m *mailNotifier) NewIssue(ctx context.Context, issue *issues_model.Issue, mentions []*user_model.User) {
+	if err := MailParticipants(ctx, issue, issue.Poster, activities_model.ActionCreateIssue, mentions); err != nil {
+		log.Error("MailParticipants: %v", err)
+	}
+}
+
+func (m *mailNotifier) IssueChangeAssignee(ctx context.Context, doer *user_model.User, issue *issues_model.Issue, assignee *user_model.User, removed bool, comment *issues_model.Comment) {
+	if !removed && doer.ID != assignee.ID && assignee.EmailNotificationsPreference != user_model.EmailNotificationsDisabled {
+		ct := fmt.Sprintf("Assigned #%d.", issue.Index)
+		_ = SendIssueAssignedMail(ctx, issue, doer, ct, comment, []*user_model.User{assignee})
+	}
+}
+
+func (m *mailNotifier) NewRelease(ctx context.Context, rel *repo_model.Release) {
+	if rel.IsDraft || rel.IsPrerelease {
+		return
+	}
+	MailNewRelease(ctx, rel)
+}
+```
+
+Notice the notifier itself enforces user preference checks (e.g.
+`EmailNotificationsPreference != EmailNotificationsDisabled`) before sending, and skips
+draft/pre-release notifications.
+
+### Templates (`templates/mail/`)
+
+Rendered mail bodies use Go's `html/template` (`templates.MailRenderer()`,
+`services/mailer/mail.go`). Templates are organized by domain:
+
+```
+templates/mail/
+├── org/team_invite.tmpl
+├── repo/
+│   ├── actions/workflow_run.tmpl
+│   ├── collaborator.tmpl
+│   ├── issue/
+│   │   ├── assigned.tmpl
+│   │   └── default.tmpl      # generic issue/PR notification body
+│   ├── release.tmpl
+│   └── transfer.tmpl
+└── user/auth/
+    ├── activate.tmpl
+    ├── activate_email.tmpl
+    ├── register_notify.tmpl
+    └── reset_passwd.tmpl
+```
+
+Each `.tmpl` typically has a matching `.devtest.yml` fixture used by Gitea's mail preview
+tooling. `templates/mail/repo/issue/default.tmpl` is the generic body used for most issue
+and pull-request notifications; it branches on an `ActionName` value (`push`, `close`,
+`reopen`, `merge`, `approve`, `reject`, `review`, `review_dismissed`,
+`ready_for_review`, `new`) to compose the right localized sentence, then appends the
+comment body, any inline diff/review comments, and a "View it on Gitea" footer link:
+
+```html
+<p>
+  {{if eq .ActionName "close"}}
+    {{.locale.Tr "mail.issue.action.close" .Doer.Name .Issue.Index}}
+  {{else if eq .ActionName "merge"}}
+    {{.locale.Tr "mail.issue.action.merge" .Doer.Name .Issue.Index .Issue.PullRequest.BaseBranch}}
+  {{else if eq .ActionName "review"}}
+    {{.locale.Tr "mail.issue.action.review" .Doer.Name}}
+  {{end}}
+  ...
+  {{.Body}}
+</p>
+<div style="font-size:small; color:#666;">
+  <a href="{{.Link}}">{{.locale.Tr "mail.view_it_on" AppName}}</a>
+</div>
+```
+
+Attachments referenced by `<img>` tags that point at Gitea-hosted attachments are inlined as
+base64 data URIs by `mailAttachmentBase64Embedder` (`services/mailer/mail.go`) so images
+render even in mail clients that block remote image loading.
+
+---
+
+## In-app UI notifications & Server-Sent Events
+
+Two cooperating pieces provide the "bell icon" notification experience: the
+**notification inbox** (persisted rows, driven by the `uinotification` notifier) and
+**Server-Sent Events** (live badge/toast updates, `modules/eventsource/`).
+
+### The notification inbox (`services/uinotification/`)
+
+`services/uinotification/notify.go` implements `notify.Notifier` and, on relevant events
+(new issue, new comment, mentions, assignment, etc.), pushes lightweight
+`issueNotificationOpts` onto its own `notification-service` queue rather than writing to the
+database synchronously:
+
+```go
+type notificationService struct {
+	notify_service.NullNotifier
+	issueQueue *queue.WorkerPoolQueue[issueNotificationOpts]
+}
+
+type issueNotificationOpts struct {
+	IssueID              int64
+	CommentID            int64
+	NotificationAuthorID int64
+	ReceiverID           int64 // 0 == ALL watchers
+}
+
+func Init() error {
+	notify_service.RegisterNotifier(NewNotifier())
+	return nil
+}
+
+func handler(items ...issueNotificationOpts) []issueNotificationOpts {
+	for _, opts := range items {
+		_ = activities_model.CreateOrUpdateIssueNotifications(
+			graceful.GetManager().ShutdownContext(),
+			opts.IssueID, opts.CommentID, opts.NotificationAuthorID, opts.ReceiverID)
+	}
+	return nil
+}
+
+func (ns *notificationService) NewIssue(ctx context.Context, issue *issues_model.Issue, mentions []*user_model.User) {
+	_ = ns.issueQueue.Push(issueNotificationOpts{
+		IssueID:              issue.ID,
+		NotificationAuthorID: issue.Poster.ID,
+	})
+	for _, mention := range mentions {
+		_ = ns.issueQueue.Push(issueNotificationOpts{
+			IssueID:              issue.ID,
+			NotificationAuthorID: issue.Poster.ID,
+			ReceiverID:           mention.ID,
+		})
+	}
+}
+```
+
+`Init()` is called from `routers/init.go` during application start-up. A `ReceiverID` of `0`
+means "every watcher of this issue/repo", resolved later by
+`activities_model.CreateOrUpdateIssueNotifications`, which writes/updates rows in the
+`notification` table (see `models/activities/`).
+
+### Server-Sent Events (`modules/eventsource/`)
+
+`modules/eventsource/` is a minimal SSE implementation (no external dependency):
+
+* **`Event`** (`event.go`) — represents one SSE frame (`Name`, `Data`, `ID`, `Retry`) and
+  knows how to serialize itself to the `event: / data: / id: / retry:` wire format via
+  `WriteTo(io.Writer)`.
+* **`Messenger`** (`messenger.go`) — a per-user fan-out channel; a user can have multiple
+  browser tabs/connections registered simultaneously.
+* **`Manager`** (`manager.go`) — the singleton (`eventsource.GetManager()`) that owns a
+  `map[int64]*Messenger` keyed by user ID, plus `Register`/`Unregister`/`SendMessage`/
+  `SendMessageBlocking` to publish an `Event` to a specific user's active connections.
+* **`manager_run.go`** — a background polling loop (`Manager.Run`, started by
+  `Manager.Init()` from `routers/init.go`) that runs on a ticker
+  (`setting.UI.Notification.EventSourceUpdateTime`) and, for every user with recent
+  notification activity, computes an updated unread count
+  (`activities_model.GetUIDsAndNotificationCounts`) and calls `SendMessage` with a
+  `notification-count` event. It similarly emits a `stopwatches` event when time-tracking is
+  enabled. The loop intelligently pauses itself when there are zero active
+  listeners (tracked via a buffered `connection` channel) and resumes as soon as a new client
+  registers.
+
+```go
+// modules/eventsource/manager_run.go (excerpt)
+for _, uidCount := range uidCounts {
+	m.SendMessage(uidCount.UserID, &Event{
+		Name: "notification-count",
+		Data: uidCount,
+	})
+}
+```
+
+### The `/-/events` HTTP endpoint
+
+`routers/web/events/events.go` exposes the actual `text/event-stream` HTTP handler. It sets
+the standard SSE response headers, registers the current user with the `eventsource.Manager`,
+and then loops, writing whichever comes first: a periodic 30-second `ping` keep-alive, a
+message pulled from the user's `messageChan`, or a shutdown/logout/disconnect signal:
+
+```go
+func Events(ctx *context.Context) {
+	ctx.Resp.Header().Set("Content-Type", "text/event-stream")
+	ctx.Resp.Header().Set("Cache-Control", "no-cache")
+	ctx.Resp.Header().Set("Connection", "keep-alive")
+	...
+	uid := ctx.Doer.ID
+	messageChan := eventsource.GetManager().Register(uid)
+	...
+	timer := time.NewTicker(30 * time.Second)
+loop:
+	for {
+		select {
+		case <-timer.C:
+			_, _ = (&eventsource.Event{Name: "ping"}).WriteTo(ctx.Resp)
+			ctx.Resp.Flush()
+		case event, ok := <-messageChan:
+			if !ok { break loop }
+			if event.Name == "logout" { /* handle forced sign-out */ }
+			_, _ = event.WriteTo(ctx.Resp)
+			ctx.Resp.Flush()
+		case <-notify: // client disconnected
+			go unregister()
+			break loop
+		case <-shutdownCtx.Done():
+			go unregister()
+			break loop
+		}
+	}
+}
+```
+
+Other producers besides the polling loop also push directly through the manager: for
+example `routers/web/auth/auth.go` sends a `logout` event when a session is invalidated
+elsewhere, `routers/web/repo/issue_stopwatch.go` pushes immediate `stopwatches` updates, and
+`services/user/user.go` notifies about account-level changes. The frontend JavaScript
+(loaded on every signed-in page) subscribes to `/-/events` and updates the notification badge
+and other live UI elements as events arrive — no page reload or polling from the browser is
+required.
+
+---
+
+## Gitea Actions triggers
+
+`services/actions/notifier.go` implements another `notify.Notifier` (`actionsNotifier`),
+registered in `services/actions/init.go` only when `setting.Actions.Enabled` is true. Instead
+of delivering anything externally, it builds a `notifyInput` (see
+`services/actions/notifier_helper.go`) describing the event, repo, doer, ref, and an
+`api.Payloader`, then calls `.Notify(ctx)`, which detects matching workflow files in the
+repository (via `actions_module.DetectWorkflows`) and schedules runs on the `actions_ready_job`
+queue for any Actions runner to pick up:
+
+```go
+func (n *actionsNotifier) NewIssue(ctx context.Context, issue *issues_model.Issue, _ []*user_model.User) {
+	permission, _ := access_model.GetIndividualUserRepoPermission(ctx, issue.Repo, issue.Poster)
+	newNotifyInputFromIssue(issue, webhook_module.HookEventIssues).WithPayload(&api.IssuePayload{
+		Action:     api.HookIssueOpened,
+		Index:      issue.Index,
+		Issue:      convert.ToAPIIssue(ctx, issue.Poster, issue),
+		Repository: convert.ToRepo(ctx, issue.Repo, permission),
+		Sender:     convert.ToUser(ctx, issue.Poster, nil),
+	}).Notify(withMethod(ctx, "NewIssue"))
+}
+```
+
+Notably, `notify()` (in `notifier_helper.go`) guards against infinite trigger loops: if the
+event's `Doer` is the built-in Gitea Actions user (`user_model.NewActionsUser()` /
+`Doer.IsGiteaActions()`), the event is ignored for normal workflow triggering (though
+schedule-based workflows are still re-evaluated), preventing a workflow's own commits/comments
+from re-triggering itself.
+
+For more on how detected workflows are queued and executed, see the
+[Actions / CI-CD documentation](../09-core-modules/README.md) and
+[Services layer](../08-services/README.md).
+
+---
+
+## Summary: where to look for what
+
+| I want to... | Look at |
+|---------------|---------|
+| Add a new domain event that notifiers can react to | `services/notify/notifier.go` (interface), `services/notify/notify.go` (dispatch func), `services/notify/null.go` (no-op default) |
+| Change how/when e-mails are sent for an event | `services/mailer/notify.go` + the relevant `mail_*.go` helper |
+| Change or add an e-mail template | `templates/mail/**/*.tmpl` |
+| Add a new outgoing webhook target format (e.g. a new chat app) | `services/webhook/<name>.go` implementing `payloadConvertor[T]`, registered via `RegisterWebhookRequester` |
+| Change webhook delivery/retry/signature behavior | `services/webhook/deliver.go` |
+| Change webhook payload JSON shape | `modules/structs/hook.go` |
+| Change in-app notification creation rules | `services/uinotification/notify.go` |
+| Change live SSE behavior (new event types, polling interval) | `modules/eventsource/*.go`, `setting.UI.Notification.EventSourceUpdateTime` |
+| Trigger/skip Actions workflows for an event | `services/actions/notifier.go`, `services/actions/notifier_helper.go` |
+
+## Related pages
+
+* [Services Layer Overview](../08-services/README.md)
+* [Core Modules Overview](README.md)
+* [REST API — Webhooks endpoints](../07-rest-api/README.md)
+* [Database Models](../05-database-models/README.md)

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-15T05:25:58Z",
+  "config_files_scanned": 16,
+  "code_files_sampled": 40,
+  "test_files_sampled": 10,
+  "import_scan_files": 2000,
+  "unique_packages": 1904,
+  "verification_samples": 8,
+  "ai_calls": 9,
+  "primary_languages": {
+    ".go": 2982,
+    ".ts": 250
+  },
+  "product_docs_cross_ref": false,
+  "report_chars": 24262
+}

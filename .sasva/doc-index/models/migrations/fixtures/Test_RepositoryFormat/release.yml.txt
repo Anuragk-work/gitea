@@ -1,0 +1,7 @@
+=== FILE: models/migrations/fixtures/Test_RepositoryFormat/release.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] - id: 1 sha1: 19fe5caf872476db265596eaac1dc35ad1c6422d
+
+-
+  id: 1
+  sha1: 19fe5caf872476db265596eaac1dc35ad1c6422d

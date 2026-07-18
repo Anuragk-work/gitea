@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "contexts": [
+    {
+      "id": "repo_guidelines_gitea",
+      "type": "repo_guidelines",
+      "name": "Repo Guidelines",
+      "source": {
+        "type": "codebase"
+      },
+      "output": {
+        "directory": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e",
+        "format": "report"
+      },
+      "workflow": {
+        "create": "repo_guidelines",
+        "update": "repo_guidelines"
+      },
+      "schedule": null,
+      "parent_context_id": null,
+      "status": "current",
+      "created_at": "2026-07-15T05:25:58.848Z",
+      "last_updated_at": "2026-07-15T05:25:58.848Z",
+      "last_task_id": "wa_1784092667383"
+    },
+    {
+      "id": "dependency_graph",
+      "type": "dependency_graph",
+      "name": "Dependency Graph (typescript, python, c)",
+      "source": {
+        "type": "codebase"
+      },
+      "output": {
+        "directory": ".sasva/workspace/",
+        "format": "graph_json",
+        "nodes": 250,
+        "edges": 565
+      },
+      "workflow": {
+        "create": "scan_dependencies",
+        "update": "scan_dependencies"
+      },
+      "schedule": null,
+      "parent_context_id": null,
+      "derived_from_intent": null,
+      "status": "current",
+      "created_at": "2026-07-15T05:28:29.918Z",
+      "last_updated_at": "2026-07-15T05:28:29.918Z",
+      "last_task_id": null
+    },
+    {
+      "id": "product_docs_docs",
+      "type": "product_docs",
+      "name": "Product Documentation (docs/)",
+      "source": {
+        "type": "codebase",
+        "fingerprint_path": ".sasva/doc-state/docs/code_fingerprint.json"
+      },
+      "output": {
+        "directory": "docs/",
+        "format": "markdown+html"
+      },
+      "workflow": {
+        "create": "product_documentation",
+        "update": "product_documentation_update"
+      },
+      "schedule": null,
+      "parent_context_id": null,
+      "derived_from_intent": null,
+      "status": "current",
+      "created_at": "2026-07-15T06:03:44.168Z",
+      "last_updated_at": "2026-07-16T17:57:11.603Z",
+      "last_task_id": "wa_1784217603178"
+    },
+    {
+      "id": "derived_derived-docs",
+      "type": "derived_context",
+      "name": "security-issues",
+      "source": {
+        "type": "context",
+        "source_dirs": [
+          "security-issues"
+        ],
+        "intent": "find Security Issues using tools like trivy and opengrep"
+      },
+      "output": {
+        "directory": "derived-docs/",
+        "format": "markdown+html"
+      },
+      "workflow": {
+        "create": "derived_context",
+        "update": "derived_context"
+      },
+      "schedule": null,
+      "parent_context_id": "product_docs_security-issues",
+      "supplementary_context_id": null,
+      "derived_from_intent": "find Security Issues using tools like trivy and opengrep",
+      "status": "current",
+      "created_at": "2026-07-15T06:44:26.325Z",
+      "last_updated_at": "2026-07-15T06:44:26.325Z",
+      "last_task_id": "wa_1784096306558"
+    },
+    {
+      "id": "doc_index",
+      "type": "doc_index",
+      "name": "Code Index (Embeddings)",
+      "source": {
+        "type": "codebase"
+      },
+      "output": {
+        "directory": ".sasva/doc-index/",
+        "format": "embeddings"
+      },
+      "workflow": {
+        "create": "doc_index",
+        "update": "doc_index_full"
+      },
+      "schedule": null,
+      "parent_context_id": null,
+      "derived_from_intent": null,
+      "status": "current",
+      "created_at": "2026-07-18T06:05:29.409Z",
+      "last_updated_at": "2026-07-18T06:05:29.409Z",
+      "last_task_id": null
+    },
+    {
+      "id": "custom_cc_youtube_transcript_ticx0w",
+      "type": "custom_context",
+      "name": "YouTube Video Transcript & Actionable Steps (Whisper)",
+      "source": {
+        "type": "custom",
+        "definition_id": "cc_youtube_transcript_ticx0w"
+      },
+      "output": {
+        "directory": ".sasva/custom-contexts/cc_youtube_transcript_ticx0w/output/",
+        "format": "markdown"
+      },
+      "workflow": {
+        "create": "custom_context",
+        "update": "custom_context"
+      },
+      "schedule": null,
+      "parent_context_id": null,
+      "status": "pending",
+      "created_at": "2026-07-18T06:38:22Z",
+      "last_updated_at": "2026-07-18T06:38:22Z",
+      "last_task_id": null,
+      "_params": {
+        "ccDefinitionId": "cc_youtube_transcript_ticx0w",
+        "contextName": "YouTube Video Transcript & Actionable Steps (Whisper)"
+      }
+    }
+  ]
+}

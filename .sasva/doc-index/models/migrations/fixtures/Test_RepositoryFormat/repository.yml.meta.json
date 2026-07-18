@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_RepositoryFormat/repository.yml",
+  "format": "yml",
+  "size_bytes": 114,
+  "source_modified": "2026-07-18T06:05:26.818220+00:00",
+  "indexed_at": "2026-07-18T07:39:39.891097+00:00",
+  "text_length": 114,
+  "line_count": 12
+}

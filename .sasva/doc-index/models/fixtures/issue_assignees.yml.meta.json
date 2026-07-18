@@ -1,0 +1,9 @@
+{
+  "source": "models/fixtures/issue_assignees.yml",
+  "format": "yml",
+  "size_bytes": 321,
+  "source_modified": "2026-07-18T06:05:26.803297+00:00",
+  "indexed_at": "2026-07-18T07:39:39.909778+00:00",
+  "text_length": 321,
+  "line_count": 23
+}

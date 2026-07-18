@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_AddUniqueIndexForProjectIssue/project_issue.yml",
+  "format": "yml",
+  "size_bytes": 81,
+  "source_modified": "2026-07-18T06:05:26.816295+00:00",
+  "indexed_at": "2026-07-18T07:39:39.884404+00:00",
+  "text_length": 81,
+  "line_count": 10
+}

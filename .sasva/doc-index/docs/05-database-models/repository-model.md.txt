@@ -1,0 +1,430 @@
+=== FILE: docs/05-database-models/repository-model.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Repository Model The `Repository` entity is the central object of Gitea's domain model — nearly every other model (issues, pull requests, releases, wiki pages, actions) hangs off a `RepoID` foreign key. This page documents the repository entity itself and the satellite models that extend it: forks, mirrors, releases, topics, stars/watches, the wiki, and the "repo unit" feature-toggle system. Source: `models/repo/` (Gitea's `models/repo` package).
+
+# Repository Model
+
+The `Repository` entity is the central object of Gitea's domain model — nearly every other
+model (issues, pull requests, releases, wiki pages, actions) hangs off a `RepoID` foreign key.
+This page documents the repository entity itself and the satellite models that extend it:
+forks, mirrors, releases, topics, stars/watches, the wiki, and the "repo unit" feature-toggle
+system.
+
+Source: `models/repo/` (Gitea's `models/repo` package).
+
+## The `Repository` Struct
+
+Defined in `models/repo/repo.go`:
+
+```go
+type Repository struct {
+    ID                  int64 `xorm:"pk autoincr"`
+    OwnerID             int64 `xorm:"UNIQUE(s) index"`
+    OwnerName           string
+    Owner               *user_model.User   `xorm:"-"`
+    LowerName           string             `xorm:"UNIQUE(s) INDEX NOT NULL"`
+    Name                string             `xorm:"INDEX NOT NULL"`
+    Description         string             `xorm:"TEXT"`
+    Website             string             `xorm:"VARCHAR(2048)"`
+    OriginalServiceType api.GitServiceType `xorm:"index"`
+    OriginalURL         string             `xorm:"VARCHAR(2048)"`
+    DefaultBranch       string
+    DefaultWikiBranch   string
+
+    NumWatches, NumStars, NumForks         int
+    NumIssues, NumClosedIssues, NumOpenIssues int // NumOpen* computed in AfterLoad
+    NumPulls, NumClosedPulls, NumOpenPulls    int
+    NumMilestones, NumClosedMilestones, NumOpenMilestones int
+    NumProjects, NumClosedProjects, NumOpenProjects       int
+    NumActionRuns, NumClosedActionRuns, NumOpenActionRuns int
+
+    IsPrivate  bool `xorm:"INDEX"`
+    IsEmpty    bool `xorm:"INDEX"`
+    IsArchived bool `xorm:"INDEX"`
+    IsMirror   bool `xorm:"INDEX"`
+
+    Status RepositoryStatus `xorm:"NOT NULL DEFAULT 0"`
+
+    Units           []*RepoUnit   `xorm:"-"`
+    PrimaryLanguage *LanguageStat `xorm:"-"`
+
+    IsFork     bool        `xorm:"INDEX NOT NULL DEFAULT false"`
+    ForkID     int64       `xorm:"INDEX"`
+    BaseRepo   *Repository `xorm:"-"`
+    IsTemplate bool        `xorm:"INDEX NOT NULL DEFAULT false"`
+    TemplateID int64       `xorm:"INDEX"`
+
+    Size, GitSize, LFSSize int64
+
+    IsFsckEnabled                   bool
+    CloseIssuesViaCommitInAnyBranch bool
+    Topics                          []string `xorm:"TEXT JSON"`
+    ObjectFormatName                string   `xorm:"VARCHAR(6) NOT NULL DEFAULT 'sha1'"`
+
+    TrustModel TrustModelType
+    Avatar     string `xorm:"VARCHAR(64)"`
+
+    CreatedUnix, UpdatedUnix, ArchivedUnix timeutil.TimeStamp
+}
+```
+
+Key notes:
+
+- **Owner** is loaded lazily via `LoadOwner(ctx)` — `OwnerID`/`OwnerName` are persisted, but the
+  `*user_model.User` pointer is `xorm:"-"` (not a DB column) and populated on demand.
+- **NumOpenIssues / NumOpenPulls / NumOpenMilestones / NumOpenProjects / NumOpenActionRuns** are
+  computed in `AfterLoad()` (`total - closed`) rather than stored, keeping counters consistent.
+- **`RepositoryStatus`** models the repo's migration/transfer lifecycle:
+
+| Status | Value | Meaning |
+|---|---|---|
+| `RepositoryReady` | 0 | Normal, usable repository |
+| `RepositoryBeingMigrated` | 1 | Migration in progress |
+| `RepositoryPendingTransfer` | 2 | Ownership transfer pending acceptance |
+| `RepositoryBroken` | 3 | Permanently broken (also implies `IsEmpty`) |
+
+- **`TrustModelType`** governs how commit signature trust is displayed for a repo: `default`,
+  `committer`, `collaborator`, `collaboratorcommitter` (`ToTrustModel`/`String()`).
+- Repository names are validated by `IsUsableRepoName`, which rejects reserved names
+  (`.`, `..`, `-`) and reserved suffix patterns (`*.wiki`, `*.git`, `*.rss`, `*.atom`) so that a
+  repo can never collide with a wiki/git-transport/feed URL.
+
+### Useful methods
+
+| Method | Purpose |
+|---|---|
+| `RelativePath()` / `RelativePath(owner, name)` | `owner/name.git` path on disk/storage |
+| `FullName()` | `OwnerName/Name` |
+| `HTMLURL()`, `APIURL()`, `Link()` | Web and API URLs |
+| `LoadAttributes(ctx)` | Loads owner + primary language in one call |
+| `LoadUnits`, `UnitEnabled`, `GetUnit`, `MustGetUnit` | Repo-unit feature toggles (see below) |
+| `IsBeingMigrated`, `IsBeingCreated`, `IsBroken`, `MarkAsBrokenEmpty` | Lifecycle checks |
+| `CanCreateBranch`, `CanEnablePulls`, `AllowsPulls`, `CanEnableEditor`, `CanContentChange` | Capability checks that combine `IsMirror`/`IsArchived`/unit state |
+| `GetTrustModel`, `MustNotBeArchived` | Misc guards |
+| `SizeDetails`, `SizeDetailsString` | Reports Git and LFS disk usage separately |
+
+## Forks — `models/repo/fork.go`
+
+A fork is simply another `Repository` row with `IsFork = true` and `ForkID` pointing at the
+`ID` of the repository it was forked from. There is no separate "Fork" table.
+
+```go
+func GetRepositoriesByForkID(ctx context.Context, forkID int64) ([]*Repository, error)
+func GetForkedRepo(ctx context.Context, ownerID, repoID int64) *Repository
+func HasForkedRepo(ctx context.Context, ownerID, repoID int64) bool
+func GetUserFork(ctx context.Context, repoID, userID int64) (*Repository, error)
+func IncrementRepoForkNum(ctx context.Context, repoID int64) error
+func DecrementRepoForkNum(ctx context.Context, repoID int64) error
+func FindUserOrgForks(ctx context.Context, repoID, userID int64) ([]*Repository, error)
+func GetForksByUserAndOrgs(ctx context.Context, user *user_model.User, repo *Repository) ([]*Repository, error)
+```
+
+`FindUserOrgForks` finds a fork owned by any organization the given user belongs to (via a
+sub-select on `org_user`), and `GetForksByUserAndOrgs` merges the user's own fork with forks
+owned by their organizations — this is what drives the "fork" button's dropdown ("You already
+have a fork in these namespaces").
+
+`repo.NumForks` is a denormalized counter kept in sync by `IncrementRepoForkNum` /
+`DecrementRepoForkNum` whenever a fork is created/deleted.
+
+## Mirrors — `models/repo/mirror.go`
+
+`Mirror` represents **pull-mirror** configuration (the repository automatically pulls updates
+from a remote):
+
+```go
+type Mirror struct {
+    ID          int64       `xorm:"pk autoincr"`
+    RepoID      int64       `xorm:"INDEX"`
+    Repo        *Repository `xorm:"-"`
+    Interval    time.Duration
+    EnablePrune bool `xorm:"NOT NULL DEFAULT true"`
+
+    UpdatedUnix    timeutil.TimeStamp `xorm:"INDEX"`
+    NextUpdateUnix timeutil.TimeStamp `xorm:"INDEX"`
+    LastSyncUnix   timeutil.TimeStamp `xorm:"INDEX"`
+
+    LFS         bool   `xorm:"lfs_enabled NOT NULL DEFAULT false"`
+    LFSEndpoint string `xorm:"lfs_endpoint TEXT"`
+
+    RemoteAddress string `xorm:"VARCHAR(2048)"`
+}
+```
+
+- `ScheduleNextUpdate()` computes `NextUpdateUnix` from `Interval` (or disables scheduling if
+  `Interval == 0`).
+- `MirrorsIterate(ctx, limit, f)` is the batch cursor used by the mirror-sync cron task: it
+  selects all mirrors whose `next_update_unix <= now` and iterates them, calling `f` for each.
+- A repository with an active `Mirror` row has `Repository.IsMirror = true`.
+
+### Push mirrors — `models/repo/pushmirror.go`
+
+`PushMirror` is the inverse: Gitea **pushes** the local repository to a remote on commit or on
+an interval.
+
+```go
+type PushMirror struct {
+    ID            int64       `xorm:"pk autoincr"`
+    RepoID        int64       `xorm:"INDEX"`
+    Repo          *Repository `xorm:"-"`
+    RemoteName    string
+    RemoteAddress string `xorm:"VARCHAR(2048)"`
+
+    SyncOnCommit   bool `xorm:"NOT NULL DEFAULT true"`
+    Interval       time.Duration
+    CreatedUnix    timeutil.TimeStamp `xorm:"created"`
+    LastUpdateUnix timeutil.TimeStamp `xorm:"INDEX last_update"`
+    LastError      string             `xorm:"text"`
+}
+```
+
+Key queries:
+
+- `GetPushMirrorsSyncedOnCommit(ctx, repoID)` — mirrors to push immediately after a commit lands
+  (`SyncOnCommit = true`), used by the post-receive hook path.
+- `PushMirrorsIterate(ctx, limit, f)` — the cron cursor; it joins `repository` to skip archived
+  repos and selects mirrors whose `last_update + interval <= now`.
+
+A repository can have **one** `Mirror` (pull) but **many** `PushMirror` rows (push to multiple
+remotes).
+
+## Releases — `models/repo/release.go`
+
+```go
+type Release struct {
+    ID               int64            `xorm:"pk autoincr"`
+    RepoID           int64            `xorm:"INDEX UNIQUE(n)"`
+    Repo             *Repository      `xorm:"-"`
+    PublisherID      int64            `xorm:"INDEX"`
+    Publisher        *user_model.User `xorm:"-"`
+    TagName          string           `xorm:"INDEX UNIQUE(n)"`
+    LowerTagName     string
+    Target           string
+    Title            string
+    Sha1             string `xorm:"INDEX VARCHAR(64)"`
+    NumCommits       int64
+    Note             string        `xorm:"TEXT"`
+    RenderedNote     template.HTML `xorm:"-"`
+    IsDraft          bool          `xorm:"NOT NULL DEFAULT false"`
+    IsPrerelease     bool          `xorm:"NOT NULL DEFAULT false"`
+    IsTag            bool          `xorm:"NOT NULL DEFAULT false"` // pure git tag, no release metadata
+    Attachments      []*Attachment `xorm:"-"`
+    CreatedUnix      timeutil.TimeStamp `xorm:"INDEX"`
+}
+```
+
+- `(RepoID, TagName)` is a compound unique key (`UNIQUE(n)`), so a repo cannot have two release
+  rows for the same tag.
+- `IsTag = true` marks rows that exist purely because a git tag was pushed with no
+  release notes attached — the UI shows these in the "Tags" list rather than "Releases".
+- `LoadAttributes(ctx)` loads `Repo` and `Publisher` (falling back to the "Ghost" user if the
+  publisher account was deleted).
+- Releases own `Attachments` (`*repo_model.Attachment`), which back release binary uploads.
+
+## Wiki — `models/repo/wiki.go`
+
+Gitea's wiki is **not** stored in a separate table — it is a second bare git repository per
+repo, following the naming convention `<owner>/<repo>.wiki.git`:
+
+```go
+func RelativeWikiPath(ownerName, repoName string) string {
+    return strings.ToLower(ownerName) + "/" + strings.ToLower(repoName) + ".wiki.git"
+}
+
+func (repo *Repository) WikiStorageRepo() StorageRepo {
+    return StorageRepo(RelativeWikiPath(repo.OwnerName, repo.Name))
+}
+
+func (repo *Repository) WikiCloneLink(ctx context.Context, doer *user_model.User) *CloneLink {
+    return repo.cloneLink(ctx, doer, repo.Name+".wiki")
+}
+```
+
+The wiki's default branch is tracked on the parent `Repository.DefaultWikiBranch` field (falls
+back to `setting.Repository.DefaultBranch` in `AfterLoad` if empty). Enabling/disabling the wiki
+feature is done through the **repo unit** system (`unit.TypeWiki` / `unit.TypeExternalWiki`),
+not a boolean flag.
+
+## Topics, Stars, Watches
+
+These three "social" features share the same shape: a small join table between `user`/`topic`
+and `repository`.
+
+### Topics — `models/repo/topic.go`
+
+```go
+type Topic struct {
+    ID          int64  `xorm:"pk autoincr"`
+    Name        string `xorm:"UNIQUE VARCHAR(50)"`
+    RepoCount   int
+    CreatedUnix, UpdatedUnix timeutil.TimeStamp
+}
+
+type RepoTopic struct { // many-to-many join table
+    RepoID  int64 `xorm:"pk"`
+    TopicID int64 `xorm:"pk"`
+}
+```
+
+`Repository.Topics []string` (a JSON column, `xorm:"TEXT JSON"`) is a **denormalized cache** of
+topic names for quick display/API responses, kept consistent with the `Topic`/`RepoTopic`
+normalized tables by the topic-management service functions. Topic names must match
+`^[a-z0-9][-.a-z0-9]*$` (`topicPattern`).
+
+### Stars — `models/repo/star.go`
+
+```go
+type Star struct {
+    ID          int64              `xorm:"pk autoincr"`
+    UID         int64              `xorm:"UNIQUE(s)"`
+    RepoID      int64              `xorm:"UNIQUE(s)"`
+    CreatedUnix timeutil.TimeStamp `xorm:"INDEX created"`
+}
+
+func StarRepo(ctx context.Context, doer *user_model.User, repo *Repository, star bool) error
+```
+
+`StarRepo` is transactional: it checks `IsStaring`, blocks starring if the doer is blocked by
+the repo owner, and updates the denormalized `Repository.NumStars` counter.
+
+### Watches — `models/repo/watch.go`
+
+```go
+type WatchMode int8
+const (
+    WatchModeNone   WatchMode = iota // 0: not watching
+    WatchModeNormal                  // 1: explicit watch
+    WatchModeDont                    // 2: explicit "don't auto-watch"
+    WatchModeAuto                    // 3: watching due to AutoWatchOnChanges
+)
+
+type Watch struct {
+    ID     int64
+    UserID int64
+    RepoID int64
+    Mode   WatchMode `xorm:"SMALLINT NOT NULL DEFAULT 1"`
+}
+```
+
+`WatchModeDont` is a distinct state from `WatchModeNone` — it records that the user explicitly
+un-watched a repo, so that Gitea's "auto watch on push/comment" behavior does not silently
+re-subscribe them. `IsWatchMode(mode)` returns true for `Normal` and `Auto`.
+
+## Repo Units — Feature Toggle System
+
+Rather than a growing list of boolean columns (`HasIssues`, `HasWiki`, `HasPullRequests`, …),
+Gitea models each optional repository feature as a **unit**. A repository "has" a feature if a
+corresponding `RepoUnit` row exists for it.
+
+### Unit types (`models/unit/unit.go`)
+
+| Type | Value | Description |
+|---|---|---|
+| `TypeCode` | 1 | Source code browsing |
+| `TypeIssues` | 2 | Native issue tracker |
+| `TypePullRequests` | 3 | Pull requests |
+| `TypeReleases` | 4 | Releases |
+| `TypeWiki` | 5 | Native wiki |
+| `TypeExternalWiki` | 6 | Link to an external wiki (read-only unit) |
+| `TypeExternalTracker` | 7 | Link to an external issue tracker (read-only unit) |
+| `TypeProjects` | 8 | Kanban-style projects |
+| `TypePackages` | 9 | Package registry |
+| `TypeActions` | 10 | CI/CD (Actions) |
+
+`AllRepoUnitTypes` lists every type; `DefaultRepoUnits`, `DefaultForkRepoUnits`,
+`DefaultMirrorRepoUnits`, and `DefaultTemplateRepoUnits` define which units a newly created
+repo/fork/mirror/template gets by default (all configurable via `app.ini`,
+e.g. `[repository] DISABLED_REPO_UNITS`). `NotAllowedDefaultRepoUnits` (`ExternalWiki`,
+`ExternalTracker`) can never be defaults because they require manual URL configuration.
+
+### `RepoUnit` row (`models/repo/repo_unit.go`)
+
+```go
+type RepoUnit struct {
+    ID                  int64
+    RepoID              int64              `xorm:"INDEX(s)"`
+    Type                unit.Type          `xorm:"INDEX(s)"`
+    Config              convert.Conversion `xorm:"TEXT"`
+    CreatedUnix         timeutil.TimeStamp `xorm:"INDEX CREATED"`
+    AnonymousAccessMode perm.AccessMode    `xorm:"NOT NULL DEFAULT 0"`
+    EveryoneAccessMode  perm.AccessMode    `xorm:"NOT NULL DEFAULT 0"`
+}
+```
+
+`Config` is a polymorphic JSON blob whose concrete Go type depends on `Type`:
+
+| Unit | Config type | Notable fields |
+|---|---|---|
+| `TypeExternalWiki` | `ExternalWikiConfig` | `ExternalWikiURL` |
+| `TypeExternalTracker` | `ExternalTrackerConfig` | `ExternalTrackerURL`, `Format`, `Style`, `RegexpPattern` |
+| `TypeIssues` | `IssuesConfig` | `EnableTimetracker`, `AllowOnlyContributorsToTrackTime`, `EnableDependencies` |
+| `TypePullRequests` | `PullRequestsConfig` | `AllowMerge/Rebase/RebaseMerge/Squash/FastForwardOnly/ManualMerge`, `DefaultMergeStyle`, `DefaultUpdateStyle`, `DefaultDeleteBranchAfterMerge`, `DefaultAllowMaintainerEdit`, `DefaultTargetBranch` |
+| others | none | — |
+
+`AnonymousAccessMode` / `EveryoneAccessMode` allow a unit to be made readable to anonymous
+visitors or to any signed-in user, independent of the collaborator/team access system (see
+[Permissions Model](permissions-model.md)).
+
+Key `Repository` methods for units:
+
+```go
+func (repo *Repository) LoadUnits(ctx context.Context) (err error)
+func (repo *Repository) UnitEnabled(ctx context.Context, tp unit.Type) bool
+func (repo *Repository) GetUnit(ctx context.Context, tp unit.Type) (*RepoUnit, error)
+func (repo *Repository) MustGetUnit(ctx context.Context, tp unit.Type) *RepoUnit // never errors; builds a synthetic unit with defaulted Config
+```
+
+`repo.IsDependenciesEnabled(ctx)`, `repo.IsTimetrackerEnabled(ctx)`,
+`repo.AllowOnlyContributorsToTrackTime(ctx)` (in `models/repo/issue.go`) read straight from the
+`IssuesConfig` stored on the `TypeIssues` unit.
+
+> **Tip:** `MustGetUnit` is the safe accessor to use in templates/handlers when a unit might not
+> be enabled — it always returns a usable `*RepoUnit` with a zero-value/defaulted `Config`
+> instead of forcing every call site to handle `ErrUnitTypeNotExist`.
+
+## Repository Relationship Diagram
+
+```mermaid
+erDiagram
+    USER ||--o{ REPOSITORY : owns
+    REPOSITORY ||--o| REPOSITORY : "forked from (ForkID)"
+    REPOSITORY ||--o{ RELEASE : has
+    REPOSITORY ||--o| MIRROR : "pull-mirrors from"
+    REPOSITORY ||--o{ PUSHMIRROR : "push-mirrors to"
+    REPOSITORY ||--o{ REPOUNIT : "feature units"
+    REPOSITORY ||--o{ REPOTOPIC : tagged
+    TOPIC ||--o{ REPOTOPIC : "tagged on"
+    REPOSITORY ||--o{ STAR : "starred by"
+    REPOSITORY ||--o{ WATCH : "watched by"
+    REPOSITORY ||--o{ COLLABORATION : "collaborators"
+    REPOSITORY ||--o{ ISSUE : contains
+    REPOSITORY ||--o{ PULLREQUEST : "base/head of"
+```
+
+```mermaid
+graph TD
+    Owner[User / Organization] -->|OwnerID| Repo[Repository]
+    Repo -->|ForkID| BaseRepo[Base Repository]
+    Repo --> Units[RepoUnit x N]
+    Units --> UnitCode[Code]
+    Units --> UnitIssues[Issues]
+    Units --> UnitPRs[Pull Requests]
+    Units --> UnitReleases[Releases]
+    Units --> UnitWiki[Wiki]
+    Units --> UnitActions[Actions]
+    Repo --> Mirror[Mirror pull config]
+    Repo --> PushMirrors[PushMirror x N]
+    Repo --> Releases[Release x N]
+    Repo --> Wiki["Wiki (separate bare git repo)"]
+    Repo --> Topics[RepoTopic -> Topic]
+    Repo --> Stars[Star x N]
+    Repo --> Watches[Watch x N]
+    Repo --> Collabs[Collaboration x N]
+```
+
+## Related Pages
+
+- [Issues & Pull Requests Model](issues-and-pulls-model.md)
+- [Permissions Model](permissions-model.md) — how `RepoUnit`, `Collaboration`, and `Team`
+  combine to compute a user's `Permission` on a repository
+- [User & Organization Model](user-organization-model.md)

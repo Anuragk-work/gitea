@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD — PSMA-NEW: Wrap-Text Toggle for Markdown Inline Code Blocks</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#f0fdfa',
+      primaryTextColor: '#0d4f4f',
+      primaryBorderColor: '#0f766e',
+      lineColor: '#0d9488',
+      fontFamily: '"Source Sans Pro", sans-serif'
+    }
+  });
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+Pro:wght@300;400;600;700&family=Source+Code+Pro:wght@400;500&display=swap');
+  :root {
+    --teal-900: #0d4f4f; --teal-800: #115e59; --teal-700: #0f766e;
+    --teal-600: #0d9488; --teal-200: #99f6e4; --teal-100: #ccfbf1; --teal-50: #f0fdfa;
+    --gray-900: #111827; --gray-700: #374151; --gray-500: #6b7280;
+    --gray-200: #e5e7eb; --gray-100: #f3f4f6; --sidebar-w: 220px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Source Sans Pro', system-ui, sans-serif; color: var(--gray-700); line-height: 1.7; font-size: 15.5px; }
+  nav.sidebar {
+    position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh;
+    background: #fff; border-right: 1px solid var(--gray-200); overflow-y: auto; padding: 24px 0 40px;
+  }
+  nav.sidebar .brand {
+    padding: 0 20px 14px; margin: 0 12px 12px; border-bottom: 2px solid var(--teal-700);
+    font-family: 'Merriweather', Georgia, serif; font-size: 15px; font-weight: 700; color: var(--gray-900);
+  }
+  nav.sidebar .brand small { display: block; font-size: 11.5px; font-weight: 400; color: var(--gray-500); margin-top: 3px; }
+  nav.sidebar ol { list-style: none; padding: 8px 0; counter-reset: nav-counter; }
+  nav.sidebar ol > li { counter-increment: nav-counter; }
+  nav.sidebar ol > li > a {
+    display: block; padding: 5px 20px; color: var(--gray-700); text-decoration: none;
+    font-size: 13px; font-weight: 600;
+  }
+  nav.sidebar ol > li > a::before { content: counter(nav-counter) ".  "; color: var(--teal-700); font-weight: 700; }
+  nav.sidebar ol > li > a:hover { color: var(--teal-700); }
+  main { margin-left: var(--sidebar-w); padding: 48px 56px 80px; }
+  h1 { font-family: 'Merriweather', Georgia, serif; font-size: 34px; color: var(--gray-900); font-weight: 900; margin-bottom: 8px; }
+  .subtitle { font-size: 15px; color: var(--gray-500); margin-bottom: 8px; font-style: italic; }
+  .meta { font-size: 13px; color: var(--gray-500); margin-bottom: 40px; }
+  h2 {
+    font-family: 'Merriweather', Georgia, serif; font-size: 26px; color: var(--gray-900);
+    font-weight: 900; margin: 48px 0 20px; padding-bottom: 8px; border-bottom: 2px solid var(--teal-200);
+  }
+  h2 .secnum { color: var(--teal-700); margin-right: 8px; }
+  h3 { font-size: 18px; color: var(--teal-800); font-weight: 700; margin: 24px 0 12px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 16px 24px; }
+  li { margin-bottom: 8px; }
+  code { background: var(--gray-100); padding: 2px 6px; border-radius: 3px; font-family: 'Source Code Pro', monospace; font-size: 13px; }
+  table.data { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; }
+  table.data th { background: var(--teal-700); color: #fff; padding: 10px 14px; text-align: left; }
+  table.data td { padding: 9px 14px; border-bottom: 1px solid var(--gray-200); vertical-align: top; }
+  table.data tbody tr:hover { background: var(--teal-50); }
+  .callout {
+    background: var(--teal-50); border: 1px solid var(--teal-200); border-left: 6px solid var(--teal-700);
+    padding: 20px 24px; margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="brand">PRD<small>PSMA-NEW</small></div>
+  <ol>
+    <li><a href="#s1">Executive Summary</a></li>
+    <li><a href="#s2">Problem Statement</a></li>
+    <li><a href="#s3">Goals &amp; Objectives</a></li>
+    <li><a href="#s4">Scope</a></li>
+    <li><a href="#s5">Stakeholders</a></li>
+    <li><a href="#s7">User Stories</a></li>
+    <li><a href="#s8">Functional Requirements</a></li>
+    <li><a href="#s9">Non-Functional Requirements</a></li>
+    <li><a href="#s11">Data Requirements</a></li>
+    <li><a href="#s13">Dependencies</a></li>
+    <li><a href="#s14">Risks</a></li>
+    <li><a href="#s15">Acceptance Criteria</a></li>
+    <li><a href="#s16">Success Metrics</a></li>
+    <li><a href="#s18">Open Questions</a></li>
+    <li><a href="#s19">Appendix</a></li>
+  </ol>
+</nav>
+
+<main>
+  <h1>Wrap-Text Toggle for Markdown Inline Code Blocks</h1>
+  <p class="subtitle">Add a client-side "Toggle code wrap" button next to the copy button on every rendered Markdown code block, so long lines can be wrapped instead of horizontally scrolled.</p>
+  <p class="meta">Issue: <strong>PSMA-NEW</strong> (source: <a href="https://github.com/go-gitea/gitea/issues/35314" target="_blank">go-gitea/gitea#35314</a>) &nbsp;|&nbsp; Generated: 2025 &nbsp;|&nbsp; Prior art: Draft PR <a href="https://github.com/go-gitea/gitea/pull/35529" target="_blank">go-gitea/gitea#35529</a> (unmerged)</p>
+
+  <h2 id="s1"><span class="secnum">1.</span> Executive Summary</h2>
+  <p>Gitea renders fenced/indented code blocks inside Markdown (issue bodies, PR descriptions, comments, wiki pages, READMEs) with a "copy code" button (<code>web_src/js/markup/codecopy.ts</code>) but no way for the reader to toggle line wrapping. Long lines currently either overflow with a horizontal scrollbar (<code>code-overflow-scroll</code>, the default emitted by the Go renderers) or, in a couple of dev-test-only surfaces, wrap (<code>code-overflow-wrap</code>) — but there is no interactive way to switch between the two from the rendered page.</p>
+  <p>This feature adds a "Toggle code wrap" button next to the existing copy button on every rendered Markdown code block, letting users flip between horizontal-scroll and wrapped-text display on demand. The preference is remembered client-side (per browser) so it persists across page loads.</p>
+
+  <h2 id="s2"><span class="secnum">2.</span> Problem Statement</h2>
+  <p>Long lines in fenced code blocks (long log lines, long URLs, long JSON, minified code pasted into an issue) force horizontal scrolling, which is awkward on narrow viewports and mobile, and requires extra interaction to read the full line. Conversely, some users prefer wrapped text as the default and scroll-mode as the exception. Gitea's markup CSS (<code>web_src/css/markup/content.css</code> lines 377–392) already defines both <code>.code-block-container.code-overflow-wrap</code> and <code>.code-block-container.code-overflow-scroll</code> rule sets, and they are exercised in the internal <code>templates/devtest/markup-render.tmpl</code> page, but no production UI surface lets an end user choose between them — the two Go renderers (<code>modules/markup/markdown/markdown.go:91</code> for Chroma-highlighted fences, <code>modules/markup/markdown/goldmark.go:132</code> for indented code blocks) both hardcode <code>code-overflow-scroll</code> unconditionally.</p>
+  <p>GitHub, Codeberg and other forges offer an inline wrap toggle on rendered code blocks; its absence is a recurring, low-friction usability gap reported directly by a Gitea PR reviewer (silverwind) in issue #35314.</p>
+
+  <h2 id="s3"><span class="secnum">3.</span> Goals &amp; Objectives</h2>
+  <h3>Business goals</h3>
+  <ul>
+    <li>Close a well-known usability gap relative to competitor forges (GitHub) at low engineering cost, reusing already-shipped CSS.</li>
+    <li>Keep the change additive/non-breaking — no change to default rendering behavior unless the user opts in.</li>
+  </ul>
+  <h3>User goals</h3>
+  <ul>
+    <li>Let any reader of rendered Markdown switch a code block between scroll-on-overflow and wrap-long-lines display with a single click.</li>
+    <li>Remember the last-chosen mode across page navigations without requiring login or a server round-trip.</li>
+  </ul>
+  <h3>Measurable outcomes</h3>
+  <ul>
+    <li>Wrap toggle button renders on 100% of fenced/indented code blocks inside <code>.markup</code> content (issues, PRs, comments, wiki, README, release notes).</li>
+    <li>No regression in existing "copy code" button placement/behavior or in Mermaid/KaTeX/math code block rendering.</li>
+    <li>Preference persists across a full page reload in the same browser.</li>
+  </ul>
+
+  <h2 id="s4"><span class="secnum">4.</span> Scope</h2>
+  <h3>In scope</h3>
+  <ul>
+    <li>New wrap-toggle button rendered alongside the existing copy-code button on every <code>.markup .code-block-container</code>.</li>
+    <li>Client-side persistence of the wrap preference (single global toggle) using <code>localUserSettings</code> (<code>web_src/js/modules/user-settings.ts</code>), not raw <code>localStorage</code>.</li>
+    <li>New locale string (<code>code_toggle_wrap</code>) surfaced through <code>templates/base/head_script.tmpl</code> → <code>window.config.i18n</code>.</li>
+    <li>New SVG icon asset for the wrap toggle, registered in <code>web_src/js/svg.ts</code>.</li>
+    <li>Refactor of <code>web_src/js/markup/codecopy.ts</code> into a shared "code block buttons" module (as prototyped in PR #35529's <code>codeblocks.ts</code>).</li>
+    <li>Update <code>web_src/js/markup/mermaid.ts</code> to consume the shared button-row helper.</li>
+  </ul>
+  <h3>Out of scope (this iteration)</h3>
+  <ul>
+    <li>The repository file/blame code view (<code>web_src/js/modules/codeeditor/</code>) already has its own unrelated line-wrap affordance — whether it should share a preference with the Markdown toggle is deferred as an open question.</li>
+    <li>The package registry container digest block (<code>templates/package/content/container.tmpl:20</code>) is not wired to the toggle in this iteration.</li>
+    <li>Per-code-block (vs. global/page-wide) wrap memory is out of scope.</li>
+    <li>Backend renderer changes to emit a different default wrap mode are out of scope — default remains <code>code-overflow-scroll</code> server-side.</li>
+  </ul>
+
+  <h2 id="s5"><span class="secnum">5.</span> Stakeholders</h2>
+  <table class="data">
+    <tr><th>Role</th><th>Party</th></tr>
+    <tr><td>Product / Issue reporter</td><td>silverwind (issue #35314 author)</td></tr>
+    <tr><td>Frontend engineering</td><td>Gitea core maintainers / contributor of PR #35529</td></tr>
+    <tr><td>Design/UX review</td><td>Gitea maintainers (icon choice, button placement)</td></tr>
+    <tr><td>QA</td><td>Gitea QA / community testers (cross-renderer, cross-locale)</td></tr>
+    <tr><td>End users</td><td>Anyone reading rendered Markdown on any Gitea instance</td></tr>
+    <tr><td>Localization</td><td>Crowdin translators (new <code>code_toggle_wrap</code> string)</td></tr>
+  </table>
+
+  <h2 id="s7"><span class="secnum">7.</span> User Stories / Use Cases</h2>
+  <ol>
+    <li>As a reader viewing a long log dump in an issue comment, I want to click a "wrap" button on the code block so long lines wrap instead of requiring horizontal scrolling.</li>
+    <li>As a reader who has already toggled wrap mode on one code block, I expect the same wrap preference to apply automatically to other code blocks I encounter later in my session/browser, without needing to log in.</li>
+    <li>As a mobile user, I want wrapped code by default/via one tap, since horizontal scrolling is harder on touch screens.</li>
+    <li>As a maintainer reviewing a PR, when a diff/patch or Mermaid diagram is rendered inside a Markdown body, I want the same consistent copy/wrap button row so the UI feels uniform across code block types.</li>
+    <li>As a translator, I want the new toggle's tooltip/label (<code>code_toggle_wrap</code>) to be a translatable locale string, not hardcoded English text.</li>
+  </ol>
+
+  <h2 id="s8"><span class="secnum">8.</span> Functional Requirements</h2>
+  <table class="data">
+    <tr><th>#</th><th>Requirement</th><th>Code touchpoints</th></tr>
+    <tr><td>FR-1</td><td>Rename/extend <code>codecopy.ts</code> into a shared code-block-buttons module exporting a generic <code>makeCodeBlockButton()</code> helper used by both copy and wrap buttons.</td><td><code>web_src/js/markup/codecopy.ts</code> → <code>codeblocks.ts</code>; <code>web_src/js/markup/content.ts</code></td></tr>
+    <tr><td>FR-2</td><td>Add a wrap-toggle button per code block into the <code>.code-block-container</code>, using a dedicated SVG icon.</td><td><code>web_src/js/markup/codeblocks.ts</code>; <code>public/assets/img/svg/material-wrap-text.svg</code>; <code>web_src/js/svg.ts</code></td></tr>
+    <tr><td>FR-3</td><td>On click, toggle <code>.code-overflow-wrap</code>/<code>.code-overflow-scroll</code> classes on the closest <code>.code-block-container</code>.</td><td><code>web_src/css/markup/content.css</code> lines 377–392</td></tr>
+    <tr><td>FR-4</td><td>Persist wrap preference using <code>localUserSettings</code>, not raw <code>localStorage</code> (ESLint restriction).</td><td><code>web_src/js/modules/user-settings.ts</code></td></tr>
+    <tr><td>FR-5</td><td>On markup init, read the stored preference and apply the correct class before/at render to avoid flash-of-wrong-state.</td><td><code>web_src/js/markup/content.ts</code> → <code>initMarkupContent()</code></td></tr>
+    <tr><td>FR-6</td><td>Add translatable locale key <code>code_toggle_wrap</code>.</td><td><code>options/locale/locale_en-US.json</code>; <code>templates/base/head_script.tmpl</code></td></tr>
+    <tr><td>FR-7</td><td>Update Mermaid controls to use the shared button-row helper.</td><td><code>web_src/js/markup/mermaid.ts</code> (lines ~206–210)</td></tr>
+    <tr><td>FR-8</td><td>New/renamed CSS module for the combined button row.</td><td><code>web_src/css/markup/codecopy.css</code> → <code>codeblocks.css</code>; content.css line 532</td></tr>
+    <tr><td>FR-9</td><td>Do not change server-side rendering defaults; renderers keep emitting <code>code-overflow-scroll</code>.</td><td><code>modules/markup/markdown/markdown.go:91</code>, <code>goldmark.go:132</code></td></tr>
+  </table>
+
+  <h2 id="s9"><span class="secnum">9.</span> Non-Functional Requirements</h2>
+  <ul>
+    <li><strong>Coding convention compliance</strong>: must not introduce a direct <code>localStorage</code> call — ESLint restricted-globals forbids this repo-wide (per <code>docs/22-contributing-development/frontend-coding-conventions.md</code>); PR #35529's raw <code>localStorage</code> usage would need adaptation to pass CI.</li>
+    <li><strong>Performance</strong>: no additional network requests; pure DOM class toggle plus one synchronous localStorage read/write.</li>
+    <li><strong>Accessibility</strong>: button must have an accessible label via the new locale string and be keyboard-operable (native <code>&lt;button&gt;</code>, per <code>makeCodeCopyButton</code>'s pattern).</li>
+    <li><strong>i18n</strong>: string added only to <code>locale_en-US.json</code>; other locales flow through Crowdin.</li>
+    <li><strong>Browser compatibility</strong>: vanilla DOM APIs, no framework dependency.</li>
+    <li><strong>No visual regression</strong>: existing hover/reveal behavior for <code>auto-hide-control</code> must continue to apply.</li>
+    <li><strong>Backward compatibility</strong>: <code>templates/devtest/markup-render.tmpl</code> must continue to render correctly after the module rename.</li>
+  </ul>
+
+  <h2 id="s11"><span class="secnum">11.</span> Data Requirements</h2>
+  <p>Client-side only. No new database tables, migrations, or REST API endpoints. The only "data" persisted is a boolean/string preference key (e.g. <code>wrap-markup-code</code>) stored via <code>localUserSettings</code>, which prefixes keys with <code>gitea:setting:</code> in <code>localStorage</code> — no server round-trip, no per-user server-side setting.</p>
+  <p>Input: user click on the toggle button. Output: DOM class mutation (<code>code-overflow-wrap</code> ⇄ <code>code-overflow-scroll</code>) applied to all <code>.code-block-container</code> elements currently on the page, plus a localStorage write for persistence.</p>
+
+  <h2 id="s13"><span class="secnum">13.</span> Dependencies &amp; Assumptions</h2>
+  <ul>
+    <li>Depends on existing CSS rules already shipped in <code>web_src/css/markup/content.css</code> — no new selectors needed, only a new trigger mechanism.</li>
+    <li>Depends on the existing <code>svg()</code> icon-registration pattern in <code>web_src/js/svg.ts</code>.</li>
+    <li>Depends on <code>localUserSettings</code> being the sanctioned localStorage wrapper (per ESLint rule).</li>
+    <li>Assumption: a single global (not per-code-block) toggle is acceptable UX, matching PR #35529.</li>
+    <li>Assumption: this feature does not need to touch the diff/blame code viewer (<code>web_src/js/modules/codeeditor/</code>).</li>
+    <li>PR #35529 is draft/unmerged prior art — treated as a design reference, not shipped functionality.</li>
+  </ul>
+
+  <h2 id="s14"><span class="secnum">14.</span> Risks &amp; Mitigations</h2>
+  <table class="data">
+    <tr><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td>Raw <code>localStorage</code> usage fails CI lint or is inconsistent with conventions.</td><td>Use <code>localUserSettings.getBoolean/setBoolean</code> instead.</td></tr>
+    <tr><td>Renaming <code>codecopy.ts</code>/<code>.css</code> breaks other import sites.</td><td>Grep all importers (<code>content.ts</code>, <code>mermaid.ts</code>) before rename; update both call sites in the same PR.</td></tr>
+    <tr><td>New button crowds the copy button on narrow/mobile viewports.</td><td>Follow PR #35529's flex-container pattern; verify via screenshot check.</td></tr>
+    <tr><td>Scope creep into the repo file-view/blame wrap control.</td><td>Explicitly out of scope this iteration; flagged as Open Question.</td></tr>
+    <tr><td>New locale string not yet translated in 25+ locale files.</td><td>Standard Crowdin sync post-merge; graceful English fallback.</td></tr>
+    <tr><td>Package registry container-digest block shows inconsistent UI (no toggle).</td><td>Documented as out-of-scope; candidate follow-up ticket.</td></tr>
+  </table>
+
+  <h2 id="s15"><span class="secnum">15.</span> Acceptance Criteria</h2>
+  <ul>
+    <li>Wrap-toggle button appears on every rendered Markdown code block inside <code>.markup</code> content without displacing the copy button.</li>
+    <li>Clicking the button toggles wrap/scroll display immediately, with no page reload.</li>
+    <li>Chosen mode persists after a full reload (validated via <code>localUserSettings</code>, key visible under <code>gitea:setting:</code> prefix).</li>
+    <li>Toggle button has a translatable, accessible label from <code>code_toggle_wrap</code>.</li>
+    <li>No raw <code>localStorage</code> calls introduced (ESLint passes).</li>
+    <li>Mermaid-rendered code fences continue to render zoom/reset controls correctly using the shared helper.</li>
+    <li><code>templates/devtest/markup-render.tmpl</code> still renders both static wrap states correctly.</li>
+    <li>Server-rendered HTML from the Go renderers is unchanged (confirmed via <code>markdown_test.go:611</code>).</li>
+  </ul>
+
+  <h2 id="s16"><span class="secnum">16.</span> Success Metrics (KPIs)</h2>
+  <ul>
+    <li>Adoption proxy: issue #35314 closed by a merged PR with no regressions reported within one release cycle.</li>
+    <li>Zero regressions in copy-button or Mermaid/KaTeX rendering.</li>
+    <li>CI health: passes <code>markdown_test.go</code>, new frontend tests, and ESLint.</li>
+    <li>i18n completeness: <code>code_toggle_wrap</code> flows through Crowdin without pipeline errors.</li>
+  </ul>
+
+  <h2 id="s18"><span class="secnum">18.</span> Open Questions</h2>
+  <ol>
+    <li>Should the Markdown wrap preference share state with the unrelated code/file view wrap control (<code>web_src/js/modules/codeeditor/main.ts</code>)? Treated as separate for now — needs maintainer sign-off.</li>
+    <li>Should the implementation use <code>localUserSettings</code> instead of PR #35529's raw <code>localStorage</code>? Recommended for convention compliance — confirm with eventual PR author/reviewers.</li>
+    <li>Is mixing icon families (Octicon copy + Material wrap-text) acceptable, or should an alternate icon be sourced?</li>
+    <li>Should the wrap preference be global/site-wide (assumed here) or per-code-block?</li>
+    <li>Should <code>templates/package/content/container.tmpl</code>'s hardcoded scroll block eventually get the same toggle?</li>
+    <li>No JIRA ticket exists yet — this PRD uses placeholder ID <code>PSMA-NEW</code>; rename all artifacts once a real ticket key is assigned.</li>
+  </ol>
+
+  <h2 id="s19"><span class="secnum">19.</span> Appendix / References</h2>
+  <ul>
+    <li>GitHub Issue: <a href="https://github.com/go-gitea/gitea/issues/35314" target="_blank">go-gitea/gitea#35314</a> — "Add 'Wrap text' button to inline code blocks"</li>
+    <li>Prior-art Draft PR: <a href="https://github.com/go-gitea/gitea/pull/35529" target="_blank">go-gitea/gitea#35529</a> — "Add markdown code block wrap toggle" (unmerged)</li>
+    <li><code>web_src/js/markup/codecopy.ts</code> — current copy-button implementation</li>
+    <li><code>web_src/js/markup/content.ts</code> — markup feature-init orchestrator</li>
+    <li><code>web_src/css/markup/content.css</code> (lines 377–392, 532) — existing wrap/scroll CSS</li>
+    <li><code>web_src/js/modules/user-settings.ts</code> — <code>localUserSettings</code> typed localStorage wrapper</li>
+    <li><code>docs/22-contributing-development/frontend-coding-conventions.md</code> — ESLint restricted-globals rule</li>
+    <li><code>modules/markup/markdown/markdown.go:91</code>, <code>modules/markup/markdown/goldmark.go:132</code> — server-side renderers</li>
+    <li><code>templates/devtest/markup-render.tmpl</code> — existing static demonstration of both wrap states</li>
+    <li><code>templates/package/content/container.tmpl:20</code> — additional out-of-scope consumer</li>
+  </ul>
+</main>
+
+</body>
+</html>

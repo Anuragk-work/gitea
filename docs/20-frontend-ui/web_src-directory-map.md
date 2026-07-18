@@ -1,0 +1,428 @@
+# `web_src/` Directory Map
+
+This page is a comprehensive, file-level reference for everything under `web_src/` — the source
+tree that [Vite compiles](../09-core-modules/frontend-build.md) into `public/assets/`. It
+complements [Frontend Features & the "Islands of Interactivity" Pattern](../09-core-modules/frontend-features.md)
+(which explains *how* these modules get wired up) by giving a directory-by-directory,
+representative-file-by-file index of *what lives where*. See
+[Go Templates & Views](go-templates.md) for the server-rendered HTML that these assets enhance.
+
+## Top-Level Layout
+
+```text
+web_src/
+├── js/            TypeScript + Vue sources (this page's main focus)
+├── css/           Plain CSS, consumed via Tailwind/PostCSS pipeline
+├── fomantic/      Prebuilt Fomantic UI theme sources (Less-based, built separately from Vite)
+└── svg/           Custom hand-authored SVG icon sources (merged with @primer/octicons)
+```
+
+Only `js/` and `css/` are inputs to the Vite build declared in `vite.config.ts`
+(`rolldownOptions.input`); `fomantic/` is compiled by Fomantic UI's own Gulp-based build tool
+(configured by `web_src/fomantic/semantic.json`, which points `base` at
+`node_modules/fomantic-ui` and restricts `components` to just the handful Gitea actually uses —
+currently `api` and `tab`, since Gitea's own `modules/fomantic/*.ts` reimplements `dropdown`,
+`modal`, `dimmer`, and `transition` natively) into `web_src/fomantic/build/`, whose output
+(`fomantic.js`, theme CSS) is then imported by `index.ts`/`index.css` like any other pre-built
+dependency; `svg/` is consumed by the `tools/generate-svg.ts` build script (see
+[SVG Icon System](#web_srcsvg-custom-icon-sources) below), not by Vite directly.
+
+## `web_src/js/` — TypeScript & Vue Source Tree
+
+```mermaid
+flowchart TD
+    subgraph Entry["Bundle entry points (top-level web_src/js/*.ts)"]
+        INDEX["index.ts<br/>(main bundle, every page)"]
+        IIFE["iife.ts<br/>(blocking IIFE, head-of-page)"]
+        SWAG["swagger.ts<br/>(API docs page)"]
+        ERF["external-render-frontend.ts<br/>(sandboxed render iframe)"]
+        ERH["external-render-helper.ts<br/>(IIFE helper for the iframe)"]
+        ESW["eventsource.sharedworker.ts<br/>(SharedWorker, SSE de-dup)"]
+    end
+    subgraph Shared["Shared top-level modules"]
+        UTILS["utils.ts"]
+        SVGTS["svg.ts"]
+        GLOBALS["globals.ts"]
+        TYPES["types.ts"]
+        BOOT["bootstrap.ts"]
+    end
+    subgraph Dirs["Subdirectories"]
+        COMPONENTS["components/ (Vue SFCs + islands helpers)"]
+        FEATURES["features/ (~70 init* modules)"]
+        MARKUP["markup/ (rendered-content enhancers)"]
+        MODULES["modules/ (cross-cutting infrastructure)"]
+        RENDER["render/ (external-viewer plugin system)"]
+        UTILDIR["utils/ (pure helper functions)"]
+        VENDOR["vendor/ (patched third-party snippets)"]
+        WEBCOMP["webcomponents/ (native Custom Elements)"]
+    end
+    INDEX --> FEATURES
+    INDEX --> MODULES
+    IIFE --> BOOT
+    IIFE --> GLOBALS
+    IIFE --> WEBCOMP
+    FEATURES --> COMPONENTS
+    FEATURES --> MARKUP
+    FEATURES --> UTILDIR
+    COMPONENTS --> SVGTS
+    MARKUP --> RENDER
+    ERF --> RENDER
+```
+
+### Top-level entry & shared files (`web_src/js/*.ts`)
+
+| File | Role |
+|---|---|
+| `index.ts` | The single main bundle loaded on every server-rendered page. Imports Fomantic UI's prebuilt JS (`../fomantic/build/fomantic.js`) and the aggregated `../css/index.css`, then imports and registers ~70 `init*` functions from `features/*.ts`/`modules/*.ts`, calling `callInitFunctions()` (`modules/init.ts`) followed by `initGlobalSelectorObserver()` (`modules/observer.ts`), and finally sets `window.config.frontendInited = true`. See [Frontend Features](../09-core-modules/frontend-features.md#1-global-init-functions-called-once-at-page-load). |
+| `iife.ts` | A tiny script built in IIFE format (not an ES module) by `vite.config.ts`'s custom `iifePlugin()`, so it can run synchronously from a blocking `<script>` tag in `<head>` before the DOM/module graph is ready. It imports (in this exact order, each with an inline comment explaining why) `bootstrap.ts` (global error handler, must be first), `globals.ts` (jQuery on `window`, "as early as possible" for custom user scripts), `webcomponents/index.ts` (custom element registration), and `modules/user-settings.ts` (so inline `<script>` blocks in templates can call `localUserSettings` immediately). |
+| `bootstrap.ts` | Imported first by `iife.ts`. Deliberately never imports `window.config` (a comment warns against it, since broken custom templates could break `window.config` itself) and instead installs a global `window.onerror`/`unhandledrejection`-backed error collector (`processWindowErrorEvent`, `showGlobalErrorMessage` from `modules/errors.ts`), replaying any errors that occurred before this module loaded (buffered on `window._globalHandlerErrors` by an inline `<script>` in the page `<head>`) so failures are visible instead of silently swallowed. |
+| `swagger.ts` | A separate Vite entry for the `/api/swagger` page. Imports `../css/swagger-standalone.css` and `render/swagger.ts`'s `initSwaggerUI()`, fetching the OpenAPI spec text and mounting `swagger-ui-dist`. Kept out of `index.ts` so the large `swagger-ui-dist` dependency is not shipped to every page. |
+| `external-render-frontend.ts` | The JS injected into the sandboxed `<iframe>` used to render externally-rendered content (rich file previews needing script isolation — 3D models, PDFs, asciicasts, embedded Swagger docs). Delegates to the `render/plugins/*` registry. |
+| `external-render-helper.ts` | A second IIFE-mode bundle (built the same way as `iife.ts`) that runs *inside* the sandboxed iframe itself, providing minimal helper glue before the full `external-render-frontend.ts` module graph loads. |
+| `eventsource.sharedworker.ts` | Built as a browser `SharedWorker` script. De-duplicates Server-Sent-Events connections used for notification-count polling across multiple open browser tabs of the same origin, so the backend only sees one `EventSource` connection per browser instance rather than one per tab. |
+| `globals.ts` | Assigns `window.$ = window.jQuery = jquery` — the only place jQuery is put on the global object (with an ESLint exception for `no-restricted-imports`), preserved for legacy inline `<script>` blocks and custom user plugins that expect global jQuery. |
+| `svg.ts` | The tree-shakeable, statically-imported icon module. Imports every SVG source file individually (`import octiconCheck from '../../public/assets/img/svg/octicon-check.svg'`, etc. — note the path resolves into the *build output*, letting Vite's asset pipeline inline/optimize each SVG), exposes `svg(name, size, classNames)` (returns an HTML string), `svgRaw()`, `svgParseOuterInner()`, and the Vue component `SvgIcon` (`defineComponent({name: 'SvgIcon', ...})`) used inside `.vue` templates as `<SvgIcon name="octicon-check"/>`. See [SVG Icon System](#svg-icon-system) below. |
+| `types.ts` | Shared ambient TypeScript types used across the codebase: `IntervalId`, `Intent`, `Mention`, `RequestData`/`RequestOpts` (used by `modules/fetch.ts`), `RepoOwnerPathInfo`, `IssuePathInfo`/`IssuePageInfo`, `Issue`, `FomanticInitFunction`, `GitRefType`, and the `Promisable<T>` utility type. |
+| `globals.d.ts` | Ambient *declaration-only* file (no runtime code) describing `window.config` (`pageData`, `frontendInited`, `csrfToken`, etc.) so every feature module gets type-checked access to server-injected page data without importing anything. |
+| `svg.test.ts`, `utils.test.ts`, `external-render-helper.test.ts` | Vitest unit tests colocated with their source file (see [Testing & Quality](../21-testing-quality/README.md)). |
+| `vitest.setup.ts` | Global Vitest setup (registers `happy-dom` globals, silences expected console noise) loaded by `vitest.config.ts` for every test file. |
+| `utils.ts` | General-purpose helpers used everywhere: DOM-agnostic string/array/object utilities, `parseDom`/`serializeXml` (used by `svg.ts` to manipulate parsed SVG markup), URL/query helpers not specific enough to live in `utils/url.ts`. |
+
+### `web_src/js/components/` — Vue Single-File Components
+
+Every `.vue` file here is a self-contained Vue 3 SFC (Options or Composition API, per-component)
+mounted as an independent app instance onto a single placeholder element by a `features/*.ts`
+module — never as part of one page-wide Vue tree (see
+[Islands of Interactivity](../09-core-modules/frontend-features.md#3-vue-components-mounted-onto-specific-elements-islands)).
+A handful of `.ts` files alongside the `.vue` files are non-Vue helpers used by their
+same-named component.
+
+| File | Mounted by / used for |
+|---|---|
+| `ActivityHeatmap.vue` | `features/heatmap.ts` — the contribution/activity heatmap on user/repo dashboards. |
+| `ContextPopup.vue` | `features/ref-issue.ts` — the hover popup showing issue/PR summary when hovering a `#123` reference. |
+| `DashboardRepoList.vue` | `features/dashboard.ts` — the repo list widget on the user/org dashboard (search, filter, sort). |
+| `DiffCommitSelector.vue` | `features/repo-diff-commitselect.ts` — the commit-range dropdown on PR/compare diff views. |
+| `DiffFileTree.vue` / `DiffFileTreeItem.vue` | `features/repo-diff-filetree.ts` — the collapsible changed-files sidebar tree on diff views. |
+| `PullRequestMergeForm.vue` | `features/repo-issue-pull.ts` — the PR merge box (merge-style choice, auto-merge, delete-branch-after-merge). |
+| `RepoActivityTopAuthors.vue` | Repo "Activity" page — top-contributors chart (`vue-chartjs`). |
+| `RepoBranchTagSelector.vue` | Branch/tag dropdown used on the repo code browser and elsewhere refs need picking. |
+| `RepoCodeFrequency.vue` | `features/code-frequency.ts` — code-frequency chart on the repo Activity page. |
+| `RepoContributors.vue` | `features/contributors.ts` — contributors graph on the repo Activity page. |
+| `RepoFileSearch.vue` | `features/repo-findfile.ts` — the fuzzy "Go to file" finder modal. |
+| `RepoRecentCommits.vue` | `features/recent-commits.ts` — recent-commits sparkline on the Activity page. |
+| `ViewFileTree.vue` / `ViewFileTreeItem.vue` / `ViewFileTreeStore.ts` | `features/repo-view-file-tree.ts` — the sidebar file tree on repo code/blob pages; `ViewFileTreeStore.ts` is a plain reactive store (not a component) shared by the tree items. |
+| `WorkflowGraph.vue` / `WorkflowGraph.utils.ts` (+ `.test.ts`) | Actions run view — renders the job-dependency graph for a workflow run; `.utils.ts` holds the pure graph-layout math, unit-tested separately from the Vue rendering. |
+| `ActionRunJobView.vue` / `ActionRunSummaryView.vue` | Actions run detail page — per-job log viewer and the overall run summary panel. |
+| `ActionStatusIcon.vue` | Small colored status-icon component reused across Actions UI (queued/running/success/failure). |
+| `ActionRunArtifacts.ts` / `ActionRunView.ts` | Non-Vue TypeScript helpers for the Actions run page (artifact list fetch/download wiring, top-level view bootstrapping that mounts the `.vue` components above). |
+
+### `web_src/js/features/` — Progressive-Enhancement Init Modules
+
+~70 modules, one `init*` (or several) exported function(s) per file, each responsible for
+finding its own root element via `document.querySelector` and no-op'ing if absent — see
+[Frontend Features](../09-core-modules/frontend-features.md#feature-module-catalog-web_srcjsfeaturests)
+for the full catalog grouped by area (repo code/diff/issue/PR, org/admin/user settings, install
+wizard, notifications, etc.). Two notable non-`.ts` artifacts live alongside the modules:
+
+| Item | Role |
+|---|---|
+| `features/comp/` | Small shared building blocks used by *multiple* feature modules (e.g. reusable combo-box/dropdown wiring) that don't warrant their own top-level `modules/` entry. |
+| `features/admin/` | Admin-panel-specific feature modules (config editing, cron task triggers, etc.), split out because they only load on `/-/admin/*` pages. |
+| `repo-issue-sidebar.md` | A design-rationale note (not code) explaining why the issue/PR sidebar's label/assignee/milestone pickers were rewritten as vanilla combo-lists (`repo-issue-sidebar-combolist.ts`) instead of Fomantic dropdowns or Vue components. |
+
+### `web_src/js/markup/` — Rendered-Content Enhancers
+
+These modules progressively enhance **already server-rendered** Markdown/AsciiDoc/reStructuredText
+HTML output (produced server-side by `modules/markup` + `services/markup`, see
+[Markup Rendering Engines](../09-core-modules/markup-engines.md)) — they never render markup
+from scratch client-side; they only attach behavior to the resulting static HTML.
+
+| File | Role |
+|---|---|
+| `content.ts` | Entry point called once per rendered-content container (`initMarkupContent()`); dispatches to the other modules below (math, mermaid, anchors, code-copy, task lists) based on what's present in the container. |
+| `anchors.ts` | Adds clickable `#`-permalink anchors next to rendered headings (mirrors GitHub's heading-link UX), computing slugs consistent with the server-side heading-ID generator. |
+| `codecopy.ts` | Adds a "copy" button overlay to rendered `<pre><code>` blocks. |
+| `tasklist.ts` (+ `.test.ts`) | Makes rendered Markdown task-list checkboxes (`- [ ] foo`) interactive, `PATCH`-ing the source file/comment body via the API when checked/unchecked (only where the user has edit permission — the server still authoritatively validates). |
+| `math.ts` | Client-side KaTeX rendering of `$...$` / `$$...$$` math blocks emitted by the server as `<span class="math">` placeholders (server does not render LaTeX to avoid a heavy dependency in the Go binary). |
+| `mermaid.ts` (+ `.test.ts`) | Client-side Mermaid.js rendering of ` ```mermaid ` code fences into diagrams, with pan/zoom controls and a loading spinner; uses `@mermaid-js/layout-elk` for ELK-based diagram layout. |
+| `html2markdown.ts` (+ `.test.ts`) | Converts pasted rich-text/HTML clipboard content back into Markdown source (used by `@github/paste-markdown` integration in the comment editor) so pasting from a web page doesn't inject raw HTML into a Markdown textarea. |
+| `render-iframe.ts` (+ `.test.ts`) | Builds/manages the sandboxed `<iframe>` (`sandbox="allow-scripts"`, no `allow-same-origin`) that `external-render-frontend.ts` runs inside, used for externally-rendered content that needs script execution (3D model viewer, PDF viewer, asciicast player) isolated from the parent page's cookies/CSRF token. |
+| `common.ts` | Small shared constants/helpers used by more than one of the above (e.g. the CSS selector used to find "already rendered, not yet enhanced" markup containers, guarded with a `data-*` marker attribute to avoid double-processing on AJAX partial reloads). |
+
+### `web_src/js/modules/` — Cross-Cutting Infrastructure
+
+Framework-agnostic building blocks consumed by many `features/*` and `components/*` modules —
+none of these are page-specific; they are the "standard library" of Gitea's frontend.
+
+| File / dir | Role |
+|---|---|
+| `init.ts` | `callInitFunctions()` and `InitPerformanceTracer` — runs the array of `init*` functions passed from `index.ts`, times each one, and exposes the slowest 20 via `?_ui_performance_trace=1`. |
+| `observer.ts` | `registerGlobalInitFunc` / `registerGlobalSelectorFunc` / `registerGlobalEventFunc` / `initGlobalSelectorObserver` — the `data-global-init`/`data-global-click` `MutationObserver`-backed dispatch registry described in [Frontend Features](../09-core-modules/frontend-features.md#2-declarative-data-global-init--data-global-click-attributes). |
+| `fetch.ts` | Thin `fetch()` wrapper (`GET`/`POST`/`PATCH`/`DELETE`/etc.) that automatically attaches Gitea's CSRF token header and JSON-encodes `RequestData` (`types.ts`); used by nearly every feature that talks to the backend API. |
+| `fomantic.ts` + `fomantic/` (subdir) | `fomantic.ts` is the aggregator that re-exports the native TypeScript reimplementations under `fomantic/` of Fomantic UI's `dropdown`, `modal`, `dimmer`, `tab`, and `transition` widgets — replacing the original jQuery-based Fomantic JS behaviors for these specific components while keeping the CSS. `fomantic/aria.md` documents the accessibility rationale for the rewrite. |
+| `tippy.ts` | Centralized `tippy.js` tooltip/popover factory (`initGlobalTooltips()`), shared default styling/positioning/theme options so every tooltip in the app looks consistent. |
+| `shortcut.ts` | Global keyboard-shortcut registry (`initGlobalShortcut()`) — e.g. `g` `h` navigates home, `/` focuses search. |
+| `toast.ts` (+ `.test.ts`) | Toast/flash notification helper wrapping `toastify-js`, used for transient success/error messages after AJAX actions. |
+| `errors.ts` (+ `.test.ts`) | `errorMessage()` — consistent error formatting/logging used in most `catch` blocks across feature modules; also backs the global `window.onerror` handler wired up in `bootstrap.ts`. |
+| `user-settings.ts` | `localUserSettings` — a typed `localStorage` wrapper for client-only preferences (citation format choice, remembered UI toggles) that don't need a server round-trip. |
+| `clipboard.ts` | Generic "copy to clipboard" helper (feature-detects the Clipboard API, falls back to a hidden-textarea `execCommand` shim) backing both `features/copycontent.ts` and `markup/codecopy.ts`. |
+| `sortable.ts` | Thin wrapper around `sortablejs` used for drag-to-reorder lists (label ordering, milestone ordering, etc.). |
+| `search.ts` | Debounced search-input wiring shared by several list/filter pages. |
+| `worker.ts` | Helpers for spawning/communicating with dedicated Web Workers (distinct from the `SharedWorker` in `eventsource.sharedworker.ts`). |
+| `gitea-actions.ts` | Shared helpers specific to the Actions/CI UI (status label formatting, log-line utilities) used by both `features/repo-actions.ts` and the `components/ActionRun*` Vue components. |
+| `favicon-status.ts` (+ `.test.ts`) | Dynamically swaps the browser tab's `<link rel="icon">` to reflect the current Actions run's CI status (success/failure/running), so a background tab shows build status at a glance. |
+| `action-status-icon.ts` (+ `.test.ts`) | Non-Vue counterpart to `components/ActionStatusIcon.vue` — maps a status string to an icon name/class for use outside Vue-rendered contexts. |
+| `diff-file.ts` (+ `.test.ts`) | Shared per-file diff state helpers (expand/collapse, viewed-state) used by `features/repo-diff.ts` and `features/pull-view-file.ts`. |
+| `i18n.ts` (+ `.test.ts`) | Minimal client-side i18n string lookup for the handful of strings that must be formatted in JS (falls back to server-rendered `data-locale-*` attributes for everything else — Gitea does not ship a full client-side translation catalog). |
+| `devtest.ts` | Powers the internal `/-/devtest` component gallery page (`templates/devtest/`, Vite's `devtest` CSS entry) used to visually inspect UI components/themes in isolation during development. |
+| `codeeditor/` | Shared CodeMirror 6 setup (language packs, themes, keymaps, lint integration) reused by both the full-page repo file editor (`features/repo-editor.ts`) and the Markdown/comment editor's code-block mode. |
+
+### `web_src/js/render/` — External Content Viewer Plugin System
+
+Backs the sandboxed `<iframe>` rendering path (`markup/render-iframe.ts` +
+`external-render-frontend.ts`) with a small plugin registry for content types that need a real
+browser rendering context rather than server-generated HTML.
+
+| File | Role |
+|---|---|
+| `plugin.ts` | Defines the plugin interface/registry that `external-render-frontend.ts` iterates over to find a handler for the iframe's requested content type. |
+| `ansi.ts` (+ `.test.ts`) | ANSI-escape-code-to-HTML renderer (via `ansi_up`) for colorized log/text file previews. |
+| `swagger.ts` | `initSwaggerUI()` — mounts `swagger-ui-dist` against a given OpenAPI spec string; shared by both `swagger.ts` (top-level, the standalone `/api/swagger` page) and `render/plugins/frontend-openapi-swagger.ts` (embedded OpenAPI file preview inside a repo). |
+| `plugins/frontend-asciicast.ts` | Renders `.cast` files with `asciinema-player`. |
+| `plugins/frontend-openapi-swagger.ts` | Renders `.yaml`/`.json` OpenAPI spec files found in a repo using the shared `render/swagger.ts` mounting logic. |
+| `plugins/frontend-viewer-3d.ts` | Renders 3D model files (`.glb`/`.gltf`/etc.) using `online-3d-viewer`. |
+| `plugins/inplace-pdf-viewer.ts` | Renders `.pdf` files in-browser using `pdfobject`. |
+
+### `web_src/js/utils/` — Pure Helper Functions
+
+Small, dependency-light, individually unit-tested (`*.test.ts` sibling for every file) pure
+functions — deliberately kept free of DOM/Vue/fetch dependencies so they're trivially testable
+and tree-shakeable.
+
+| File | Role |
+|---|---|
+| `dom.ts` | DOM query/manipulation helpers not tied to any specific feature (class toggling, `data-*` attribute parsing helpers, focus-trap utilities). |
+| `html.ts` | `html`/`htmlRaw` tagged-template helpers for building small HTML strings safely (auto-escaping interpolated values), used by `svg.ts` and elsewhere instead of raw string concatenation. |
+| `url.ts` | URL/query-string parsing and building helpers. |
+| `time.ts` | Date/time formatting helpers layered on `dayjs` (relative-time strings, duration formatting) shared by `webcomponents/relative-time.ts` and Actions run-duration displays. |
+| `string.ts` | Tiny string utilities (e.g. truncation, case conversion) too generic to belong in a feature file. |
+| `color.ts` | Color parsing/contrast helpers (via `colord`) used for label-color picking (`features/colorpicker.ts`) and ensuring readable text-on-label contrast. |
+| `image.ts` | Image-loading/dimension helpers used by the image-diff viewer (`features/imagediff.ts`) and avatar-crop flows (`cropperjs` integration). |
+| `glob.ts` | A minimal glob-pattern matcher (mirrors a subset of `.gitignore`-style globbing) used client-side for things like file-tree filtering; `glob.test.txt` is fixture data for its test suite. |
+| `match.ts` | Fuzzy string matching/scoring (powers the "Go to file" finder in `RepoFileSearch.vue` and similar quick-filter UIs). |
+| `testhelper.ts` | Shared Vitest test utilities (DOM fixture builders, mock helpers) imported only from `*.test.ts` files, not shipped in production bundles. |
+
+### `web_src/js/vendor/` — Patched Third-Party Snippets
+
+| File | Role |
+|---|---|
+| `jquery.are-you-sure.ts` | An in-repo, TypeScript-ported/patched copy of the `jquery.are-you-sure` plugin (unsaved-form-changes confirmation dialog), kept here because upstream is unmaintained and Gitea needs small behavior fixes that can't wait on an upstream release. |
+
+### `web_src/js/webcomponents/` — Native Custom Elements
+
+Unlike `components/*.vue` (mounted imperatively by feature modules), these are true browser
+[Custom Elements](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) registered
+once via `customElements.define(...)` and then usable directly as HTML tags from Go templates
+with zero JS glue per usage — see `webcomponents/README.md` for the design rationale on why
+these specific widgets use Custom Elements instead of Vue.
+
+| File | Role |
+|---|---|
+| `index.ts` | Registers all custom elements (imports and calls `customElements.define()` for each) and is imported once from `index.ts`; also the file referenced by `vite.config.ts`'s `webComponents` allowlist (`overflow-menu`, `relative-time`) so `@vitejs/plugin-vue` doesn't try to compile these tags as Vue components. |
+| `relative-time.ts` (+ `.test.ts`) | `<relative-time>` — renders a live-updating "3 hours ago"-style string from a `datetime` attribute, re-rendering on an interval and respecting the user's locale/timezone settings; layers on `utils/time.ts`. |
+| `overflow-menu.ts` | `<overflow-menu>` — a responsive toolbar that automatically collapses overflowing child buttons/links into a "more" dropdown as the container shrinks, used in repo/issue action bars. |
+| `polyfills.ts` (+ `polyfill.test.ts`) | Feature-detects and conditionally loads polyfills for Custom Elements APIs (e.g. `ElementInternals`) needed by older but still-supported browsers. |
+| `README.md` | Design note explaining when to reach for a native Custom Element here versus a Vue SFC in `components/` — the two mounting mechanisms are intentionally kept separate. |
+
+## `web_src/css/` — Stylesheets
+
+| Path | Role |
+|---|---|
+| `index.css` | The main aggregator `@import`ed by `index.ts`; pulls in Fomantic UI's prebuilt CSS, `base.css`, and every other top-level `*.css` file below in a fixed order. Processed through Tailwind/PostCSS per `vite.config.ts`'s `css.postcss.plugins`. |
+| `base.css` | Global resets, typography, color-variable definitions, and the largest single non-repo stylesheet. |
+| `repo.css` | Repository-page-specific styles (by far the largest CSS file — code browser, diffs, issue/PR layout). |
+| `admin.css`, `dashboard.css`, `explore.css`, `home.css`, `install.css`, `org.css`, `review.css`, `user.css`, `actions.css`, `avatar.css`, `easymde.css`, `helpers.css`, `font_i18n.css` | Page/feature-scoped stylesheets, each imported by `index.css`. |
+| `devtest.css` | A separate Vite build entry (see `vite.config.ts` `rolldownOptions.input.devtest`) powering the `/-/devtest` component gallery, kept out of the main bundle. |
+| `swagger-render.css` / `swagger-standalone.css` | Styles for embedded vs. standalone Swagger UI rendering, split so the embedded (in-repo file preview) variant doesn't pull in full-page chrome styles. |
+| `themes/*.css` | One file per selectable theme (`theme-gitea-light.css`, `theme-gitea-dark.css`, `theme-*-auto.css`, colorblind variants); each is dynamically discovered via `globSync` in `vite.config.ts` and registered as its own Vite build entry so a theme switch only needs to swap one small stylesheet, not rebuild the whole bundle. |
+| `editor/`, `features/`, `markup/`, `modules/`, `repo/`, `shared/` | Subdirectories holding further-scoped partial stylesheets `@import`ed by the top-level files above, mirroring the `js/features/`, `js/markup/`, `js/modules/` split so JS and CSS for a given feature area stay easy to locate side by side. |
+
+## `web_src/fomantic/` — Prebuilt Theme Sources
+
+| Path | Role |
+|---|---|
+| `semantic.json` | Fomantic UI's build configuration (which components to include, output paths) — Gitea ships a **trimmed** Fomantic build containing only the components actually used, not the full upstream library. |
+| `theme.config.less` | Selects/overrides the Less theme variables (colors, fonts, spacing) used when Fomantic's own Gulp-based build compiles its components. |
+| `build/` | Output directory for Fomantic's own compiled CSS/JS (git-ignored except for what's checked in), consumed by `index.css`/`index.ts` via plain `@import`/`import` — Vite never recompiles Fomantic itself, only bundles its already-built output alongside everything else. |
+| `_site/` | Fomantic's internal Gulp build workspace/cache directory. |
+
+## `web_src/svg/` — Custom Icon Sources
+
+Custom, hand-authored SVG icon sources that are **not** part of the `@primer/octicons` package
+(which supplies the bulk of Gitea's `octicon-*` icons via `node_modules`). `tools/generate-svg.ts`
+(`make svg`) globs three separate source sets — `web_src/svg/*.svg` (this directory, no prefix),
+`node_modules/@primer/octicons/build/svg/*-16.svg` (prefixed `octicon-`, with the `-16` size
+suffix stripped from the name), and `public/assets/img/gitea.svg` (renamed to `gitea-gitea.svg`)
+— and runs each through the same `svgo`-based optimization pass (strips default `preset-default`
+noise, removes explicit width/height in favor of `viewBox`, injects `xmlns`, `aria-hidden="true"`,
+a `class="svg <name>"` attribute, and prefixes internal element IDs with the icon name to avoid
+collisions when multiple inline SVGs share a page), writing every result into the single flat
+output directory `public/assets/img/svg/*.svg` — the directory that both `modules/svg` (Go,
+server-side inline `svg` template func) and `web_src/js/svg.ts` (TypeScript, per-icon static
+imports) read from. The same script also processes `node_modules/material-icon-theme/icons/*.svg`
+into `options/fileicon/material-icon-svgs.json` (used by `modules/fileicon`) — a related but
+separate output, kept as an inline JSON symbol map rather than individual files since file-icons
+are looked up by filename/extension rules rather than by a fixed icon name. See
+[SVG Icon System](#svg-icon-system) below for the full pipeline.
+
+Representative files:
+
+| File | Role |
+|---|---|
+| `gitea-*.svg` (e.g. `gitea-git.svg`, `gitea-lock.svg`, `gitea-whitespace.svg`, `gitea-split.svg`, `gitea-double-chevron-left.svg`) | Gitea-specific glyphs with no Octicon equivalent (diff view modes, auth-source provider logos like `gitea-gitlab.svg`/`gitea-bitbucket.svg`/`gitea-discord.svg`, package-ecosystem logos like `gitea-npm.svg`/`gitea-cargo.svg`/`gitea-maven.svg`). |
+| `gitea-colorblind-redgreen.svg` / `gitea-colorblind-blueyellow.svg` | Icons for the colorblind-friendly diff/label-color accessibility settings. |
+| `material-*.svg` (e.g. `material-folder-generic.svg`, `material-folder-symlink.svg`, `material-palette.svg`, `material-invert-colors.svg`) | Material-Design-style icons used for file-tree folder icons (`modules/fileicon`) and theme-related UI controls. |
+| `fontawesome-*.svg` (e.g. `fontawesome-openid.svg`, `fontawesome-save.svg`, `fontawesome-send.svg`, `fontawesome-windows.svg`) | A handful of Font Awesome icons kept as static SVG sources (predates full migration to Octicons for these specific glyphs). |
+
+## SVG Icon System
+
+The SVG pipeline spans build tooling, Go backend, and frontend, converging on one canonical
+asset directory:
+
+```mermaid
+flowchart LR
+    subgraph Sources["Icon Sources"]
+        OCT["node_modules/@primer/octicons<br/>(bulk of octicon-* icons)"]
+        CUSTOM["web_src/svg/*.svg<br/>(gitea-*, material-*, fontawesome-*)"]
+    end
+    GEN["tools/generate-svg.ts<br/>(make svg / svg-check)"]
+    OUT["public/assets/img/svg/*.svg<br/>(normalized: viewBox, width=16, height=16, class)"]
+    OCT --> GEN
+    CUSTOM --> GEN
+    GEN --> OUT
+
+    OUT -->|"AssetFS().ReadFile at startup"| GOSVG["modules/svg (Go)<br/>svg.Init() populates svgIcons map"]
+    GOSVG -->|"{{svg \"octicon-check\" 16 \"class\"}}"| TMPL["templates/**/*.tmpl<br/>(server-rendered inline <svg>)"]
+
+    OUT -->|"per-icon static import"| JSSVG["web_src/js/svg.ts<br/>(tree-shakeable, one import per icon)"]
+    JSSVG -->|"svg(name, size, class) / &lt;SvgIcon name=.../&gt;"| VUEJS["Vue components & feature modules"]
+```
+
+* **Build time** — `tools/generate-svg.ts` (invoked by `make svg`; verified in CI/pre-commit by
+  `make svg-check`, which regenerates, `git add`s, and diffs the result) combines `@primer/octicons`,
+  the custom sources in `web_src/svg/`, and `public/assets/img/gitea.svg`, running each through
+  `svgo` to normalize `viewBox`/`aria-hidden`/`class` attributes and strip redundant
+  width/height so they all behave predictably regardless of source, then writes every result
+  into the single flat `public/assets/img/svg/` directory. The same script separately converts
+  `material-icon-theme`'s file-type icons into `options/fileicon/material-icon-svgs.json` and
+  `options/fileicon/material-icon-rules.json` (name/extension → icon lookup rules), consumed by
+  `modules/fileicon` rather than by `modules/svg`/`svg.ts`.
+* **Go/server side** (`modules/svg/svg.go`) — `svg.Init()` runs at startup, lists every `.svg`
+  file under `assets/img/svg` via the layered `public.AssetFS()`, reads and `Normalize()`s each
+  one into an in-memory `svgIcons map[string]svgIconItem`. `svg.RenderHTML(icon, size, class)`
+  (exposed to templates as the `svg` func, see [Go Templates](go-templates.md)) looks up the
+  icon, does a string-replace for non-default size/class combinations, and caches up to 10,000
+  distinct `(icon, size, class)` render results in a `sync.Map` to avoid repeated string
+  manipulation on hot template paths. `MockIcon()` lets Go tests substitute a dummy icon without
+  needing the real asset files present. A missing icon renders a visible `<span>name(size/class)</span>`
+  placeholder instead of failing, so a typo'd icon name degrades gracefully rather than 500ing.
+* **Frontend/TypeScript side** (`web_src/js/svg.ts`) — rather than a runtime lookup table, every
+  icon actually used in `.vue`/`.ts` code is a **named static import** from the same
+  `public/assets/img/svg/*.svg` output directory. This lets Vite's bundler tree-shake unused
+  icons out of the final JS bundle entirely (only icons an entry point actually imports end up
+  in that entry's chunk) at the cost of needing an explicit `import` line per icon used from JS —
+  this is the rationale behind the `frontend-features.md` note that small components must "not
+  import the non-tree-shakeable `svg.ts`" module wholesale if they only need one or two icons.
+  `svg(name, size, classNames)` returns a plain HTML string (for use in non-Vue contexts like
+  `markup/*.ts` or `modules/*.ts`), `svgRaw()` returns the raw markup for direct injection, and
+  the `SvgIcon` Vue component (`defineComponent({name: 'SvgIcon', props: {name, size, className}})`)
+  is the idiomatic way to render an icon inside a `.vue` template.
+* Both the Go and TypeScript consumers read from the **same** generated `public/assets/img/svg/`
+  directory, so an icon added to `web_src/svg/` (or upgraded in `@primer/octicons`) becomes
+  available to both server-rendered templates and client-side Vue components after a single
+  `make svg` regeneration — there is no separate icon set to keep in sync.
+
+## Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)
+
+The end-to-end path from source files in this directory to what a browser actually loads is
+fully documented in [Frontend Build Pipeline](../09-core-modules/frontend-build.md); the diagram
+below is a `web_src/`-centric summary of that same pipeline, showing exactly which subdirectory
+feeds which build step.
+
+```mermaid
+flowchart LR
+    subgraph WebSrc["web_src/ (this page)"]
+        JS["js/**/*.ts, *.vue<br/>(index.ts, iife.ts, swagger.ts,<br/>eventsource.sharedworker.ts,<br/>external-render-frontend.ts)"]
+        CSS["css/**/*.css<br/>(index.css + themes/*.css)"]
+        FOM["fomantic/ → prebuilt CSS/JS<br/>(own Gulp build, @imported by index)"]
+        SVG["svg/*.svg<br/>(merged with @primer/octicons)"]
+    end
+
+    GENSVG["tools/generate-svg.ts<br/>(make svg)"] 
+    SVG --> GENSVG
+    GENSVG --> SVGOUT["public/assets/img/svg/*.svg"]
+
+    subgraph ViteBuild["Vite build (vite.config.ts)"]
+        ESBUILD["esbuild<br/>(TS transpilation, dep pre-bundling)"]
+        ROLLDOWN["Rolldown/oxc<br/>(bundling + minification)"]
+        VUEPLUGIN["@vitejs/plugin-vue<br/>(.vue SFC compilation)"]
+        POSTCSS["PostCSS + tailwindcss<br/>(css transform)"]
+    end
+
+    JS --> ESBUILD --> ROLLDOWN
+    JS -.vue files.-> VUEPLUGIN --> ROLLDOWN
+    CSS --> POSTCSS --> ROLLDOWN
+    FOM -.plain import, not recompiled.-> ROLLDOWN
+    SVGOUT -.per-icon static import via svg.ts.-> ESBUILD
+
+    ROLLDOWN --> MANIFEST["public/assets/.vite/manifest.json"]
+    ROLLDOWN --> ASSETS["public/assets/{js,css,fonts}/*.[hash].*"]
+
+    subgraph GoServe["Go serving layer"]
+        DYN["modules/public/public_dynamic.go<br/>(assetfs.Local, default dev/source build)"]
+        BIN["modules/public/public_bindata.go<br/>(assetfs.Bindata, //go:build bindata)"]
+    end
+    ASSETS --> DYN
+    ASSETS -->|"make generate-bindata"| BIN
+
+    subgraph Templates["Go html/template layer"]
+        TMPL["templates/**/*.tmpl<br/>resolves hashed filenames via manifest.json<br/>+ inlines SVGs via {{svg ...}}"]
+    end
+    MANIFEST --> TMPL
+    SVGOUT -->|"modules/svg reads at startup"| TMPL
+    DYN --> BROWSER["Browser"]
+    BIN --> BROWSER
+    TMPL --> BROWSER
+```
+
+Key points this diagram makes explicit that the more detailed
+[Frontend Build Pipeline](../09-core-modules/frontend-build.md) page covers in prose:
+
+1. **Two independent build tools feed the same output directory.** `tools/generate-svg.ts`
+   (icon normalization) and the main Vite build both write into `public/assets/`, but on
+   different schedules — SVGs are regenerated by `make svg` (occasionally, when icons change),
+   while the JS/CSS bundle is rebuilt by `make frontend`/`make watch-frontend` on every source
+   change. `svg-check` in CI ensures the checked-in `public/assets/img/svg/` output stays in
+   sync with `web_src/svg/` + the pinned `@primer/octicons` version.
+2. **Fomantic UI is a separate, pre-built dependency**, not compiled by Vite — `web_src/fomantic/`
+   sources are built by Fomantic's own Gulp toolchain into `web_src/fomantic/build/`, and only
+   the *result* is `@import`ed/imported by `index.css`/`index.ts` like any other npm package.
+3. **The Go template layer is the only consumer that ties JS/CSS and SVG output back together**:
+   `modules/templates` resolves hashed asset filenames via `manifest.json` for `<script>`/`<link>`
+   tags, while `modules/svg` independently reads the same `public/assets/img/svg/` directory to
+   inline icons directly into the HTML response — two separate consumption paths into one shared
+   output directory.
+
+## See Also
+
+* [Frontend Build Pipeline](../09-core-modules/frontend-build.md) — full detail on `vite.config.ts`,
+  entry points, sourcemap strategy, IIFE builds, and the Go-side bindata/dynamic asset serving
+  split.
+* [Frontend Features & the "Islands of Interactivity" Pattern](../09-core-modules/frontend-features.md) —
+  the init-function/observer/Vue-mount architecture that consumes everything catalogued on this
+  page.
+* [Go Templates & Views](go-templates.md) — the server-rendered HTML that `web_src/js/` enhances,
+  and the `svg` template function that inlines icons server-side.
+* [Markup Rendering Engines](../09-core-modules/markup-engines.md) — the Go-side Markdown/AsciiDoc
+  rendering that `web_src/js/markup/*` progressively enhances client-side.

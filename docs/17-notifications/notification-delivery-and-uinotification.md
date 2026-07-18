@@ -1,0 +1,326 @@
+# Notification Delivery & UI Notifications
+
+This page documents Gitea's notification **fan-out**: how a single domain event — a new issue
+comment, a pull request review, a `@mention`, an assignment, a merge — becomes an in-app
+notification-inbox entry, a live "bell icon" badge update, an outgoing e-mail, an outgoing
+webhook, and (where relevant) a Gitea Actions workflow trigger, all from one call site in the
+business-logic layer.
+
+> For the exhaustive reference (full `Notifier` interface listing, every registered notifier,
+> webhook data model, and Actions trigger guard logic) see
+> [Notifications, Mailer & Webhooks](../09-core-modules/notify-mailer-webhook.md) under
+> **09 · Core Modules**. This page focuses specifically on **what triggers a fan-out** and
+> **how the in-app notification/UI path works end-to-end**; see
+> [Email Notification Templates](email-notification-templates.md) for the mailer/template side.
+
+## 1. The single abstraction: `notify.Notifier`
+
+Every domain event that should notify *anyone* — by any channel — flows through one interface,
+`notify.Notifier`, defined in `services/notify/notifier.go`. Business-logic packages
+(`services/issue`, `services/pull`, `services/repository`, ...) never talk to the mailer,
+webhook system, or notification inbox directly; they call one function in
+`services/notify/notify.go`, e.g. `notify.CreateIssueComment(...)`, immediately after the
+triggering database transaction commits. That function loops over every **registered**
+notifier and invokes the matching method on each:
+
+```go
+// services/notify/notify.go
+func CreateIssueComment(ctx context.Context, doer *user_model.User, repo *repo_model.Repository,
+	issue *issues_model.Issue, comment *issues_model.Comment, mentions []*user_model.User,
+) {
+	if !shouldSendCommentChangeNotification(ctx, comment) {
+		return
+	}
+	for _, notifier := range notifiers {
+		notifier.CreateIssueComment(ctx, doer, repo, issue, comment, mentions)
+	}
+}
+```
+
+Registered notifiers (relevant to this page) include:
+
+| Notifier | Package | Channel produced |
+|----------|---------|-------------------|
+| `mailNotifier` | `services/mailer` | Outgoing e-mail (see [Email Notification Templates](email-notification-templates.md)) |
+| `notificationService` | `services/uinotification` | Rows in the `notification` table → notification inbox / bell badge |
+| `webhookNotifier` | `services/webhook` | Outgoing HTTP webhook deliveries (Slack, Discord, generic JSON, ...) |
+| `actionsNotifier` | `services/actions` | Detects & schedules matching Gitea Actions workflow runs |
+| `feed.Notifier` | `services/feed` | Activity/feed timeline rows |
+
+Each notifier is independent: a slow SMTP server does not block webhook delivery, and a failing
+webhook does not prevent the in-app notification row from being written. Every consumer owns
+its own error handling and (where relevant) its own background queue.
+
+## 2. Three concrete triggering events
+
+### a) New issue comment
+
+`services/issue/comments.go`, function `CreateIssueComment`:
+
+```go
+comment, err := issues_model.CreateComment(ctx, &issues_model.CreateCommentOptions{
+	Type: issues_model.CommentTypeComment, Doer: doer, Repo: repo, Issue: issue,
+	Content: content, Attachments: attachments,
+})
+...
+mentions, err := issues_model.FindAndUpdateIssueMentions(ctx, issue, doer, comment.Content)
+...
+notify_service.CreateIssueComment(ctx, doer, repo, issue, comment, mentions)
+```
+
+This is the canonical entry point: persist the comment row, resolve `@mentions` out of its
+Markdown body, then fan out. `notify.CreateIssueComment` first checks
+`shouldSendCommentChangeNotification` (skips no-op edits/certain system comment types), then
+calls every notifier's `CreateIssueComment` method.
+
+### b) Pull request review
+
+`services/pull/review.go`, function `SubmitReview`:
+
+```go
+review, comm, err := issues_model.SubmitReview(ctx, doer, issue, reviewType, content, commitID, stale, attachmentUUIDs)
+...
+mentions, err := issues_model.FindAndUpdateIssueMentions(ctx, issue, doer, comm.Content)
+...
+notify_service.PullRequestReview(ctx, pr, review, comm, mentions)
+
+for _, lines := range review.CodeComments {
+	for _, comments := range lines {
+		for _, codeComment := range comments {
+			mentions, _ := issues_model.FindAndUpdateIssueMentions(ctx, issue, doer, codeComment.Content)
+			notify_service.PullRequestCodeComment(ctx, pr, codeComment, mentions)
+		}
+	}
+}
+```
+
+A single "Submit review" action fans out **twice**: once via `PullRequestReview` for the
+top-level review verdict/summary comment, and once per inline diff comment via
+`PullRequestCodeComment` — each with its own independently resolved mention list.
+
+### c) `@mention`
+
+Mentions are not a separate domain event; they are resolved as a side effect of *any* comment
+or issue/PR body being created or updated, via `issues_model.FindAndUpdateIssueMentions`
+(`models/issues/issue_update.go`):
+
+```go
+func FindAndUpdateIssueMentions(ctx context.Context, issue *Issue, doer *user_model.User, content string) (mentions []*user_model.User, err error) {
+	rawMentions := references.FindAllMentionsMarkdown(content)
+	mentions, err = ResolveIssueMentionsByVisibility(ctx, issue, doer, rawMentions)
+	...
+	notBlocked := filter-out doer-blocked-users(mentions)
+	mentions = notBlocked
+	if err = UpdateIssueMentions(ctx, issue.ID, mentions); err != nil { ... }
+	return mentions, err
+}
+```
+
+* `references.FindAllMentionsMarkdown` extracts raw `@name` tokens from the Markdown source.
+* `ResolveIssueMentionsByVisibility` turns raw names into concrete `*user_model.User` records,
+  expanding `@org/team` mentions into every team member (but ignoring bare `@org` mentions),
+  and dropping names that don't have read access to the issue's repository.
+* Users the *doer* has blocked (`user_model.IsUserBlockedBy`) are filtered out.
+* The resolved list is persisted (`UpdateIssueMentions`, an `issue_user` style join table) and
+  returned to the caller, which passes it straight into `notify.CreateIssueComment` /
+  `notify.NewIssue` / `notify.PullRequestReview` / etc. as the `mentions []*user_model.User`
+  argument — the *same* slice every notifier receives, guaranteeing mail, in-app, and webhook
+  consumers all agree on who was mentioned.
+
+Every notifier treats `mentions` specially — typically as a forced-notify list regardless of
+a user's repo-watch state, subject to their personal notification preference (e.g.
+`EmailNotificationsOnMention`).
+
+## 3. Fan-out diagram
+
+The following diagram traces a single `CreateIssueComment(...)` call from the business layer
+through to every observable side effect a user or external system will see:
+
+```mermaid
+flowchart TD
+    subgraph Trigger["Triggering event"]
+        T["services/issue.CreateIssueComment()<br/>persists Comment row, resolves @mentions"]
+    end
+
+    T -->|"notify.CreateIssueComment(ctx, doer, repo, issue, comment, mentions)"| Dispatch
+
+    subgraph Dispatch["services/notify/notify.go — fan-out loop"]
+        G{"shouldSendCommentChangeNotification?"}
+        L["for _, notifier := range notifiers { notifier.CreateIssueComment(...) }"]
+        G -- no --> Skip["return (no notification)"]
+        G -- yes --> L
+    end
+
+    L --> Mail["mailNotifier.CreateIssueComment<br/>services/mailer/notify.go"]
+    L --> UI["notificationService.CreateIssueComment<br/>services/uinotification/notify.go"]
+    L --> WH["webhookNotifier.CreateIssueComment<br/>services/webhook/notifier.go"]
+    L --> ACT["actionsNotifier.CreateIssueComment<br/>services/actions/notifier.go"]
+    L --> Feed["feed.Notifier.CreateIssueComment<br/>services/feed/notifier.go"]
+
+    Mail -->|"MailParticipantsComment()<br/>resolves poster + assignees + participants<br/>+ issue watchers + repo watchers, minus doer"| MailBatch["mailIssueCommentBatch()<br/>per-language batching, MailBatchSize=100"]
+    MailBatch -->|"render templates/mail/repo/issue|pull/*.tmpl"| MailMsg["sender_service.Message"]
+    MailMsg --> MailQ[["mail queue<br/>(queue.CreateSimpleQueue)"]]
+    MailQ --> SMTP["SMTP / sendmail / dummy sender"]
+    SMTP --> Inbox["Recipient's e-mail inbox"]
+
+    UI -->|"Push issueNotificationOpts{IssueID, CommentID,<br/>NotificationAuthorID, ReceiverID}"| UIQ[["notification-service queue<br/>(queue.CreateSimpleQueue)"]]
+    UIQ -->|"CreateOrUpdateIssueNotifications()"| NotifTable[("notification table<br/>models/activities")]
+    NotifTable -.->|"polled every tick<br/>(setting.UI.Notification.EventSourceUpdateTime)"| Poller["eventsource.Manager.Run()<br/>modules/eventsource/manager_run.go"]
+    Poller -->|"SendMessage(uid, notification-count event)"| SSE["/-/events SSE stream<br/>routers/web/events/events.go"]
+    SSE --> Bell["Browser: bell-icon badge + notification list<br/>(no reload needed)"]
+
+    WH -->|"PrepareWebhooks(EventSource, HookEventIssueComment / HookEventPullRequestComment, payload)"| HookTask[("HookTask row<br/>models/webhook")]
+    HookTask --> DeliverQ[["webhook delivery queue"]]
+    DeliverQ -->|"Deliver(): signed HTTP POST"| External["External endpoint<br/>(Slack/Discord/Matrix/generic JSON/...)"]
+
+    ACT -->|"DetectWorkflows() for matching triggers"| Runner["Actions runner picks up scheduled run"]
+
+    Feed -->|"NotifyWatchers()"| ActivityTable[("action table — dashboard feed")]
+```
+
+Key properties visible in the diagram:
+
+* **One synchronous dispatch loop, N independent async consumers.** The `for` loop in
+  `notify.go` runs in the same goroutine as the HTTP/git request handler and is not itself
+  queued — but every notifier that does real I/O (mail, webhook, in-app) immediately hands off
+  to its *own* background queue (`queue.CreateSimpleQueue`) so the calling request returns
+  quickly.
+* **The mention list is shared.** `mentions` is computed once by
+  `FindAndUpdateIssueMentions` and passed unchanged to every notifier; a mention forces
+  inclusion in the mailer's and UI notifier's recipient sets even for users who don't watch the
+  repository, subject to their personal preference settings.
+* **The in-app path is two-hop.** `uinotification` doesn't write to the database synchronously
+  — it enqueues an `issueNotificationOpts` job; a worker later calls
+  `activities_model.CreateOrUpdateIssueNotifications`. The bell badge itself is updated by an
+  entirely separate polling loop (`eventsource.Manager.Run`) that periodically recomputes
+  unread counts and pushes them over Server-Sent Events — it does not react to the queue push
+  directly, it just polls the `notification` table on a timer
+  (`setting.UI.Notification.EventSourceUpdateTime`).
+
+## 4. The in-app notification pipeline in detail
+
+### 4.1 `services/uinotification` — writing notification rows
+
+`services/uinotification/notify.go` implements `notify.Notifier` and is registered from
+`Init()`, called during application start-up (`routers/init.go`):
+
+```go
+type (
+	notificationService struct {
+		notify_service.NullNotifier
+		issueQueue *queue.WorkerPoolQueue[issueNotificationOpts]
+	}
+
+	issueNotificationOpts struct {
+		IssueID              int64
+		CommentID            int64
+		NotificationAuthorID int64
+		ReceiverID           int64 // 0 -- ALL Watcher
+	}
+)
+
+func Init() error {
+	notify_service.RegisterNotifier(NewNotifier())
+	return nil
+}
+
+func handler(items ...issueNotificationOpts) []issueNotificationOpts {
+	for _, opts := range items {
+		_ = activities_model.CreateOrUpdateIssueNotifications(
+			graceful.GetManager().ShutdownContext(),
+			opts.IssueID, opts.CommentID, opts.NotificationAuthorID, opts.ReceiverID)
+	}
+	return nil
+}
+```
+
+Most notifier methods enqueue **one job per recipient** — one with `ReceiverID: 0` (meaning
+"every current watcher of the issue", resolved later by `CreateOrUpdateIssueNotifications`) plus
+one additional job per explicitly-mentioned user:
+
+```go
+func (ns *notificationService) CreateIssueComment(ctx context.Context, doer *user_model.User, repo *repo_model.Repository,
+	issue *issues_model.Issue, comment *issues_model.Comment, mentions []*user_model.User,
+) {
+	opts := issueNotificationOpts{IssueID: issue.ID, NotificationAuthorID: doer.ID}
+	if comment != nil {
+		opts.CommentID = comment.ID
+	}
+	_ = ns.issueQueue.Push(opts)
+	for _, mention := range mentions {
+		opts := issueNotificationOpts{
+			IssueID: issue.ID, NotificationAuthorID: doer.ID,
+			ReceiverID: mention.ID,
+		}
+		if comment != nil {
+			opts.CommentID = comment.ID
+		}
+		_ = ns.issueQueue.Push(opts)
+	}
+}
+```
+
+`NewPullRequest`, by contrast, resolves the full recipient set itself (repo watchers +
+issue participants, minus the poster, plus mentions) and pushes one job per resolved user
+id — because a brand-new PR has no watchers/participants recorded yet on the issue row itself,
+unlike a comment on an issue that already has watchers.
+
+`CreateOrUpdateIssueNotifications` (in `models/activities/`) is where a `ReceiverID: 0` job
+actually gets expanded to concrete recipients — it looks up the issue's current watcher list at
+write time and creates or refreshes one `Notification` row per watcher, so a user who starts
+watching *after* the comment was posted still won't retroactively see it, and a user's
+individual row gets its "unread" flag re-set if the same issue receives another event before
+they read the first one.
+
+### 4.2 `modules/eventsource` — live badge updates over Server-Sent Events
+
+The notification inbox above is *pull*-based (the web UI's notification list page queries the
+`notification` table on load/refresh). The **bell-icon badge count**, however, updates live
+without a page reload, via a minimal in-house SSE implementation:
+
+* **`Event`** (`event.go`) — one SSE frame (`Name`, `Data`, `ID`, `Retry`), serialized to the
+  `event: / data: / id: / retry:` wire format.
+* **`Messenger`** (`messenger.go`) — a per-user fan-out channel; a user can have several
+  browser tabs registered concurrently, all receiving the same events.
+* **`Manager`** (`manager.go`) — the process-wide singleton (`eventsource.GetManager()`)
+  keyed by user ID, exposing `Register` / `Unregister` / `SendMessage` /
+  `SendMessageBlocking`.
+* **`manager_run.go`** — `Manager.Run`, started from `routers/init.go`, ticks on
+  `setting.UI.Notification.EventSourceUpdateTime` and, for every user with recent notification
+  activity, recomputes an unread count (`activities_model.GetUIDsAndNotificationCounts`) and
+  pushes a `notification-count` event:
+
+  ```go
+  for _, uidCount := range uidCounts {
+  	m.SendMessage(uidCount.UserID, &Event{Name: "notification-count", Data: uidCount})
+  }
+  ```
+
+  The loop self-throttles: it pauses when there are zero active SSE connections and resumes as
+  soon as a client registers, tracked via a buffered `connection` channel.
+
+`routers/web/events/events.go` exposes the `/-/events` `text/event-stream` HTTP endpoint that
+registers the signed-in user with the manager, sends a 30-second keep-alive `ping`, and streams
+whatever the manager pushes (`notification-count`, `stopwatches`, or a forced `logout` event)
+until the client disconnects or the server shuts down. The signed-in-page frontend JavaScript
+subscribes to this endpoint automatically — no explicit browser polling is required to keep the
+bell badge accurate.
+
+## 5. Where to look for what
+
+| I want to... | Look at |
+|---|---|
+| Add a new domain event notifiers can react to | `services/notify/notifier.go` (interface), `services/notify/notify.go` (dispatch func) |
+| Change which users get notified for a given event | The relevant notifier's method — e.g. `services/uinotification/notify.go`, `services/mailer/mail_issue.go` |
+| Change how/when `@mentions` are resolved | `models/issues/issue_update.go` `FindAndUpdateIssueMentions` / `ResolveIssueMentionsByVisibility` |
+| Change in-app notification creation rules | `services/uinotification/notify.go`, `models/activities/notification.go` |
+| Change live SSE badge behavior (new event types, polling interval) | `modules/eventsource/*.go`, `setting.UI.Notification.EventSourceUpdateTime` |
+| Change e-mail composition/templates | See [Email Notification Templates](email-notification-templates.md) |
+| Change webhook payloads/delivery | [Webhook Delivery Pipeline](../16-webhooks-integrations/webhook-delivery-pipeline.md) |
+
+## Related pages
+
+* [Email Notification Templates](email-notification-templates.md)
+* [Notifications, Mailer & Webhooks (full reference)](../09-core-modules/notify-mailer-webhook.md)
+* [Webhooks & Integrations](../16-webhooks-integrations/README.md)
+* [Storage, Queue & Caching](../09-core-modules/storage-queue-cache.md)

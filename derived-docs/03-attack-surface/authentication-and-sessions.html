@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authentication & Session Security</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../03-attack-surface/README.html">Attack Surface</a> &rsaquo; Authentication & Session Security</div>
+<h1>Authentication & Session Security</h1>
+<h1 id="authentication-session-security">Authentication &amp; Session Security</h1>
+<p>Gitea accepts credentials through an unusually wide number of front doors: browser sessions,
+HTTP Basic, personal access tokens (PATs), OAuth2 bearer tokens, LDAP/PAM/SMTP-backed password
+login, SSPI/Kerberos, reverse-proxy header trust, and HTTP-signature auth for ActivityPub
+federation. All of it funnels through one small interface and a small number of ordered
+"auth chains" per surface. This page maps that entire authentication and session-security
+surface — what verifies identity, how sessions/tokens are minted and protected, how 2FA and
+replay protection work, and where a scanner operator (Trivy/opengrep) should focus attention.</p>
+<p>This page synthesizes <code>docs/08-services/auth-providers.md</code>, <code>docs/11-authentication/README.md</code>,
+<code>docs/02-architecture/request-lifecycle.md</code>, <code>docs/06-web-routers/web-routes.md</code>, and
+<code>docs/07-rest-api/api-conventions-and-swagger.md</code>.</p>
+<h2 id="the-core-abstraction-authmethod">The Core Abstraction: <code>auth.Method</code><a href="#the-core-abstraction-authmethod" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Every authentication mechanism in Gitea implements one interface, described in
+<a href="../../docs/08-services/auth-providers.html">Authentication &amp; Authorization</a>:</p>
+<pre class="highlight"><code class="language-go">// Method represents an authentication method (plugin) for HTTP requests.
+type Method interface {
+    Verify(http *http.Request, w http.ResponseWriter, store DataStore, sess SessionStore) (*user_model.User, error)
+    Name() string
+}</code></pre>
+<p>Contract semantics matter for security review:</p>
+<ul>
+<li><strong><code>(nil, nil)</code></strong> — this method doesn't apply to the request (no matching header/cookie); the
+  chain tries the next method.</li>
+<li><strong><code>(nil, err)</code></strong> — the method recognized its credential format but verification <em>failed</em>
+  (bad password, expired/replayed token). This is a hard failure, but other methods further
+  down the chain may still succeed and override it.</li>
+<li><strong><code>(user, nil)</code></strong> — success.</li>
+</ul>
+<p>Two optional extension interfaces sit on top of a login <strong><code>Source</code></strong> (the admin-configured
+credential backend, distinct from a <code>Method</code>):</p>
+<pre class="highlight"><code class="language-go">type PasswordAuthenticator interface {
+    Authenticate(ctx context.Context, user *user_model.User, login, password string) (*user_model.User, error)
+}
+type SynchronizableSource interface {
+    Sync(ctx context.Context, updateExisting bool) error
+}</code></pre>
+<blockquote>
+<p><strong>Method vs. Source, don't conflate them when triaging a finding.</strong> An <code>auth.Method</code>
+verifies an <em>HTTP request</em> (session cookie, bearer token, header, signature). An
+<code>auth.Source</code> is an admin-configured <em>credential backend</em> (LDAP server, SMTP server, OAuth2
+app, PAM service, SSPI domain). <code>Basic</code>/<code>Session</code> call into the active <code>Source</code>s via
+<code>UserSignIn</code>; OAuth2/SSPI use their <code>Source</code> purely for configuration.</p>
+</blockquote>
+<h2 id="provider-catalog">Provider Catalog<a href="#provider-catalog" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Method / Source</th>
+<th>File(s)</th>
+<th>Kind</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Session</code></td>
+<td><code>services/auth/session.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Reads <code>uid</code> from the signed cookie session</td>
+</tr>
+<tr>
+<td><code>Basic</code></td>
+<td><code>services/auth/basic.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>HTTP Basic header; also re-used to validate PATs, OAuth2 access tokens, and Action task tokens</td>
+</tr>
+<tr>
+<td><code>OAuth2</code></td>
+<td><code>services/auth/oauth2.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Bearer token/JWT in header or <code>token</code>/<code>access_token</code> query param</td>
+</tr>
+<tr>
+<td><code>ReverseProxy</code></td>
+<td><code>services/auth/reverseproxy.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Trusts a header set by an upstream proxy (e.g. <code>X-WEBAUTH-USER</code>)</td>
+</tr>
+<tr>
+<td><code>SSPI</code></td>
+<td><code>services/auth/sspi.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>Windows SPNEGO/Kerberos negotiation, login-page only</td>
+</tr>
+<tr>
+<td><code>HTTPSign</code></td>
+<td><code>services/auth/httpsign.go</code></td>
+<td>HTTP <code>Method</code></td>
+<td>HTTP Signature (<code>Signature</code> header) using SSH keys/certs — federation/ActivityPub</td>
+</tr>
+<tr>
+<td><code>Group</code></td>
+<td><code>services/auth/group.go</code></td>
+<td>Composite <code>Method</code></td>
+<td>Runs a list of <code>Method</code>s in order, first success wins</td>
+</tr>
+<tr>
+<td>LDAP (<code>LDAP</code>/<code>DLDAP</code>)</td>
+<td><code>services/auth/source/ldap/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Bind-DN or direct-bind LDAP via <code>go-ldap</code></td>
+</tr>
+<tr>
+<td>PAM</td>
+<td><code>services/auth/source/pam/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Delegates to the OS PAM stack</td>
+</tr>
+<tr>
+<td>SMTP</td>
+<td><code>services/auth/source/smtp/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Authenticates against an SMTP server (PLAIN/LOGIN/CRAM-MD5)</td>
+</tr>
+<tr>
+<td>OAuth2 provider</td>
+<td><code>services/auth/source/oauth2/*</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Wraps <code>github.com/markbates/goth</code> (GitHub, GitLab, Google, generic OIDC, ...)</td>
+</tr>
+<tr>
+<td>DB</td>
+<td><code>services/auth/source/db</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Internal database password auth (default)</td>
+</tr>
+<tr>
+<td>SSPI config</td>
+<td><code>services/auth/source/sspi</code></td>
+<td>Login <strong>Source</strong></td>
+<td>Configuration consumed by the <code>SSPI</code> <code>Method</code></td>
+</tr>
+</tbody>
+</table>
+<p>Every one of these is a distinct attack surface with a different credential format, which
+means a single SAST pass (opengrep) or dependency scan (Trivy) won't cover them uniformly —
+see <a href="#scanning-guidance-for-trivy--opengrep">Scanning Guidance</a> below.</p>
+<h2 id="per-surface-auth-chains">Per-Surface Auth Chains<a href="#per-surface-auth-chains" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The <strong>order of methods in a chain matters</strong> — some methods (reverse proxy, SSPI) create a new
+session or short-circuit the chain, so ordering bugs are a realistic authentication-bypass
+class to look for when reviewing chain-construction code.</p>
+<h3 id="web-ui-chain-routerswebwebgo-newwebauthmiddleware">Web UI chain (<code>routers/web/web.go</code> → <code>newWebAuthMiddleware</code>)<a href="#web-ui-chain-routerswebwebgo-newwebauthmiddleware" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">group := auth_service.NewGroup()
+if allowOAuth2 {
+    group.Add(&amp;auth_service.OAuth2{})
+}
+if allowBasic {
+    group.Add(&amp;auth_service.Basic{})
+}
+if setting.Service.EnableReverseProxyAuth {
+    // reverse-proxy should be before Session, otherwise the header
+    // will be ignored if the user has already logged in
+    group.Add(&amp;auth_service.ReverseProxy{CreateSession: !isSessionless})
+}
+group.Add(&amp;auth_service.Session{})
+if enableSSPI {
+    // it MUST be the last, see the comment of SSPI
+    group.Add(&amp;auth_service.SSPI{CreateSession: !isSessionless})
+}</code></pre>
+<h3 id="rest-api-chain-routersapiv1apigo-buildauthgroup">REST API chain (<code>routers/api/v1/api.go</code> → <code>buildAuthGroup</code>)<a href="#rest-api-chain-routersapiv1apigo-buildauthgroup" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">func buildAuthGroup() *auth.Group {
+    group := auth.NewGroup(
+        &amp;auth.OAuth2{},
+        &amp;auth.HTTPSign{},
+        &amp;auth.Basic{}, // FIXME: should be removed once basic auth in API isn't allowed
+    )
+    if setting.Service.EnableReverseProxyAuthAPI {
+        group.Add(&amp;auth.ReverseProxy{})
+    }
+    return group
+}</code></pre>
+<blockquote>
+<p>The <code>FIXME</code> comment in the upstream source itself flags Basic Auth on the API as a
+known-undesirable legacy allowance — worth tracking as a standing hardening item rather than
+a "new" finding if a scanner surfaces it.</p>
+</blockquote>
+<h3 id="package-registry-api-chain-routersapipackagesapigo">Package registry API chain (<code>routers/api/packages/api.go</code>)<a href="#package-registry-api-chain-routersapipackagesapigo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Each package registry endpoint calls <code>verifyAuth(r, []auth.Method{...}, opts)</code> with a
+registry-specific method list (e.g. NuGet's own API-key <code>Method</code> wrapping
+<code>Basic.VerifyAuthToken</code>), and <code>ReverseProxy</code> is appended automatically when
+<code>EnableReverseProxyAuth</code> is set.</p>
+<pre class="mermaid">flowchart TD
+    A[Incoming HTTP request] --> B{Route type}
+    B -->|Web UI| C[Web Auth Group]
+    B -->|REST API /api/v1| D[API Auth Group]
+    B -->|Package Registry| E[Package Auth Group]
+
+    C --> C1[OAuth2 Bearer?] -->|no match| C2[Basic Auth?]
+    C2 -->|no match| C3[ReverseProxy header?]
+    C3 -->|no match| C4[Session cookie?]
+    C4 -->|no match| C5[SSPI/SPNEGO last]
+    C5 -->|no match| C6[Anonymous]
+
+    D --> D1[OAuth2 Bearer?] -->|no match| D2[HTTPSign header?]
+    D2 -->|no match| D3[Basic Auth?]
+    D3 -->|no match| D4[ReverseProxy if enabled]
+    D4 -->|no match| D6[Anonymous / 401]
+
+    C1 -->|match| U["ctx.Doer (*user_model.User)"]
+    C2 -->|match| U
+    C3 -->|match| U
+    C4 -->|match| U
+    C5 -->|match| U
+    D1 -->|match| U
+    D2 -->|match| U
+    D3 -->|match| U
+    D4 -->|match| U
+
+    U --> P["Permission / Access Mode checks (see authorization-permission-model.md)"]</pre>
+<p><code>common.AuthShared</code> (<code>routers/common/auth.go</code>) is the shared glue: it calls
+<code>authMethod.Verify(...)</code>, stores <code>ctx.Doer</code>/<code>ctx.IsSigned</code>/<code>ctx.IsBasicAuth</code>, and refreshes the
+request locale to the signed-in user's language, per
+<a href="../../docs/02-architecture/request-lifecycle.html">Request Lifecycle</a>.</p>
+<h2 id="session-establishment-fixation-protection">Session Establishment &amp; Fixation Protection<a href="#session-establishment-fixation-protection" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>Session</code> (<code>services/auth/session.go</code>) is deliberately simple: it reads a <code>uid</code> key from the
+session store (backed by <code>modules/session</code>, provider selectable via <code>[session] PROVIDER</code> —
+<code>memory</code>/<code>file</code>/<code>db</code>/<code>redis</code>) and loads the <code>User</code> by ID. It returns <code>(nil, nil)</code> when there's
+no session, letting later/earlier methods take over.</p>
+<p>The session-writing side lives in <code>handleSignIn</code> (<code>services/auth/auth.go</code>), which — per
+<a href="../../docs/08-services/auth-providers.html">Auth Providers</a> — <strong>regenerates the session ID on
+sign-in</strong> (classic session-fixation mitigation), clears stale two-factor/OpenID keys, and
+stores <code>uid</code>/<code>uname</code>.</p>
+<p>Per <a href="../../docs/02-architecture/request-lifecycle.html">Request Lifecycle</a>, the session
+middleware (<code>common.MustInitSessioner()</code>) is installed globally, ahead of the auth-method
+group, so every request — even unauthenticated ones — carries a session-capable context.
+Routes that must remain sessionless (git-over-HTTP clone/push, RSS feeds, attachment
+downloads) explicitly opt out via <code>webAuth.AllowBasic</code>/<code>webAuth.AllowOAuth2</code> pre-middlewares
+so the <code>Session</code> method doesn't force a cookie to be created for non-browser clients.</p>
+<h3 id="cross-origin-csrf-protection">Cross-Origin / CSRF Protection<a href="#cross-origin-csrf-protection" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Rather than the classic CSRF-token-in-every-form pattern, Gitea's <code>verifyAuthWithOptions</code>
+(<code>routers/web/web.go</code>) calls Go's standard-library <strong>Fetch Metadata</strong> check:</p>
+<pre class="highlight"><code class="language-go">http.NewCrossOriginProtection().Check(ctx.Req)</code></pre>
+<p>This inspects the <code>Sec-Fetch-Site</code> header to reject cross-site browser navigations, per
+<a href="../../docs/02-architecture/request-lifecycle.html#5-authorization--csrf--feature-checks">Request Lifecycle</a>.
+It is skipped when <code>SignOutRequired</code> or <code>DisableCrossOriginProtection</code> is set, and explicitly
+disabled for routes that must accept legitimately cross-origin, non-browser traffic — e.g. Git
+Smart HTTP (<code>optSignInFromAnyOrigin</code>), because <code>git clone</code>/<code>push</code> traffic never sends a
+<code>Sec-Fetch-Site</code> header and isn't a CSRF risk by construction (per
+<a href="../../docs/06-web-routers/web-routes.html">Web Router &amp; Server-Rendered UI</a>).</p>
+<blockquote>
+<p><strong>Review angle</strong>: any new route added with <code>optSignInFromAnyOrigin</code> (or an equivalent
+CSRF-disabling option) that <em>does</em> accept browser-originated state-changing requests would
+reintroduce a CSRF gap — this is a good opengrep custom-rule target (flag any use of
+<code>DisableCrossOriginProtection</code> / <code>optSignInFromAnyOrigin</code> for manual review).</p>
+</blockquote>
+<h2 id="basic-auth-the-multi-credential-fallback-path">Basic Auth: the Multi-Credential Fallback Path<a href="#basic-auth-the-multi-credential-fallback-path" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>Basic.VerifyAuthToken</code> (<code>services/auth/basic.go</code>) is more than "HTTP Basic" — it's the shared
+verification routine reused by other integrations (e.g. NuGet's <code>X-NuGet-ApiKey</code>). It tries,
+in order:</p>
+<ol>
+<li><strong>OAuth2 access token</strong> — parses a JWT-shaped token and resolves the <code>OAuth2Grant</code>.</li>
+<li><strong>Personal Access Token</strong> — looks up a PAT by its last-eight-chars index, then verifies the
+   full token via a constant-time hash comparison.</li>
+<li><strong>Actions task token</strong> — used by CI runners.</li>
+<li><strong>Username/password fallback</strong> — only if <code>setting.Service.EnableBasicAuth</code> is true; calls
+   <code>UserSignIn</code>, then enforces 2FA: <strong>WebAuthn-enrolled accounts are rejected outright</strong> for
+   Basic auth (<code>"basic authorization is not allowed while WebAuthn enrolled"</code>), and
+   TOTP-enrolled accounts must supply a valid <code>X-Gitea-OTP</code> header, verified via atomic
+   single-use consumption to prevent replay.</li>
+</ol>
+<p>This layering means "Basic Auth is disabled" (<code>ENABLE_BASIC_AUTHENTICATION=false</code>) does <em>not</em>
+disable PAT or OAuth2-bearer-via-Basic-header usage — only the raw username/password fallback
+step 4. Scanners and reviewers checking "is password-over-Basic-Auth possible" need to check
+this specific branch, not just whether the <code>Basic</code> method is registered in the chain.</p>
+<h2 id="personal-access-tokens-oauth2-scopes">Personal Access Tokens &amp; OAuth2 Scopes<a href="#personal-access-tokens-oauth2-scopes" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Modeled by <code>AccessToken</code> (<code>models/auth/access_token.go</code>), per
+<a href="../../docs/08-services/auth-providers.html">Auth Providers</a>:</p>
+<pre class="highlight"><code class="language-go">type AccessToken struct {
+    ID             int64 `xorm:"pk autoincr"`
+    UID            int64 `xorm:"INDEX"`
+    Name           string
+    Token          string `xorm:"-"`          // only available at creation time
+    TokenHash      string `xorm:"UNIQUE"`      // sha256+salt of token, persisted
+    TokenSalt      string
+    TokenLastEight string `xorm:"INDEX token_last_eight"` // fast index lookup
+    Scope          AccessTokenScope
+    ...
+}</code></pre>
+<p>Tokens are <strong>never stored in plaintext</strong>: <code>NewAccessToken</code> generates a random token and stores
+only a salted hash plus a <code>TokenLastEight</code> index shortcut; <code>GetAccessTokenBySHA</code> looks up
+candidates by the index and does a <strong>constant-time</strong> comparison (<code>crypto/subtle</code>), with an
+optional LRU cache to skip repeated hash work for hot tokens.</p>
+<h3 id="scope-model">Scope model<a href="#scope-model" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Read scope</th>
+<th>Write scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ActivityPub</td>
+<td><code>read:activitypub</code></td>
+<td><code>write:activitypub</code></td>
+</tr>
+<tr>
+<td>Admin</td>
+<td><code>read:admin</code></td>
+<td><code>write:admin</code></td>
+</tr>
+<tr>
+<td>Misc</td>
+<td><code>read:misc</code></td>
+<td><code>write:misc</code></td>
+</tr>
+<tr>
+<td>Notification</td>
+<td><code>read:notification</code></td>
+<td><code>write:notification</code></td>
+</tr>
+<tr>
+<td>Organization</td>
+<td><code>read:organization</code></td>
+<td><code>write:organization</code></td>
+</tr>
+<tr>
+<td>Package</td>
+<td><code>read:package</code></td>
+<td><code>write:package</code></td>
+</tr>
+<tr>
+<td>Issue</td>
+<td><code>read:issue</code></td>
+<td><code>write:issue</code></td>
+</tr>
+<tr>
+<td>Repository</td>
+<td><code>read:repository</code></td>
+<td><code>write:repository</code></td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>read:user</code></td>
+<td><code>write:user</code></td>
+</tr>
+</tbody>
+</table>
+<p>Write scope always implies read scope for the same category. <code>AccessTokenScopePublicOnly</code>
+further restricts a token to public repos/orgs regardless of other granted scopes.</p>
+<p>Two independent gates apply to every token-authenticated request, per
+<a href="../../docs/08-services/auth-providers.html">Auth Providers</a>:</p>
+<ol>
+<li><strong>Token scope</strong> — does the token's scope cover the category/verb needed (<code>write:repository</code>
+   for a push-like operation)? Enforced by <code>reqToken</code>/<code>tokenRequiresScopes</code> in
+   <code>routers/api/v1</code> (see <a href="../../docs/07-rest-api/api-conventions-and-swagger.html">API Conventions &amp; Swagger</a>).</li>
+<li><strong>Repository/org access mode</strong> — does the authenticated user's <code>AccessMode</code> for the target
+   resource meet the requirement? A token with <code>write:repository</code> scope still cannot write to
+   a repo the user has no write access to.</li>
+</ol>
+<p>Session/Basic-password logins skip gate 1 entirely (<code>GetAccessScope</code> returns
+<code>AccessTokenScopeAll</code>), so only the access-mode gate (gate 2) applies — see
+<a href="authorization-permission-model.html">Authorization &amp; Permission Model</a> for the full mechanics
+of gate 2.</p>
+<pre class="mermaid">graph LR
+    A[auth.Method chain] -->|resolves| B["ctx.Doer (*user_model.User)"]
+    B --> C{Token-based request?}
+    C -->|yes| D["Check AccessTokenScope<br/>(GetAccessScope / grant.Scope)"]
+    C -->|no| E[Skip scope check]
+    D --> F
+    E --> F["Compute Permission via access.AccessLevel/AccessLevelUnit"]
+    F --> G["Permission.CanAccess(mode, unitType)"]
+    G -->|true| H[Request proceeds]
+    G -->|false| I[403 Forbidden]</pre>
+<h3 id="api-authentication-schemes-swagger-declared">API authentication schemes (Swagger-declared)<a href="#api-authentication-schemes-swagger-declared" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../../docs/07-rest-api/api-conventions-and-swagger.html">API Conventions &amp; Swagger</a>, the
+REST API's <code>securityDefinitions</code> document these named schemes:</p>
+<table>
+<thead>
+<tr>
+<th>Scheme</th>
+<th>Where</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BasicAuth</code></td>
+<td><code>Authorization: Basic ...</code></td>
+<td>Active</td>
+<td>Username/password, or username + PAT-as-password; combine with <code>TOTPHeader</code> if 2FA enabled</td>
+</tr>
+<tr>
+<td><code>AuthorizationHeaderToken</code></td>
+<td><code>Authorization: token &lt;token&gt;</code></td>
+<td><strong>Recommended</strong></td>
+<td>Modern preferred way to send a PAT/OAuth2 token</td>
+</tr>
+<tr>
+<td><code>Token</code></td>
+<td><code>?token=&lt;token&gt;</code> query param</td>
+<td>Deprecated (removal targeted for 1.23)</td>
+<td>Triggers <code>X-Gitea-Warning</code> response header</td>
+</tr>
+<tr>
+<td><code>AccessToken</code></td>
+<td><code>?access_token=&lt;token&gt;</code> query param</td>
+<td>Deprecated (removal targeted for 1.23)</td>
+<td>Same idea, alternate param name</td>
+</tr>
+<tr>
+<td><code>SudoParam</code>/<code>SudoHeader</code></td>
+<td><code>?sudo=&lt;user&gt;</code> / <code>Sudo: &lt;user&gt;</code></td>
+<td>Admin-only</td>
+<td>Perform a request "as" another user</td>
+</tr>
+<tr>
+<td><code>TOTPHeader</code></td>
+<td><code>X-GITEA-OTP: &lt;code&gt;</code></td>
+<td>Conditional</td>
+<td>Required with <code>BasicAuth</code> for 2FA-enabled accounts</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Hardening note carried from the source docs</strong>: token-in-query-string schemes (<code>Token</code>,
+<code>AccessToken</code>) are flagged for removal upstream because query strings leak into access logs,
+proxy logs, and browser history. If <code>[security]</code>/route configuration still allows
+<code>?token=</code>/<code>?access_token=</code> (i.e. <code>DisableQueryAuthToken</code> is not set), treat any log-scanning
+or shoulder-surfing exposure of tokens as an expected, documented risk rather than a novel
+finding — but it's a legitimate item to flag in a security review of a specific deployment.</p>
+</blockquote>
+<h2 id="remember-me-cookies-auth-tokens-distinct-from-sessions-and-pats">Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs<a href="#remember-me-cookies-auth-tokens-distinct-from-sessions-and-pats" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Persistent "remember me" login cookies use a <strong>separate mechanism</strong> from both sessions and
+PATs: <code>models/auth/auth_token.go</code> + <code>services/auth/auth_token.go</code>, modeled after
+<a href="https://paragonie.com/blog/2015/04/secure-authentication-php-with-long-term-persistence">Paragon Initiative's secure remember-me design</a>,
+per <a href="../../docs/08-services/auth-providers.html">Auth Providers</a>. Each cookie value is <code>id:token</code>;
+the server stores only <code>TokenHash = sha256(token)</code> keyed by <code>id</code>.</p>
+<ul>
+<li><code>CheckAuthToken</code> verifies the hash in <strong>constant time</strong> on every use.</li>
+<li><code>RegenerateAuthToken</code> <strong>rotates the hash on every login</strong>, keeping the same <code>id</code>.</li>
+<li>If an attacker replays a stolen (already-used) token, the hash mismatch triggers
+  <code>DeleteAuthTokenByID</code> — the device's remember-me token is immediately revoked, forcing
+  re-authentication. This is a <strong>theft-detection</strong> property, not just theft-prevention.</li>
+</ul>
+<h2 id="two-factor-authentication">Two-Factor Authentication<a href="#two-factor-authentication" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea supports two independent 2FA mechanisms; a user may enroll in either or both, per
+<a href="../../docs/08-services/auth-providers.html">Auth Providers</a>:</p>
+<h3 id="totp">TOTP<a href="#totp" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Modeled by <code>TwoFactor</code> (<code>models/auth/twofactor.go</code>). The shared secret is <strong>AES-encrypted at
+rest</strong> (key derived from <code>setting.SecretKey</code> via MD5) and Base64-encoded in the <code>Secret</code>
+column. Validation uses <code>github.com/pquerna/otp/totp</code>, and — critically — passcodes are
+<strong>single-use</strong>: <code>ValidateAndConsumeTOTP</code> performs a conditional <code>UPDATE</code> (<code>last_used_passcode
+&lt;&gt; ?</code> or <code>IS NULL</code>) so a captured OTP cannot be replayed within its validity window even under
+concurrent requests (the <code>UPDATE</code>'s row lock serializes racing attempts). A scratch/recovery
+token (ambiguity-free Base32 alphabet) is available as a backup.</p>
+<blockquote>
+<p><strong>MD5-derived key note</strong>: the source docs explicitly describe the TOTP secret's
+AES-encryption key as "derived from <code>setting.SecretKey</code> via MD5". MD5-as-a-KDF is a
+reasonable target for an opengrep custom rule or manual crypto review — even though it's not
+used for signature/hash verification here (just symmetric-key derivation), it's the kind of
+primitive-choice a SAST tool tuned for weak-crypto detection should surface for
+confirmation, not automatic assumption of exploitability.</p>
+</blockquote>
+<h3 id="webauthn-passkeys">WebAuthn / Passkeys<a href="#webauthn-passkeys" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Modeled by <code>WebAuthnCredential</code> (<code>models/auth/webauthn.go</code>), backed by
+<code>github.com/go-webauthn/webauthn</code>, initialized once at startup with <code>RPDisplayName</code>, <code>RPID</code>
+(<code>setting.Domain</code>), and <code>RPOrigins</code>. As noted above, <strong>WebAuthn-enrolled accounts cannot use
+Basic Auth at all</strong> — WebAuthn's challenge-response ceremony can't be satisfied by a
+header-only credential, so such users must use session login, OAuth2, or an <code>X-Gitea-OTP</code>
+(TOTP) path if also enrolled in TOTP.</p>
+<h2 id="credential-backend-source-details">Credential-Backend (Source) Details<a href="#credential-backend-source-details" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="ldap-servicesauthsourceldap">LDAP (<code>services/auth/source/ldap</code>)<a href="#ldap-servicesauthsourceldap" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Two flavors — <code>LDAP</code> (bind-DN search+bind) and <code>DLDAP</code> (direct/simple bind) — built on
+<code>github.com/go-ldap/ldap</code>. Security-relevant fields: <code>BindDN</code>/<code>BindPassword</code> are <strong>encrypted
+at rest</strong> via <code>secret.EncryptSecret</code> when the source config is persisted (<code>ToDB</code>).
+<code>source_authenticate.go</code> implements <code>PasswordAuthenticator.Authenticate</code>; <code>source_sync.go</code>
+implements periodic external-user sync (create/update/deactivate local users from LDAP search
+results).</p>
+<h3 id="pam-servicesauthsourcepam">PAM (<code>services/auth/source/pam</code>)<a href="#pam-servicesauthsourcepam" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Delegates username/password validation to the host's PAM stack. Config is just <code>ServiceName</code>
+and <code>EmailDomain</code> (used to synthesize an email for auto-created users, since PAM carries no
+email attribute).</p>
+<h3 id="smtp-servicesauthsourcesmtp">SMTP (<code>services/auth/source/smtp</code>)<a href="#smtp-servicesauthsourcesmtp" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Authenticates by opening an SMTP connection and performing SMTP AUTH (PLAIN/LOGIN/CRAM-MD5).
+Supports <code>AllowedDomains</code> restriction and <code>ForceSMTPS</code>/<code>SkipVerify</code> TLS controls — the latter
+is a direct, reviewable TLS-downgrade knob if misconfigured in <code>app.ini</code>.</p>
+<h3 id="oauth2-login-source-servicesauthsourceoauth2">OAuth2 login source (<code>services/auth/source/oauth2</code>)<a href="#oauth2-login-source-servicesauthsourceoauth2" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Configures an external OAuth2/OIDC identity provider via <code>github.com/markbates/goth</code>.
+<code>source_callout.go</code> performs the redirect to the provider's authorization endpoint;
+<code>routers/web/auth/oauth.go</code> handles the callback, token exchange, and user
+creation/linking/admin-or-restricted-group derivation from claims. <code>source_sync.go</code> refreshes
+stored OAuth2 refresh tokens and disables users whose upstream grant has been revoked
+(<code>invalid_grant</code>).</p>
+<h3 id="sspi-servicesauthsspigo">SSPI (<code>services/auth/sspi.go</code>)<a href="#sspi-servicesauthsspigo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Implements Windows Integrated Authentication (SPNEGO/Kerberos). Only activates for
+<code>POST /user/login?auth_with_sspi=1</code>, so it can't interfere with any other route, and — because
+a failed negotiation returns <code>401</code> immediately — <strong>must be the last method in the chain</strong>, or
+it would short-circuit before Session/Basic/OAuth2 get a chance to run.</p>
+<h3 id="httpsign-servicesauthhttpsigngo">HTTPSign (<code>services/auth/httpsign.go</code>)<a href="#httpsign-servicesauthhttpsigngo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Implements HTTP Signatures for ActivityPub federation, where the caller signs the request with
+an SSH key pair. Two verification paths: <code>VerifyPubKey</code> (registered <code>PublicKey</code> by fingerprint)
+and <code>VerifyCert</code> (SSH certificate signed by a trusted CA, matched against <code>TrustedUserCAKeys</code>).</p>
+<h2 id="group-sync-external-groups-teams">Group Sync — External Groups → Teams<a href="#group-sync-external-groups-teams" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>When users authenticate via LDAP or OAuth2/OIDC, Gitea can auto-manage Organization/Team
+membership from group claims/attributes, implemented centrally in
+<code>services/auth/source/source_group_sync.go</code>. Configuration shape is a JSON mapping
+(<code>GroupTeamMap</code>): <code>{"&lt;external-group&gt;": {"&lt;gitea-org&gt;": ["&lt;team1&gt;", "&lt;team2&gt;"]}}</code>.</p>
+<p>Security-relevant behaviors:</p>
+<ul>
+<li><code>GroupTeamMapRemoval</code> controls whether membership is <strong>revoked</strong> when the user is no longer
+  in the source group — if unset, membership only ever grows, which can be a slow privilege
+  creep if group membership on the IdP side isn't audited.</li>
+<li>For OAuth2, <code>AdminGroup</code>/<code>RestrictedGroup</code> claims can <strong>promote a user to admin or restrict
+  them</strong>, based purely on trusting the identity provider's claims — misconfiguration of these
+  claim names, or a compromised/misconfigured IdP, is a direct path to privilege escalation.</li>
+<li><strong>Organizations and teams are never auto-created</strong> by group sync — if the mapped org/team
+  doesn't exist, the mapping entry is silently skipped with a log warning, which limits blast
+  radius but also means silent policy drift is possible if an admin renames a team.</li>
+</ul>
+<pre class="mermaid">sequenceDiagram
+    participant IdP as LDAP/OAuth2 Provider
+    participant Src as auth.Source (LDAP/OAuth2)
+    participant Sync as source.SyncGroupsToTeams(Cached)
+    participant Org as organization.Team
+
+    IdP->>Src: returns user's groups (LDAP attr / OIDC claim)
+    Src->>Sync: sourceUserGroups, GroupTeamMap, GroupTeamMapRemoval
+    Sync->>Sync: resolveMappedMemberships() -> add-set / remove-set
+    alt performRemoval
+        Sync->>Org: RemoveTeamMember for mapped teams user no longer belongs to
+    end
+    Sync->>Org: AddTeamMember for mapped teams user now belongs to
+    Org-->>Sync: membership updated</pre>
+<h2 id="password-credential-login-flow-usersignin">Password / Credential Login Flow (<code>UserSignIn</code>)<a href="#password-credential-login-flow-usersignin" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>services/auth/signin.go</code> implements the shared username/password validation path used by
+both <code>Basic.Verify</code> and the <code>/user/login</code> web form, per
+<a href="../../docs/08-services/auth-providers.html">Auth Providers</a>:</p>
+<pre class="mermaid">flowchart TD
+    A["UserSignIn(ctx, username, password)"] --> B{Contains '@'?}
+    B -->|yes| C[Look up EmailAddress; must be activated]
+    B -->|no| D[Look up User by lower-cased name]
+    C --> E{User found?}
+    D --> E
+    E -->|yes, has LoginSource| F["source.Cfg.(PasswordAuthenticator).Authenticate()"]
+    F -->|success + not ProhibitLogin| G[Return user, source]
+    F -->|fail| H[ErrUserNotExist / auth error]
+    E -->|no exact match| I[Iterate ALL active sources]
+    I --> J["authenticator.Authenticate(ctx, nil, username, password)"]
+    J -->|success| G
+    J -->|fail for all sources| H</pre>
+<blockquote>
+<p><strong>Timing-side-channel consideration for reviewers</strong>: branch <code>E --&gt;|no exact match| I</code> means
+that when no user record matches, Gitea iterates <em>every</em> active source attempting
+authentication anyway (rather than failing fast). This is a defensible mitigation against
+username-enumeration-via-timing, and should not be "fixed" into an early return without
+considering that trade-off if it ever surfaces in a diff under review.</p>
+</blockquote>
+<h2 id="authentication-authorization-handoff">Authentication → Authorization Handoff<a href="#authentication-authorization-handoff" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Authentication only establishes <strong>who</strong> is making the request (<code>ctx.Doer</code>). <strong>What</strong> they can
+do is a wholly separate authorization step built on <code>AccessMode</code>/<code>Access</code>/<code>Permission</code> — see
+<a href="authorization-permission-model.html">Authorization &amp; Permission Model</a> for the full mechanics
+of that handoff, including the diagram of how <code>ctx.Doer</code> becomes a concrete allow/deny decision
+per repository unit.</p>
+<h2 id="scanning-guidance-for-trivy-opengrep">Scanning Guidance for Trivy &amp; Opengrep<a href="#scanning-guidance-for-trivy-opengrep" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>This surface is unusually rich in credential handling, which makes it a high-value target for
+both scanner families:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Best tool</th>
+<th>What to point it at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vulnerable auth-related Go dependencies (<code>go-ldap</code>, <code>goth</code>, <code>go-webauthn</code>, <code>pquerna/otp</code>, <code>go-fed/httpsig</code>)</td>
+<td><strong>Trivy</strong> (SCA)</td>
+<td><code>go.mod</code>/<code>go.sum</code> — see <a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing CI Security Tooling</a> for how <code>govulncheck</code> already partially covers this</td>
+</tr>
+<tr>
+<td>Hardcoded secrets / tokens / bind passwords committed to config or code</td>
+<td><strong>opengrep</strong> (secret detection)</td>
+<td>Repo-wide grep for <code>BindPassword</code>, <code>LDAP_BIND_PASSWORD</code>, <code>LFS_JWT_SECRET</code>, <code>SECRET_KEY</code>, <code>INTERNAL_TOKEN</code> patterns in <code>app.ini</code>-style files and Go source</td>
+</tr>
+<tr>
+<td>Weak crypto primitive choice (e.g. MD5-derived key material)</td>
+<td><strong>opengrep</strong> (SAST)</td>
+<td><code>models/auth/twofactor.go</code>-style patterns — flag MD5/SHA1 used for anything key-derivation or signature adjacent, for manual confirmation</td>
+</tr>
+<tr>
+<td>CSRF-protection bypass routes</td>
+<td><strong>opengrep</strong> (custom rule)</td>
+<td>Any use of <code>DisableCrossOriginProtection</code> / <code>optSignInFromAnyOrigin</code> outside of the documented git-smart-HTTP/API cases</td>
+</tr>
+<tr>
+<td>Auth-chain ordering regressions</td>
+<td><strong>Manual/code review</strong>, not a scanner</td>
+<td>Diffs touching <code>newWebAuthMiddleware</code>, <code>buildAuthGroup</code>, or any <code>Group.Add(...)</code> call order</td>
+</tr>
+<tr>
+<td>Config-level hardening (<code>ENABLE_BASIC_AUTHENTICATION</code>, <code>DisableQueryAuthToken</code>, reverse-proxy trust flags)</td>
+<td><strong>opengrep/manual config lint</strong></td>
+<td>See <a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a></td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep</a> for how
+to actually wire these checks into this repository's pipeline.</p>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="authorization-permission-model.html">Authorization &amp; Permission Model</a> — what happens <em>after</em>
+  <code>ctx.Doer</code> is resolved: <code>AccessMode</code>, the <code>Access</code> cache table, and unit-aware <code>Permission</code>.</li>
+<li><a href="input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a> — sanitization applied to
+  user-controlled content once a request is authenticated.</li>
+<li><a href="ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> — LFS JWT auth
+  and webhook signing, which reuse concepts introduced on this page (JWT bearer tokens, HMAC
+  signing) in an outbound direction.</li>
+<li><a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a> —
+  the <code>[service]</code>/<code>[security]</code>/<code>[session]</code> <code>app.ini</code> knobs referenced throughout this page.</li>
+<li><a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing CI Security Tooling</a> —
+  what's already automated against the dependencies underpinning this auth surface.</li>
+<li><a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep</a> — concrete
+  scan configuration guidance referenced in the table above.</li>
+</ul>
+<div class="page-nav">
+<span></span>
+<a href="authorization-permission-model.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Authorization / Permission Model</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#the-core-abstraction-authmethod" class="" data-anchor="the-core-abstraction-authmethod">The Core Abstraction: auth.Method</a>
+<a href="#provider-catalog" class="" data-anchor="provider-catalog">Provider Catalog</a>
+<a href="#per-surface-auth-chains" class="" data-anchor="per-surface-auth-chains">Per-Surface Auth Chains</a>
+<a href="#web-ui-chain-routerswebwebgo-newwebauthmiddleware" class="toc-h3" data-anchor="web-ui-chain-routerswebwebgo-newwebauthmiddleware">Web UI chain (routers/web/web.go → newWebAuthMiddleware)</a>
+<a href="#rest-api-chain-routersapiv1apigo-buildauthgroup" class="toc-h3" data-anchor="rest-api-chain-routersapiv1apigo-buildauthgroup">REST API chain (routers/api/v1/api.go → buildAuthGroup)</a>
+<a href="#package-registry-api-chain-routersapipackagesapigo" class="toc-h3" data-anchor="package-registry-api-chain-routersapipackagesapigo">Package registry API chain (routers/api/packages/api.go)</a>
+<a href="#session-establishment-fixation-protection" class="" data-anchor="session-establishment-fixation-protection">Session Establishment &amp; Fixation Protection</a>
+<a href="#cross-origin-csrf-protection" class="toc-h3" data-anchor="cross-origin-csrf-protection">Cross-Origin / CSRF Protection</a>
+<a href="#basic-auth-the-multi-credential-fallback-path" class="" data-anchor="basic-auth-the-multi-credential-fallback-path">Basic Auth: the Multi-Credential Fallback Path</a>
+<a href="#personal-access-tokens-oauth2-scopes" class="" data-anchor="personal-access-tokens-oauth2-scopes">Personal Access Tokens &amp; OAuth2 Scopes</a>
+<a href="#scope-model" class="toc-h3" data-anchor="scope-model">Scope model</a>
+<a href="#api-authentication-schemes-swagger-declared" class="toc-h3" data-anchor="api-authentication-schemes-swagger-declared">API authentication schemes (Swagger-declared)</a>
+<a href="#remember-me-cookies-auth-tokens-distinct-from-sessions-and-pats" class="" data-anchor="remember-me-cookies-auth-tokens-distinct-from-sessions-and-pats">Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs</a>
+<a href="#two-factor-authentication" class="" data-anchor="two-factor-authentication">Two-Factor Authentication</a>
+<a href="#totp" class="toc-h3" data-anchor="totp">TOTP</a>
+<a href="#webauthn-passkeys" class="toc-h3" data-anchor="webauthn-passkeys">WebAuthn / Passkeys</a>
+<a href="#credential-backend-source-details" class="" data-anchor="credential-backend-source-details">Credential-Backend (Source) Details</a>
+<a href="#ldap-servicesauthsourceldap" class="toc-h3" data-anchor="ldap-servicesauthsourceldap">LDAP (services/auth/source/ldap)</a>
+<a href="#pam-servicesauthsourcepam" class="toc-h3" data-anchor="pam-servicesauthsourcepam">PAM (services/auth/source/pam)</a>
+<a href="#smtp-servicesauthsourcesmtp" class="toc-h3" data-anchor="smtp-servicesauthsourcesmtp">SMTP (services/auth/source/smtp)</a>
+<a href="#oauth2-login-source-servicesauthsourceoauth2" class="toc-h3" data-anchor="oauth2-login-source-servicesauthsourceoauth2">OAuth2 login source (services/auth/source/oauth2)</a>
+<a href="#sspi-servicesauthsspigo" class="toc-h3" data-anchor="sspi-servicesauthsspigo">SSPI (services/auth/sspi.go)</a>
+<a href="#httpsign-servicesauthhttpsigngo" class="toc-h3" data-anchor="httpsign-servicesauthhttpsigngo">HTTPSign (services/auth/httpsign.go)</a>
+<a href="#group-sync-external-groups-teams" class="" data-anchor="group-sync-external-groups-teams">Group Sync — External Groups → Teams</a>
+<a href="#password-credential-login-flow-usersignin" class="" data-anchor="password-credential-login-flow-usersignin">Password / Credential Login Flow (UserSignIn)</a>
+<a href="#authentication-authorization-handoff" class="" data-anchor="authentication-authorization-handoff">Authentication → Authorization Handoff</a>
+<a href="#scanning-guidance-for-trivy-opengrep" class="" data-anchor="scanning-guidance-for-trivy-opengrep">Scanning Guidance for Trivy &amp; Opengrep</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

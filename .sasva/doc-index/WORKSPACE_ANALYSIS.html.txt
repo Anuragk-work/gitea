@@ -1,0 +1,1423 @@
+=== FILE: WORKSPACE_ANALYSIS.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!-- Markdown → HTML Report — TEMPLATE Design system (colors, fonts, sidebar, tables, badges, print) matches ~/.sasva/skills/source-code-assessment/report-template.html. Placeholders filled by scripts/md2html.
+
+<!--
+  Markdown → HTML Report — TEMPLATE
+  ==================================
+  Design system (colors, fonts, sidebar, tables, badges, print) matches
+  ~/.sasva/skills/source-code-assessment/report-template.html.
+
+  Placeholders filled by scripts/md2html.py (or by the agent inline):
+    TITLE, TITLE_HTML, SUBTITLE, BRAND_NAME, BRAND_SUB, NAV, BRIEFING, CONTENT,
+    REPORT_DATE, REPORT_SOURCE  (each wrapped as double-brace tokens in the markup below)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace Analysis: Gitea</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#f0fdfa',
+      primaryTextColor: '#0d4f4f',
+      primaryBorderColor: '#0f766e',
+      lineColor: '#0d9488',
+      secondaryColor: '#e0f2fe',
+      tertiaryColor: '#fef9c3',
+      fontFamily: '"Source Sans Pro", sans-serif',
+      fontSize: '13px',
+      edgeLabelBackground: '#fff',
+      clusterBkg: '#f0fdfa',
+      clusterBorder: '#0f766e'
+    },
+    flowchart: { curve: 'basis', padding: 16, htmlLabels: true },
+    securityLevel: 'loose'
+  });
+  window.__mermaidReady = true;
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+Pro:wght@300;400;600;700&family=Source+Code+Pro:wght@400;500&display=swap');
+
+  :root {
+    --teal-900: #0d4f4f; --teal-800: #115e59; --teal-700: #0f766e;
+    --teal-600: #0d9488; --teal-500: #14b8a6; --teal-400: #2dd4bf;
+    --teal-200: #99f6e4; --teal-100: #ccfbf1; --teal-50:  #f0fdfa;
+    --gray-900: #111827; --gray-800: #1f2937; --gray-700: #374151;
+    --gray-600: #4b5563; --gray-500: #6b7280; --gray-400: #9ca3af;
+    --gray-300: #d1d5db; --gray-200: #e5e7eb; --gray-100: #f3f4f6; --gray-50:  #f9fafb;
+    --red-700: #b91c1c; --red-600: #dc2626; --red-100: #fee2e2; --red-50:  #fef2f2;
+    --orange-600: #ea580c; --orange-100: #ffedd5;
+    --yellow-700: #a16207; --yellow-600: #ca8a04; --yellow-100: #fef9c3;
+    --green-600: #16a34a; --green-100: #dcfce7;
+    --blue-600: #2563eb; --blue-100: #dbeafe;
+    --sidebar-w: 248px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Sans Pro', 'Segoe UI', system-ui, sans-serif;
+    color: var(--gray-700); line-height: 1.7; font-size: 15.5px;
+    background:
+      radial-gradient(1200px 500px at 20% -10%, rgba(20, 184, 166, 0.10), transparent 60%),
+      radial-gradient(900px 420px at 100% 0%, rgba(13, 79, 79, 0.06), transparent 55%),
+      var(--gray-50);
+  }
+
+  nav.sidebar {
+    position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh;
+    background: #fff; border-right: 1px solid var(--gray-200);
+    overflow-y: auto; padding: 24px 0 40px; z-index: 100;
+    box-shadow: 1px 0 0 rgba(17, 24, 39, 0.02);
+  }
+  nav.sidebar .brand {
+    padding: 0 20px 16px; font-family: 'Merriweather', Georgia, serif;
+    font-size: 15px; font-weight: 700; color: var(--gray-900); line-height: 1.35;
+    border-bottom: 2px solid var(--teal-700); margin: 0 12px 12px; padding-bottom: 14px;
+  }
+  nav.sidebar .brand small {
+    display: block; font-family: 'Source Sans Pro', sans-serif;
+    font-size: 11.5px; font-weight: 400; color: var(--gray-500); margin-top: 3px;
+  }
+  nav.sidebar .nav-label {
+    padding: 4px 20px 8px; font-size: 10px; font-weight: 700;
+    letter-spacing: .8px; text-transform: uppercase; color: var(--gray-400);
+  }
+  nav.sidebar ol { list-style: none; padding: 0 0 8px; counter-reset: nav-counter; }
+  nav.sidebar ol > li { counter-increment: nav-counter; }
+  nav.sidebar ol > li > a {
+    display: block; padding: 7px 20px; color: var(--gray-700); text-decoration: none;
+    font-size: 13px; font-weight: 600; transition: color .15s, background .15s;
+    border-left: 3px solid transparent;
+  }
+  nav.sidebar ol > li > a::before {
+    content: counter(nav-counter) ".  "; color: var(--teal-700); font-weight: 700;
+  }
+  nav.sidebar ol > li > a:hover { color: var(--teal-700); background: var(--teal-50); }
+  nav.sidebar ol > li > a.active {
+    color: var(--teal-800); background: var(--teal-50);
+    border-left-color: var(--teal-700);
+  }
+  nav.sidebar .sub-items { list-style: none; padding: 0 0 6px; }
+  nav.sidebar .sub-items li a {
+    padding: 3px 20px 3px 36px; font-size: 12px; font-weight: 400;
+    color: var(--gray-500); display: block; text-decoration: none;
+  }
+  nav.sidebar .sub-items li a:hover { color: var(--teal-700); }
+
+  main {
+    margin-left: var(--sidebar-w);
+    padding: 36px 48px 80px;
+    max-width: 1120px;
+  }
+
+  .doc-hero {
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 28px 32px 24px;
+    margin-bottom: 36px;
+    border-top: 5px solid var(--teal-700);
+    box-shadow: 0 10px 30px rgba(17, 24, 39, 0.04);
+  }
+  .doc-meta {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+  }
+  .meta-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--teal-50); color: var(--teal-800);
+    border: 1px solid var(--teal-200);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .2px;
+  }
+  .meta-chip.muted {
+    background: var(--gray-50); color: var(--gray-600); border-color: var(--gray-200);
+  }
+
+  h1 {
+    font-family: 'Merriweather', Georgia, serif; font-size: 34px;
+    color: var(--gray-900); font-weight: 900; line-height: 1.25; margin-bottom: 10px;
+  }
+  h1 code {
+    font-size: 0.82em; background: var(--teal-50); border-color: var(--teal-200);
+    color: var(--teal-900);
+  }
+  .subtitle {
+    font-size: 15.5px; color: var(--gray-500); margin: 0;
+    font-style: italic; line-height: 1.6;
+  }
+  .subtitle:empty { display: none; }
+
+  .content-shell {
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 8px 36px 36px;
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.035);
+  }
+
+  h2 {
+    font-family: 'Merriweather', Georgia, serif; font-size: 26px;
+    color: var(--gray-900); font-weight: 900; margin: 48px 0 20px;
+    padding: 14px 0 12px;
+    border-bottom: 2px solid var(--teal-100);
+    scroll-margin-top: 24px;
+  }
+  h2 .secnum {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.6em; color: #fff; background: var(--teal-700);
+    border-radius: 6px; font-size: 0.72em; padding: 2px 8px;
+    margin-right: 10px; font-family: 'Source Sans Pro', sans-serif;
+    font-weight: 700; vertical-align: 2px;
+  }
+  h3 {
+    font-family: 'Merriweather', Georgia, serif; font-size: 18px;
+    color: var(--gray-800); font-weight: 700; margin: 32px 0 12px;
+    scroll-margin-top: 24px;
+  }
+  h3 .phase-badge {
+    display: inline-block; margin-right: 8px; padding: 2px 10px;
+    background: var(--teal-700); color: #fff; border-radius: 4px;
+    font-family: 'Source Sans Pro', sans-serif; font-size: 12px;
+    font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+    vertical-align: 2px;
+  }
+  h4 {
+    font-family: 'Source Sans Pro', sans-serif; font-size: 15px;
+    color: var(--teal-800); font-weight: 700; margin: 22px 0 10px;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+
+  p { margin: 0 0 16px; font-size: 15.5px; line-height: 1.7; }
+  ul, ol { margin: 0 0 18px; padding-left: 22px; }
+  li { margin-bottom: 8px; }
+  li > ul, li > ol { margin: 8px 0 0; }
+  a { color: var(--teal-700); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:hover { color: var(--teal-900); }
+  strong { color: var(--gray-900); }
+
+  blockquote, .callout {
+    margin: 0 0 22px; padding: 18px 22px;
+    background: linear-gradient(180deg, var(--teal-50), #fff);
+    border: 1px solid var(--teal-200);
+    border-left: 6px solid var(--teal-700);
+    border-radius: 0 8px 8px 0;
+    color: var(--gray-700);
+  }
+  .callout.lead p:last-child,
+  blockquote p:last-child { margin-bottom: 0; }
+  .callout.lead { margin-top: 20px; font-size: 15.5px; }
+
+  hr { border: none; border-top: 1px solid var(--gray-200); margin: 28px 0; }
+  hr.section-rule { margin: 40px 0 20px; }
+
+  code {
+    background: var(--gray-100); padding: 2px 6px; border-radius: 3px;
+    font-family: 'Source Code Pro', monospace; font-size: 13px;
+    color: var(--gray-800); border: 1px solid var(--gray-200);
+  }
+
+  /* Polished criteria / verification lists */
+  ol.criteria-list {
+    list-style: none; padding: 0; margin: 18px 0 28px;
+    counter-reset: criteria;
+  }
+  ol.criteria-list > li {
+    counter-increment: criteria;
+    position: relative;
+    margin: 0 0 12px;
+    padding: 14px 16px 14px 56px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+  }
+  ol.criteria-list > li::before {
+    content: counter(criteria);
+    position: absolute; left: 14px; top: 14px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--teal-700); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  ol.criteria-list > li > strong:first-child {
+    display: inline-block; color: var(--teal-900);
+    font-size: 14.5px; margin-bottom: 2px;
+  }
+
+  ul.task-list, ul:not(.sub-items) {
+    list-style: none; padding-left: 0;
+  }
+  .content-shell > ul > li,
+  .content-shell li > ul > li {
+    position: relative;
+    padding-left: 18px;
+  }
+  .content-shell > ul > li::before,
+  .content-shell li > ul > li::before {
+    content: "";
+    position: absolute; left: 0; top: 0.72em;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal-600);
+  }
+
+  /* Keep nested lists under criteria clean */
+  ol.criteria-list ul { list-style: disc; padding-left: 20px; margin-top: 8px; }
+  ol.criteria-list ul li { padding-left: 0; margin-bottom: 4px; background: none; border: none; }
+  ol.criteria-list ul li::before { display: none; }
+
+  pre {
+    margin: 0 0 24px; padding: 16px 18px; overflow-x: auto;
+    background: #0f172a0a; border: 1px solid var(--gray-200); border-radius: 8px;
+  }
+  pre code {
+    background: transparent; border: none; padding: 0;
+    font-family: 'Source Code Pro', monospace; font-size: 12.5px;
+    line-height: 1.55; color: var(--gray-800);
+  }
+  pre code.hljs { background: transparent; padding: 0; }
+
+  .code-panel {
+    margin: 0 0 24px; border: 1px solid var(--gray-200);
+    border-radius: 8px; overflow: hidden; background: #fff;
+  }
+  .code-panel-label {
+    background: var(--teal-700); color: #fff;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; padding: 8px 14px;
+  }
+  .code-panel pre {
+    margin: 0; border: none; border-radius: 0;
+    background: var(--gray-50);
+  }
+  pre.code-tree code {
+    font-size: 12px; line-height: 1.45; color: var(--gray-700);
+  }
+
+  img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0 20px; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 14px; margin: 18px 0 28px;
+    border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;
+  }
+  table thead th {
+    background: var(--teal-700); color: #fff; padding: 11px 16px; text-align: left;
+    font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+  }
+  table tbody td {
+    padding: 10px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: top;
+  }
+  table tbody tr:nth-child(even) { background: var(--gray-50); }
+  table tbody tr:hover { background: var(--teal-50); }
+  table tbody tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 3px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+  }
+  .badge-critical { background: var(--red-100); color: var(--red-700); }
+  .badge-high     { background: var(--orange-100); color: var(--orange-600); }
+  .badge-medium   { background: var(--yellow-100); color: var(--yellow-700); }
+  .badge-low      { background: var(--green-100); color: var(--green-600); }
+  .badge-info     { background: var(--blue-100); color: var(--blue-600); }
+
+  .mermaid-wrap {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-left: 5px solid var(--teal-600);
+    border-radius: 8px;
+    margin: 18px 0 28px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.04);
+  }
+  .diagram-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 12px; background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .diagram-toolbar-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .45px;
+    text-transform: uppercase; color: var(--gray-500);
+  }
+  .diagram-toolbar-actions { display: flex; align-items: center; gap: 6px; }
+  .diagram-btn {
+    appearance: none; border: 1px solid var(--gray-300); background: #fff;
+    color: var(--gray-700); border-radius: 6px; padding: 4px 10px;
+    font: 600 12px/1.2 'Source Sans Pro', sans-serif; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .diagram-btn:hover { background: var(--teal-50); border-color: var(--teal-300, #5eead4); color: var(--teal-800); }
+  .diagram-btn:disabled { opacity: .45; cursor: default; }
+  .diagram-zoom-label {
+    min-width: 3.2em; text-align: center; font-size: 12px; font-weight: 700;
+    color: var(--teal-800); font-variant-numeric: tabular-nums;
+  }
+  .diagram-stage {
+    overflow: auto; max-height: min(70vh, 720px); padding: 22px;
+    cursor: grab; background:
+      linear-gradient(0deg, rgba(255,255,255,.9), rgba(255,255,255,.9)),
+      repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(15,118,110,.04) 20px),
+      repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(15,118,110,.04) 20px);
+  }
+  .diagram-stage:active { cursor: grabbing; }
+  .mermaid-wrap > .mermaid.mermaid-error {
+    color: var(--red-700); white-space: pre-wrap;
+    font-family: 'Source Code Pro', monospace; font-size: 12px;
+    padding: 16px 18px;
+  }
+  .diagram-stage .mermaid {
+    display: flex; justify-content: center; transform-origin: center center;
+    transition: transform .12s ease-out; width: max-content; min-width: 100%;
+    margin: 0 auto; color: inherit; min-height: 0;
+  }
+  .diagram-stage .mermaid svg { max-width: none; height: auto; }
+
+  .diagram-lightbox {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(17, 24, 39, 0.72); display: none;
+    flex-direction: column; padding: 16px;
+  }
+  .diagram-lightbox.open { display: flex; }
+  .diagram-lightbox-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 12px; color: #fff;
+  }
+  .diagram-lightbox-bar .diagram-toolbar-label { color: #e5e7eb; }
+  .diagram-lightbox-bar .diagram-btn {
+    background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); color: #fff;
+  }
+  .diagram-lightbox-bar .diagram-btn:hover {
+    background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.4); color: #fff;
+  }
+  .diagram-lightbox-bar .diagram-zoom-label { color: #ccfbf1; }
+  .diagram-lightbox-stage {
+    flex: 1; overflow: auto; border-radius: 10px; background: #fff;
+    padding: 28px; cursor: grab;
+  }
+  .diagram-lightbox-stage:active { cursor: grabbing; }
+  .diagram-lightbox-stage .mermaid {
+    display: flex; justify-content: center; transform-origin: center center;
+    width: max-content; min-width: 100%; margin: 0 auto;
+  }
+  .diagram-lightbox-stage .mermaid svg { max-width: none; height: auto; }
+  body.diagram-fs-open { overflow: hidden; }
+
+  .footer-meta {
+    font-size: 12px; color: var(--gray-400); text-align: center; margin-top: 28px;
+  }
+
+  /* Contextual briefing (agent-authored) */
+  .briefing {
+    margin: 0 0 8px; padding: 8px 0 12px;
+  }
+  .briefing-title {
+    font-family: 'Merriweather', Georgia, serif; font-size: 24px;
+    color: var(--gray-900); font-weight: 900; margin: 28px 0 18px;
+    padding-bottom: 10px; border-bottom: 2px solid var(--teal-100);
+  }
+  .briefing-title .secnum {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.6em; color: #fff; background: var(--teal-700);
+    border-radius: 6px; font-size: 0.72em; padding: 2px 8px;
+    margin-right: 10px; font-family: 'Source Sans Pro', sans-serif;
+    font-weight: 700; vertical-align: 2px;
+  }
+  .briefing-sub {
+    font-family: 'Merriweather', Georgia, serif; font-size: 17px;
+    color: var(--gray-800); font-weight: 700; margin: 26px 0 12px;
+  }
+  .highlight-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px; margin: 0 0 8px;
+  }
+  .highlight-card {
+    background: linear-gradient(180deg, var(--teal-50), #fff);
+    border: 1px solid var(--teal-200); border-radius: 8px;
+    padding: 14px 16px; border-top: 3px solid var(--teal-600);
+  }
+  .highlight-card .hl-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .55px;
+    text-transform: uppercase; color: var(--teal-800); margin-bottom: 6px;
+  }
+  .highlight-card p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--gray-700); }
+  .highlight-card strong { color: var(--gray-900); }
+
+  .flow-strip {
+    list-style: none; padding: 0; margin: 0 0 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .flow-wave {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
+    padding: 10px 12px; background: var(--gray-50);
+    border: 1px solid var(--gray-200); border-radius: 8px;
+    border-left: 4px solid var(--teal-600);
+  }
+  .flow-wave-label {
+    flex: 0 0 100%; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .5px; text-transform: uppercase; color: var(--teal-800);
+    margin-bottom: 2px;
+  }
+  .flow-wave.parallel .flow-wave-label { color: var(--blue-600); }
+  .flow-wave.parallel { border-left-color: var(--blue-600); background: #f8fafc; }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: #fff; border: 1px solid var(--gray-200);
+    border-radius: 8px; padding: 10px 12px; flex: 1 1 160px; max-width: 100%;
+  }
+  .flow-wave.parallel .flow-step {
+    border-color: var(--blue-100); background: #fff;
+  }
+  .flow-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--teal-700); color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .flow-wave.parallel .flow-num { background: var(--blue-600); }
+  .flow-text { font-size: 13px; font-weight: 600; color: var(--gray-800); line-height: 1.35; }
+  .flow-note {
+    font-size: 12.5px; color: var(--gray-500); margin: -6px 0 16px; font-style: italic;
+  }
+
+  /* Horizontal wave DAG (workflow-board style: columns = waves) */
+  .dag-flow {
+    display: flex; align-items: stretch; gap: 0;
+    overflow-x: auto; padding: 8px 4px 18px; margin: 0 0 20px;
+    scrollbar-width: thin;
+  }
+  .dag-wave {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 172px; flex: 0 0 auto;
+  }
+  .dag-wave-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .7px;
+    text-transform: uppercase; color: var(--gray-400);
+    margin-bottom: 10px; text-align: center;
+  }
+  .dag-wave-nodes {
+    display: flex; flex-direction: column; gap: 10px;
+    width: 100%; flex: 1; justify-content: center;
+  }
+  .dag-node {
+    background: #fff; border: 1px solid var(--gray-200);
+    border-radius: 10px; padding: 12px 12px 10px;
+    box-shadow: 0 4px 14px rgba(17, 24, 39, 0.05);
+  }
+  .dag-node.foundation {
+    border-color: var(--teal-300);
+    background: linear-gradient(180deg, var(--teal-50), #fff);
+    box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.14), 0 4px 14px rgba(17, 24, 39, 0.05);
+  }
+  .dag-node.parallel {
+    border-color: #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff, #fff);
+  }
+  .dag-node.gate { border-color: var(--teal-200); }
+  .dag-node-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 6px;
+  }
+  .dag-node-id {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; color: var(--teal-800);
+    font-family: 'Source Code Pro', monospace;
+  }
+  .dag-node.parallel .dag-node-id { color: var(--blue-600); }
+  .dag-node-badge {
+    width: 18px; height: 18px; border-radius: 5px;
+    background: var(--teal-700); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+  }
+  .dag-node.parallel .dag-node-badge { background: var(--blue-600); }
+  .dag-node-title {
+    font-size: 13px; font-weight: 600; color: var(--gray-800);
+    line-height: 1.35; margin: 0;
+  }
+  .dag-node-meta { margin-top: 8px; font-size: 11px; color: var(--gray-500); }
+  .dag-edge {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; flex: 0 0 36px; align-self: center;
+    position: relative; min-height: 40px;
+  }
+  .dag-edge::before {
+    content: ""; position: absolute; left: 4px; right: 10px; top: 50%;
+    height: 2px; background: var(--gray-300);
+  }
+  .dag-edge::after {
+    content: ""; position: absolute; right: 6px; top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent; border-left-color: var(--gray-400);
+  }
+  @media print {
+    .dag-flow { overflow: visible; flex-wrap: wrap; gap: 12px; }
+    .dag-edge { display: none; }
+  }
+
+  .watch-list {
+    list-style: none; padding: 0; margin: 0 0 12px;
+    border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;
+  }
+  .watch-list > li {
+    padding: 12px 16px 12px 18px; margin: 0;
+    border-bottom: 1px solid var(--gray-200); background: #fff;
+    border-left: 4px solid var(--teal-500);
+  }
+  .watch-list > li:nth-child(even) { background: var(--gray-50); }
+  .watch-list > li:last-child { border-bottom: none; }
+  .watch-list > li::before { display: none; }
+  .watch-list strong { color: var(--teal-900); }
+
+  .glance-table {
+    border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 0 0 18px;
+  }
+  .glance-table caption {
+    background: var(--teal-700); color: #fff; padding: 10px 16px;
+    font-weight: 700; text-align: left; font-size: 13px; letter-spacing: .3px;
+  }
+  .glance-table td {
+    padding: 8px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: top;
+  }
+  .glance-table td:first-child {
+    font-weight: 700; color: var(--gray-700); width: 160px; background: var(--gray-50);
+  }
+
+  @media (max-width: 900px) {
+    nav.sidebar { display: none; }
+    main { margin-left: 0; padding: 20px 16px 56px; }
+    .content-shell { padding: 4px 18px 24px; }
+    .doc-hero { padding: 22px 18px; }
+    h1 { font-size: 28px; }
+  }
+
+  @media print {
+    @page { margin: 16mm 14mm; }
+    body { background: #fff; }
+    nav.sidebar { display: none !important; }
+    main { margin-left: 0; padding: 0; max-width: none; }
+    .doc-hero, .content-shell {
+      border: none; box-shadow: none; padding: 0; border-radius: 0;
+    }
+    .doc-hero { border-top: 3px solid var(--teal-700); padding-bottom: 12px; margin-bottom: 16px; }
+    a { color: inherit; text-decoration: none; }
+    a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 10px; color: var(--gray-400); }
+    h2 { break-before: page; border-bottom-color: var(--gray-300); }
+    h2:first-of-type { break-before: auto; }
+    h2, h3, h4 { break-after: avoid; }
+    pre, table, blockquote, .callout, .mermaid-wrap, ol.criteria-list > li { break-inside: avoid; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+    body { font-size: 11pt; color: #000; }
+    .footer-meta { break-before: avoid; }
+    .meta-chip { border: 1px solid #999; }
+    .diagram-toolbar, .diagram-lightbox { display: none !important; }
+    .diagram-stage { max-height: none; overflow: visible; background: none; padding: 12px 0; cursor: default; }
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-lightbox" id="diagramLightbox" aria-hidden="true">
+  <div class="diagram-lightbox-bar">
+    <span class="diagram-toolbar-label">Diagram</span>
+    <div class="diagram-toolbar-actions">
+      <button type="button" class="diagram-btn" data-lb-action="zoom-out" title="Zoom out">−</button>
+      <span class="diagram-zoom-label" data-lb-zoom>100%</span>
+      <button type="button" class="diagram-btn" data-lb-action="zoom-in" title="Zoom in">+</button>
+      <button type="button" class="diagram-btn" data-lb-action="reset" title="Reset zoom">Reset</button>
+      <button type="button" class="diagram-btn" data-lb-action="close" title="Close fullscreen">Close</button>
+    </div>
+  </div>
+  <div class="diagram-lightbox-stage" id="diagramLightboxStage"></div>
+</div>
+
+<nav class="sidebar">
+  <div class="brand">
+    Gitea
+    <small>Workspace Analysis</small>
+  </div>
+  <div class="nav-label">Contents</div>
+  <ol>
+    <li><a href="#briefing">At a glance</a></li>
+    <li><a href="#executive-summary">1. Executive Summary</a></li>
+    <li><a href="#tech-stack">2. Tech Stack</a></li>
+    <li><a href="#architecture">3. Architecture</a></li>
+    <li><a href="#database-migrations">4. Database Migrations</a></li>
+    <li><a href="#coding-style-naming-conventions">5. Coding Style &amp; Naming Conventions</a><ul class="sub-items"><li><a href="#go">Go</a></li><li><a href="#typescript-frontend">TypeScript / Frontend</a></li><li><a href="#css">CSS</a></li></ul></li>
+    <li><a href="#required-forbidden-libraries">6. Required / Forbidden Libraries</a><ul class="sub-items"><li><a href="#must-use-internal">Must-use (internal)</a></li><li><a href="#forbidden-enforced-via-depguard-in-.golangci.yml-ci-breaking-not-just-review-comments">Forbidden (enforced via depguard in .golangci.yml — CI-breaking, not just review comments)</a></li><li><a href="#preferred-third-party">Preferred third-party</a></li></ul></li>
+    <li><a href="#common-patterns">7. Common Patterns</a><ul class="sub-items"><li><a href="#cli-entrypoint-log-flushing">CLI Entrypoint / Log Flushing</a></li><li><a href="#error-handling">Error Handling</a></li><li><a href="#data-access">Data Access</a></li></ul></li>
+    <li><a href="#testing-strategy">8. Testing Strategy</a></li>
+    <li><a href="#governance-contribution-rules-from-agents.md">9. Governance &amp; Contribution Rules (from AGENTS.md)</a></li>
+    <li><a href="#notable-clarifications-nuances">10. Notable Clarifications / Nuances</a></li>
+    <li><a href="#open-items-for-deeper-verification">11. Open Items for Deeper Verification</a></li>
+  </ol>
+</nav>
+
+<main>
+  <header class="doc-hero">
+    <div class="doc-meta">
+      <span class="meta-chip">Gitea</span>
+      <span class="meta-chip muted">Workspace Analysis</span>
+      <span class="meta-chip muted">2026-07-14</span>
+    </div>
+    <h1>Workspace Analysis: Gitea</h1>
+    <p class="subtitle"></p>
+  </header>
+
+  <div class="content-shell">
+    <section class="briefing" id="briefing" aria-label="Report briefing">
+  <h2 class="briefing-title"><span class="secnum">&#9733;</span> At a glance</h2>
+
+  <div class="highlight-grid">
+    <div class="highlight-card">
+      <div class="hl-label">What this is</div>
+      <p><strong>Gitea</strong> &mdash; a large, mature self-hosted Git platform. Go 1.26 layered-monolith backend (<code>routers &rarr; services &rarr; models &rarr; modules</code>) paired with a Vue&nbsp;3 / TypeScript frontend built on Vite &amp; TailwindCSS.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Enforcement, not discipline</div>
+      <p>Architecture and style rules are enforced by tooling &mdash; <code>depguard</code>, <code>golangci-lint</code>, ESLint (flat config + a dedicated JSON linter), and Stylelint &mdash; rather than left to reviewer memory.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Confidence split</div>
+      <p>Frontend tooling configs and two Go entrypoint files were <strong>directly verified</strong> this pass. Deeper backend claims (ORM exclusivity, migration <code>depguard</code> rules, LDAP, goldmark) are <strong>carried forward, unverified-but-uncontradicted</strong>.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Hard constraints</div>
+      <p>Mandatory <code>gitea.dev/modules/json</code> (never <code>encoding/json</code>), mandatory <code>Assisted-by</code> trailer on AI commits, and a CI-breaking forbidden-import list enforced via <code>depguard</code>.</p>
+    </div>
+  </div>
+
+  <h3 class="briefing-sub">Key items to verify or watch</h3>
+  <ul class="watch-list">
+    <li><strong>ORM exclusivity:</strong> confirm no raw <code>database/sql</code> usage anywhere in <code>models/</code> &mdash; claim is carried forward, not re-checked.</li>
+    <li><strong>Migration depguard rule:</strong> inspect <code>.golangci.yml</code> directly to confirm migrations truly cannot import <code>models</code>/<code>modules/structs</code>.</li>
+    <li><strong>Markdown engine:</strong> verify <code>goldmark</code> is the only renderer &mdash; no competing library sneaking in via a transitive dependency.</li>
+    <li><strong>LDAP surface:</strong> review <code>cmd/admin_auth_ldap*.go</code> first-hand before treating LDAP as fully core.</li>
+    <li><strong>Layering discipline in practice:</strong> trace one real feature (e.g. issues or actions) end-to-end through <code>models &rarr; services &rarr; routers</code> to confirm the layering holds, not just the docs.</li>
+    <li><strong>Forbidden imports:</strong> any PR introducing <code>encoding/json</code>, <code>io/ioutil</code>, <code>pkg/errors</code>, or <code>gopkg.in/ini.v1</code> will fail CI via <code>depguard</code> &mdash; catch this in review, not just CI.</li>
+    <li><strong>AI commit trailers:</strong> <code>Co-Authored-By</code> / <code>Signed-off-by</code> are explicitly forbidden for AI contributions &mdash; use <code>Assisted-by: AGENT_NAME:MODEL_VERSION</code> instead.</li>
+  </ul>
+</section>
+
+    
+<h2 id="executive-summary"><span class="secnum">1.</span> 1. Executive Summary</h2>
+<p>This workspace is <strong>Gitea</strong>, a self-hosted Git service
+(issues, pull requests, CI/CD via Actions, package registry, wiki). It
+is a large, mature <strong>Go monorepo</strong> with a <strong>layered
+monolith backend</strong> and a <strong>Vue 3 / TypeScript
+frontend</strong>, built on <code>xorm</code> for persistence and
+Vite/Tailwind for the client. The project enforces its architecture and
+coding conventions heavily through tooling (<code>depguard</code>,
+<code>golangci-lint</code>, ESLint, Stylelint) rather than relying on
+developer discipline alone.</p>
+<blockquote>
+<p><strong>Confidence note:</strong> Some backend-specific claims below
+(ORM usage, migration internals, LDAP, markdown engine) come from a
+prior structural analysis pass and were <strong>not re-verified</strong>
+in the most recent sampling pass, which focused mainly on frontend
+tooling configs (<code>stylelint.config.ts</code>,
+<code>tailwind.config.ts</code>, <code>eslint.config.ts</code>,
+<code>eslint.json.config.ts</code>, <code>playwright.config.ts</code>,
+<code>vitest</code> config, <code>types.d.ts</code>) plus two Go files
+(<code>main.go</code>, <code>main_timezones.go</code>). They remain
+<strong>unverified-but-uncontradicted</strong> and are flagged
+accordingly.</p>
+</blockquote>
+<hr />
+<h2 id="tech-stack"><span class="secnum">2.</span> 2. Tech Stack</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>Go 1.26, module <code>gitea.dev</code></td>
+<td>Confirmed (<code>main.go</code>)</td>
+</tr>
+<tr>
+<td>CLI framework</td>
+<td><code>github.com/urfave/cli/v3</code></td>
+<td>Confirmed (<code>main.go</code>)</td>
+</tr>
+<tr>
+<td>ORM / DB</td>
+<td><code>xorm.io/xorm</code> + <code>xorm.io/builder</code> (sole
+sanctioned layer)</td>
+<td>Unverified this pass, carried forward</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td><code>github.com/yuin/goldmark</code> (sole renderer)</td>
+<td>Unverified this pass</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>LDAP as first-class backend
+(<code>cmd/admin_auth_ldap*.go</code>)</td>
+<td>Unverified this pass</td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td>TypeScript + Vue 3, Vite, TailwindCSS</td>
+<td>Confirmed</td>
+</tr>
+<tr>
+<td>Frontend linting</td>
+<td>ESLint (flat config) + dedicated <code>eslint.json.config.ts</code>
+for JSON/JSON5/JSONC</td>
+<td>Confirmed</td>
+</tr>
+<tr>
+<td>CSS linting</td>
+<td>Stylelint (<code>@stylistic/stylelint-plugin</code>)</td>
+<td>Confirmed</td>
+</tr>
+<tr>
+<td>Testing (unit)</td>
+<td><code>testify</code> (Go), Vitest (<code>happy-dom</code>) for
+frontend</td>
+<td>Confirmed</td>
+</tr>
+<tr>
+<td>Testing (E2E)</td>
+<td>Playwright</td>
+<td>Confirmed</td>
+</tr>
+<tr>
+<td>Package managers</td>
+<td>Go modules, <code>pnpm</code> (frozen lockfile),
+<code>uv</code>/<code>pyproject.toml</code> for docs/build scripts</td>
+<td>Confirmed</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="architecture"><span class="secnum">3.</span> 3. Architecture</h2>
+<p>Gitea uses a <strong>layered monolith</strong>, explicitly
+<em>not</em> MVC:</p>
+<div class="mermaid-wrap"><div class="mermaid">graph TD
+    subgraph Backend [Go Backend]
+        R[routers/ - HTTP handlers, 145 files]
+        S[services/ - business logic, 284 files]
+        M[models/ - persistence, 917 files]
+        MOD[modules/ - shared utilities, 2500 files]
+        R --> S
+        S --> M
+        M --> DB[(Database via xorm)]
+        R --> MOD
+        S --> MOD
+        M --> MOD
+    end
+
+    subgraph Frontend [Vue 3 / TypeScript]
+        WS[web_src/] -->|Vite build| PUB[public/ bundled assets]
+    end
+
+    CMD[cmd/ - CLI subcommands, urfave/cli v3] --> R
+    MIG[models/migrations/v1_XX/] --> M
+    R --> WS</div></div>
+<p><strong>Key rules:</strong> - <code>routers/</code> → calls into
+<code>services/</code> for non-trivial logic (never duplicates business
+logic itself). - <code>services/</code> → calls into
+<code>models/</code> for persistence (never touches the DB engine
+directly). - <code>models/</code> → the only layer allowed to touch
+<code>db.GetEngine(ctx)</code> directly. - <code>modules/</code> →
+shared, generic utilities imported almost everywhere; check here before
+writing new generic helpers. - New DB-backed entities live under
+<code>models/&lt;domain&gt;/</code> (e.g. <code>models/issues/</code>,
+<code>models/actions/</code>), split into fine-grained files
+(e.g. <code>gpg_key.go</code>, <code>gpg_key_add.go</code>,
+<code>gpg_key_commit_verification.go</code>) rather than one large file
+per entity. - Collection/list operations get a dedicated
+<code>_list.go</code> file (e.g. <code>comment_list.go</code>) instead
+of being bolted onto the entity’s main file.</p>
+<p><em>(This structural picture is carried forward from prior analysis
+and not re-confirmed this pass — no
+<code>models/</code>/<code>services/</code>/<code>routers/</code> files
+were sampled directly.)</em></p>
+<hr />
+<h2 id="database-migrations"><span class="secnum">4.</span> 4. Database Migrations</h2>
+<ul>
+<li><p>Location: <code>models/migrations/v1_XX/v&lt;N&gt;.go</code> —
+one numbered file per DB version.</p></li>
+<li><p>Registration: centrally via
+<code>newMigration(id, desc, fn)</code> in
+<code>models/migrations.go</code>.</p></li>
+<li><p><strong>Enforced via <code>depguard</code>:</strong> migration
+files are <strong>forbidden</strong> from importing <code>models</code>
+or <code>modules/structs</code>. They must redefine any struct shapes
+they need locally, annotated with a rationale comment, e.g.:</p>
+<pre><code class="language-go">// Copy paste from models/repo.go because we cannot import models package.
+type Repository struct { ... }</code></pre></li>
+<li><p>Migrations use the <strong>raw session idiom</strong>
+(<code>x.NewSession()</code>) rather than the higher-level
+<code>db</code> helpers, since they can’t use application-level
+abstractions.</p></li>
+<li><p>Migration tests mirror the migration file name:
+<code>v&lt;N&gt;_test.go</code>, using a <code>migrationtest</code>
+helper package.</p></li>
+</ul>
+<hr />
+<h2 id="coding-style-naming-conventions"><span class="secnum">5.</span> 5. Coding Style &amp; Naming
+Conventions</h2>
+<h3 id="go">Go</h3>
+<ul>
+<li><p><strong>Files:</strong> <code>snake_case.go</code>
+(<code>protected_branch.go</code>, <code>run_job.go</code>); migrations
+strictly <code>v&lt;version&gt;.go</code>.</p></li>
+<li><p><strong>Platform-specific files:</strong> use Go build tags
+(<code>//go:build windows</code>) with a descriptive suffix +
+explanatory comment, not a rigid <code>_windows.go</code> naming scheme
+(e.g. <code>main_timezones.go</code> guards a <code>time/tzdata</code>
+side-effect import).</p></li>
+<li><p><strong>Structs/Types:</strong> <code>PascalCase</code>, named
+after the singular entity (<code>ActionRunJob</code>,
+<code>ProtectedBranch</code>, <code>OAuth2Application</code>).</p></li>
+<li><p><strong>Error types:</strong> <code>Err&lt;Noun&gt;</code> struct
++ <code>IsErr&lt;Noun&gt;(err) bool</code> predicate helper.</p></li>
+<li><p><strong>Methods:</strong></p>
+<ul>
+<li>Lazy relation loaders: <code>Load*</code> (<code>LoadRepo</code>,
+<code>LoadDoer</code>).</li>
+<li>Boolean predicates: <code>Is*</code>, <code>Has*</code>,
+<code>CanUser*</code>.</li>
+<li>Migration entrypoints: PascalCase, verb-first
+(<code>FixMergeBase</code>).</li>
+<li>Unexported helpers: camelCase verbs
+(<code>getRemoteAddress</code>).</li>
+</ul></li>
+<li><p><strong>Constants:</strong> <code>iota</code> enum blocks with
+trailing <code>// N</code> comments, PascalCase even when
+unexported.</p></li>
+<li><p><strong>Transient/computed fields:</strong> lowerCamelCase,
+tagged <code>xorm:"-"</code>.</p></li>
+<li><p><strong>Import aliasing:</strong> domain-suffixed aliases
+mandatory for cross-domain imports:</p>
+<pre><code class="language-go">repo_model &quot;gitea.dev/models/repo&quot;
+user_model &quot;gitea.dev/models/user&quot;
+webhook_module &quot;gitea.dev/modules/webhook&quot;</code></pre></li>
+<li><p><strong>License header</strong> mandatory on every Go file:</p>
+<pre><code class="language-go">// Copyright &lt;year&gt; The Gitea Authors. All rights reserved.
+// SPDX-License-Identifier: MIT</code></pre>
+<p>(older files may carry multiple copyright lines before the SPDX line
+— this is acceptable, not an anomaly.)</p></li>
+<li><p><strong>Test naming:</strong> inconsistent today
+(<code>TestAddLdapBindDn</code> vs <code>Test_SSHParsePublicKey</code>);
+prefer <code>Test_&lt;ExactFunctionOrFeatureName&gt;</code> for
+<em>new</em> tests (convention, not enforced) — don’t rewrite existing
+tests to conform.</p></li>
+</ul>
+<h3 id="typescript-frontend">TypeScript / Frontend</h3>
+<ul>
+<li>Prefer <code>!</code> non-null assertion over
+<code>?.</code>/<code>??</code>, but <strong>only</strong> when the
+value is genuinely guaranteed non-null (per <code>AGENTS.md</code>).
+Optional/env-derived values
+(e.g. <code>env.GITEA_TEST_E2E_URL?.replace?.(...)</code>) are
+legitimate <code>?.</code> use and not a counter-example.</li>
+<li><code>camelCase</code> for vars/functions, <code>PascalCase</code>
+for imported types.</li>
+<li>Use <code>declare module</code> ambient blocks
+(<code>types.d.ts</code>) for both non-code asset imports
+(<code>*.svg</code>, <code>*.css</code>, <code>*.vue</code>) and typing
+untyped third-party packages (<code>idiomorph</code>,
+<code>swagger-ui-dist</code>) — avoid
+<code>@ts-ignore</code>/<code>any</code> as a first resort.</li>
+</ul>
+<h3 id="css">CSS</h3>
+<ul>
+<li>Prefer <code>flex-*</code> utilities over per-child margin
+utilities.</li>
+<li>Tailwind is configured with <code>prefix: 'tw-'</code>,
+<code>important: true</code>; base reset is <strong>disabled</strong>,
+and a blocklist bans several base utilities (<code>hidden</code>,
+<code>transform</code>, <code>shadow</code>, etc.) —
+unprefixed/blocklisted classes will not work.</li>
+<li>Theme tokens (colors, font sizes, border radii) map from CSS custom
+properties (<code>--color-*</code>), not hardcoded in
+<code>tailwind.config.ts</code> — new design tokens should be added as
+CSS variables first.</li>
+<li><strong>Visibility anti-pattern (explicitly banned):</strong> no
+<code>[hidden]</code> attribute, <code>.hidden</code> class, inline
+<code>style="display:none"</code>, or jQuery
+<code>.show()/.hide()</code>. Use the <code>tw-hidden</code> utility or
+<code>showElem</code>/<code>hideElem</code>/<code>toggleElem</code>
+helpers from <code>utils/dom.js</code>.</li>
+<li>Stylelint enforces double-quoted strings, lowercase
+hex/units/pseudo-selectors, <code>declaration-strict-value</code>,
+<code>no-unknown-custom-properties</code>.</li>
+</ul>
+<hr />
+<h2 id="required-forbidden-libraries"><span class="secnum">6.</span> 6. Required / Forbidden
+Libraries</h2>
+<h3 id="must-use-internal">Must-use (internal)</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Package</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gitea.dev/modules/...</code></td>
+<td>Shared utility layer — check before writing generic helpers</td>
+</tr>
+<tr>
+<td><code>gitea.dev/models/...</code></td>
+<td>Canonical data access — never duplicate persistence logic
+elsewhere</td>
+</tr>
+<tr>
+<td><code>gitea.dev/services/...</code></td>
+<td>Business logic layer above models</td>
+</tr>
+<tr>
+<td><code>gitea.dev/routers/...</code></td>
+<td>HTTP handler layer</td>
+</tr>
+<tr>
+<td><code>gitea.dev/modules/json</code></td>
+<td><strong>Mandatory</strong> replacement for
+<code>encoding/json</code></td>
+</tr>
+<tr>
+<td><code>gitea.dev/modules/util</code></td>
+<td><code>ErrorWrap</code>, <code>NewInvalidArgumentErrorf</code>,
+sentinel errors</td>
+</tr>
+<tr>
+<td><code>gitea.dev/modules/git/internal</code></td>
+<td>Never import directly — use module’s own <code>AddXxx</code> wrapper
+facade</td>
+</tr>
+</tbody>
+</table>
+<h3 id="forbidden-enforced-via-depguard-in-.golangci.yml-ci-breaking-not-just-review-comments">Forbidden
+(enforced via <code>depguard</code> in <code>.golangci.yml</code> —
+CI-breaking, not just review comments)</h3>
+<table>
+<thead>
+<tr>
+<th>Banned</th>
+<th>Use Instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>encoding/json</code></td>
+<td><code>gitea.dev/modules/json</code></td>
+</tr>
+<tr>
+<td><code>github.com/unknwon/com</code></td>
+<td><code>gitea.dev/modules/util</code></td>
+</tr>
+<tr>
+<td><code>io/ioutil</code></td>
+<td><code>os</code> / <code>io</code></td>
+</tr>
+<tr>
+<td><code>golang.org/x/exp</code></td>
+<td>stdlib equivalents</td>
+</tr>
+<tr>
+<td><code>gopkg.in/ini.v1</code></td>
+<td>Gitea’s own config system</td>
+</tr>
+<tr>
+<td><code>gitea.com/go-chi/cache</code></td>
+<td>Gitea’s own cache system</td>
+</tr>
+<tr>
+<td><code>github.com/pkg/errors</code></td>
+<td>builtin <code>errors</code> + <code>%w</code> wrapping</td>
+</tr>
+</tbody>
+</table>
+<h3 id="preferred-third-party">Preferred third-party</h3>
+<ul>
+<li><code>github.com/stretchr/testify</code> — de facto standard,
+enforced via <code>testifylint</code> (with <code>empty</code>,
+<code>go-require</code>, <code>require-error</code> checks explicitly
+disabled).</li>
+<li>Stdlib-first policy: <code>strings</code>, <code>fmt</code>,
+<code>context</code>, <code>time</code>, <code>net/http</code>,
+<code>errors</code>, <code>io</code>, <code>os</code>,
+<code>strconv</code>, <code>bytes</code>, <code>path/filepath</code>,
+<code>net/url</code>, <code>sync</code>, <code>regexp</code>,
+<code>slices</code> — reach for these before adding a dependency
+(spirit-enforced by <code>usestdlibvars</code>).</li>
+</ul>
+<hr />
+<h2 id="common-patterns"><span class="secnum">7.</span> 7. Common Patterns</h2>
+<h3 id="cli-entrypoint-log-flushing">CLI Entrypoint / Log Flushing</h3>
+<p><code>main.go</code> overrides <code>cli.OsExiter</code> and
+explicitly calls <code>log.GetManager().Close()</code>
+<strong>both</strong> inside the custom exiter <strong>and</strong>
+after <code>RunMainApp</code> returns normally. This is called out
+in-code as a <strong>MUST</strong> — “otherwise there will be log loss.”
+Any new exit path added to <code>cmd/</code>/<code>main.go</code> must
+flush logs on <em>every</em> route, not just the happy path.</p>
+<h3 id="error-handling">Error Handling</h3>
+<ul>
+<li>Sentinel errors:
+<code>var ErrBranchIsProtected = util.ErrorWrap(util.ErrPermissionDenied, "branch is protected")</code></li>
+<li>Custom error structs implement <code>Error() string</code> and
+<code>Unwrap() error</code> back to a shared sentinel.</li>
+<li>Always wrap with <code>fmt.Errorf("...: %w", err)</code> — never
+re-stringify errors (an anti-pattern seen once in <code>v286.go</code>,
+which loses <code>errors.Is</code>/<code>errors.As</code> support).</li>
+<li>Log-and-continue idiom for recoverable per-record failures in
+loops/migrations (<code>log.Warn(...); continue</code>).</li>
+<li><code>panic()</code> reserved for programmer-error/invariant
+violations; <code>log.Fatal</code> reserved for unrecoverable migration
+states (e.g. unknown DB dialect) — these two are intentionally distinct,
+not interchangeable.</li>
+<li>Every <code>//nolint:nilnil</code> (or any <code>//nolint</code>)
+must carry a specific justification — enforced by
+<code>nolintlint</code>.</li>
+</ul>
+<h3 id="data-access">Data Access</h3>
+<ul>
+<li>DB-touching functions always take <code>context.Context</code> as
+the first parameter.</li>
+<li>The xorm engine is only ever touched via
+<code>db.GetEngine(ctx)</code>, and only inside
+<code>models/db</code>.</li>
+<li>Transactions wrap application code via
+<code>db.WithTx(ctx, func(ctx context.Context) error { ... })</code>.</li>
+<li>Migrations bypass this and use the raw <code>x.NewSession()</code>
+idiom instead.</li>
+</ul>
+<hr />
+<h2 id="testing-strategy"><span class="secnum">8.</span> 8. Testing Strategy</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Type</th>
+<th>Tooling</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Go unit tests</td>
+<td>stdlib <code>testing</code> + <code>testify</code></td>
+<td>Colocated <code>_test.go</code> files</td>
+</tr>
+<tr>
+<td>Integration/fixtures</td>
+<td>YAML in <code>models/fixtures/&lt;entity&gt;.yml</code></td>
+<td>Fixture-based DB seeding</td>
+</tr>
+<tr>
+<td>Migration tests</td>
+<td><code>migrationtest</code> helper</td>
+<td>Mirrors <code>v&lt;N&gt;.go</code> →
+<code>v&lt;N&gt;_test.go</code></td>
+</tr>
+<tr>
+<td>Frontend unit</td>
+<td>Vitest, <code>happy-dom</code> environment</td>
+<td></td>
+</tr>
+<tr>
+<td>E2E</td>
+<td>Playwright</td>
+<td>Target: sub-2s runtime per test (per <code>AGENTS.md</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="governance-contribution-rules-from-agents.md"><span class="secnum">9.</span> 9. Governance
+&amp; Contribution Rules (from <code>AGENTS.md</code>)</h2>
+<ul>
+<li><strong>Conventional Commits</strong> required; no force-push,
+amend, or squash on open PRs.</li>
+<li>AI-assisted commits <strong>must</strong> include an
+<code>Assisted-by: AGENT_NAME:MODEL_VERSION</code> trailer.</li>
+<li><code>Co-Authored-By</code> / <code>Signed-off-by</code> trailers
+are <strong>explicitly forbidden</strong> for AI contributions.</li>
+<li>Run <code>make fmt</code>, <code>make lint-go</code>,
+<code>make lint-js</code> before committing; run <code>make tidy</code>
+after any <code>go.mod</code> change.</li>
+<li>Contribution docs are topic-split under <code>docs/</code>
+(<code>guidelines-backend.md</code>,
+<code>guidelines-frontend.md</code>,
+<code>guidelines-refactoring.md</code>, <code>testing.md</code>) — check
+these before inventing new conventions.</li>
+</ul>
+<hr />
+<h2 id="notable-clarifications-nuances"><span class="secnum">10.</span> 10. Notable Clarifications /
+Nuances</h2>
+<ul>
+<li><strong>Go and frontend tooling are not fully isolated:</strong>
+while <code>golangci-lint</code> never runs on <code>web_src/</code> and
+ESLint/TS rules don’t apply to <code>.go</code> files, Tailwind’s
+content scanner <em>does</em> parse Go source for class extraction —
+<code>tailwind.config.ts</code>’s content glob includes
+<code>'./{build,models,modules,routers,services}/**/*.go'</code>. This
+is a build-tool content-scan concern, distinct from linting.</li>
+<li><strong>The <code>!</code> vs <code>?.</code>/<code>??</code>
+TypeScript rule has a narrow scope:</strong> it only applies to values
+that are framework-guaranteed non-null. Optional/env-derived data
+(e.g. <code>playwright.config.ts</code>’s
+<code>env.GITEA_TEST_E2E_URL?.replace?.(...)</code>) is a legitimate,
+correct use of <code>?.</code> and does not violate the convention.</li>
+<li><strong>Multiple copyright lines are acceptable:</strong>
+<code>main.go</code> carries both an original Gogs (2014) attribution
+and a Gitea (2016) line before the SPDX identifier — the single-line
+license header example in style guides is illustrative of the required
+<em>last-line</em> SPDX format, not a hard cap of one copyright
+line.</li>
+</ul>
+<hr />
+<h2 id="open-items-for-deeper-verification"><span class="secnum">11.</span> 11. Open Items for Deeper
+Verification</h2>
+<p>The following were carried forward from a prior pass and should be
+re-confirmed with direct file reads if they become relevant to planned
+work: 1. <code>xorm</code>/<code>xorm.io/builder</code> as the sole DB
+layer — verify no raw <code>database/sql</code> usage in
+<code>models/</code>. 2. Exact <code>depguard</code> rule set for
+migration files (forbidding
+<code>models</code>/<code>modules/structs</code> imports) — check
+<code>.golangci.yml</code> directly. 3. <code>goldmark</code> as the
+sole markdown renderer — check for competing renderers. 4. LDAP
+implementation details in <code>cmd/admin_auth_ldap*.go</code>. 5. Full
+layering discipline in <code>models/ → services/ → routers/</code> —
+trace one real feature end-to-end (e.g. issues or actions) to confirm in
+practice.</p>
+
+
+    <hr class="section-rule">
+    <p class="footer-meta">
+      Report generated on 2026-07-14 &middot; Source <code>WORKSPACE_ANALYSIS.md</code>
+    </p>
+  </div>
+</main>
+
+<script>
+  // Syntax highlighting must never block diagram boot (CDN/hljs can be unavailable).
+  try {
+    if (window.hljs) {
+      document.querySelectorAll('pre code').forEach((el) => {
+        const inMermaid = el.classList.contains('mermaid')
+          || el.closest('.mermaid')
+          || el.closest('.mermaid-wrap');
+        if (!inMermaid) hljs.highlightElement(el);
+      });
+    }
+  } catch (err) {
+    console.warn('highlight.js skipped:', err);
+  }
+
+  const sections = document.querySelectorAll('h2[id]');
+  const navLinks = document.querySelectorAll('nav.sidebar ol > li > a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.pageYOffset >= s.offsetTop - 120) current = s.id; });
+    navLinks.forEach(l => {
+      l.classList.remove('active');
+      if (l.getAttribute('href') === '#' + current) l.classList.add('active');
+    });
+  });
+
+  (function initDiagramControls() {
+    if (typeof mermaid === 'undefined') {
+      console.warn('Mermaid library not loaded — diagrams left as source text');
+      return;
+    }
+    const Z_MIN = 0.5, Z_MAX = 3, Z_STEP = 0.25;
+    const lightbox = document.getElementById('diagramLightbox');
+    const lbStage = document.getElementById('diagramLightboxStage');
+    let lbZoom = 1;
+    let lbNode = null;
+
+    function clamp(z) { return Math.min(Z_MAX, Math.max(Z_MIN, Math.round(z / Z_STEP) * Z_STEP)); }
+
+    function applyZoom(node, label, z) {
+      node.style.transform = `scale(${z})`;
+      if (label) label.textContent = Math.round(z * 100) + '%';
+    }
+
+    function enablePan(stage) {
+      let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
+      stage.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        dragging = true;
+        stage.setPointerCapture(e.pointerId);
+        sx = e.clientX; sy = e.clientY; sl = stage.scrollLeft; st = stage.scrollTop;
+      });
+      stage.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        stage.scrollLeft = sl - (e.clientX - sx);
+        stage.scrollTop = st - (e.clientY - sy);
+      });
+      stage.addEventListener('pointerup', () => { dragging = false; });
+      stage.addEventListener('pointercancel', () => { dragging = false; });
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('diagram-fs-open');
+      lbStage.innerHTML = '';
+      lbNode = null;
+      lbZoom = 1;
+    }
+
+    function openLightbox(sourceNode) {
+      lbStage.innerHTML = '';
+      lbNode = sourceNode.cloneNode(true);
+      lbNode.style.transform = '';
+      lbStage.appendChild(lbNode);
+      lbZoom = 1;
+      applyZoom(lbNode, lightbox.querySelector('[data-lb-zoom]'), lbZoom);
+      lightbox.classList.add('open');
+      lightbox.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('diagram-fs-open');
+    }
+
+    lightbox.querySelectorAll('[data-lb-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.getAttribute('data-lb-action');
+        if (action === 'close') return closeLightbox();
+        if (!lbNode) return;
+        if (action === 'zoom-in') lbZoom = clamp(lbZoom + Z_STEP);
+        if (action === 'zoom-out') lbZoom = clamp(lbZoom - Z_STEP);
+        if (action === 'reset') lbZoom = 1;
+        applyZoom(lbNode, lightbox.querySelector('[data-lb-zoom]'), lbZoom);
+      });
+    });
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox();
+    });
+    enablePan(lbStage);
+
+    function enhanceWrap(wrap) {
+      if (wrap.dataset.enhanced === '1') return;
+      const diagram = wrap.querySelector('.mermaid');
+      if (!diagram) return;
+      wrap.dataset.enhanced = '1';
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'diagram-toolbar';
+      toolbar.innerHTML = `
+        <span class="diagram-toolbar-label">Diagram</span>
+        <div class="diagram-toolbar-actions">
+          <button type="button" class="diagram-btn" data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+          <span class="diagram-zoom-label" data-zoom>100%</span>
+          <button type="button" class="diagram-btn" data-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+          <button type="button" class="diagram-btn" data-action="reset" title="Reset zoom" aria-label="Reset zoom">Reset</button>
+          <button type="button" class="diagram-btn" data-action="fullscreen" title="Fullscreen" aria-label="Fullscreen">Fullscreen</button>
+        </div>`;
+
+      const stage = document.createElement('div');
+      stage.className = 'diagram-stage';
+      diagram.parentNode.insertBefore(toolbar, diagram);
+      diagram.parentNode.insertBefore(stage, diagram);
+      stage.appendChild(diagram);
+
+      let zoom = 1;
+      const zoomLabel = toolbar.querySelector('[data-zoom]');
+      const setZoom = (z) => {
+        zoom = clamp(z);
+        applyZoom(diagram, zoomLabel, zoom);
+      };
+
+      toolbar.querySelectorAll('[data-action]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const action = btn.getAttribute('data-action');
+          if (action === 'zoom-in') setZoom(zoom + Z_STEP);
+          if (action === 'zoom-out') setZoom(zoom - Z_STEP);
+          if (action === 'reset') setZoom(1);
+          if (action === 'fullscreen') openLightbox(diagram);
+        });
+      });
+
+      stage.addEventListener('wheel', (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        setZoom(zoom + (e.deltaY < 0 ? Z_STEP : -Z_STEP));
+      }, { passive: false });
+
+      enablePan(stage);
+    }
+
+    function normalizeMermaidNodes() {
+      // Mermaid renders reliably on <div class="mermaid">; convert any <pre>.
+      document.querySelectorAll('.mermaid-wrap pre.mermaid').forEach((pre) => {
+        const div = document.createElement('div');
+        div.className = 'mermaid';
+        div.textContent = pre.textContent;
+        pre.replaceWith(div);
+      });
+    }
+
+    async function renderMermaid() {
+      normalizeMermaidNodes();
+      const nodes = Array.from(document.querySelectorAll('.mermaid-wrap .mermaid'));
+      // Prefer mermaid.render() per node — mermaid.run() can hang / race with
+      // toolbar enhancement and leave diagrams as raw source text.
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (node.querySelector('svg')) continue;
+        const src = (node.textContent || '').trim();
+        if (!src) continue;
+        try {
+          const id = 'mmd-' + i + '-' + Math.random().toString(36).slice(2, 7);
+          const { svg } = await mermaid.render(id, src);
+          node.innerHTML = svg;
+        } catch (err) {
+          console.warn('Mermaid render() failed for a diagram:', err);
+          node.classList.add('mermaid-error');
+        }
+      }
+    }
+
+    async function boot() {
+      try {
+        await renderMermaid();
+      } catch (err) {
+        console.warn('Diagram boot failed:', err);
+      } finally {
+        document.querySelectorAll('.mermaid-wrap').forEach(enhanceWrap);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/multiple_matrix.out.yaml",
+  "format": "yaml",
+  "size_bytes": 1970,
+  "source_modified": "2026-07-18T06:05:26.861025+00:00",
+  "indexed_at": "2026-07-18T07:39:40.088736+00:00",
+  "text_length": 1970,
+  "line_count": 102
+}

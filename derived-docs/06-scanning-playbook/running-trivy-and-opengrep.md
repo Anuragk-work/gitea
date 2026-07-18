@@ -1,0 +1,378 @@
+# Running Trivy and Opengrep Against This Repository
+
+This page is the operational playbook: given everything the other pages in this set establish about
+Gitea's existing CI tooling, attack surface, configuration, and supply chain, **where do you actually
+point Trivy and opengrep, how do you slot them into the existing pipeline without duplicating work,
+and what do you do with a finding once you have one?**
+
+It synthesizes the tool-inventory and gap analysis from
+[Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md), the
+supply-chain gap table in
+[Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md),
+the per-surface "Trivy/opengrep Focus Checklist" sections in
+[Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md),
+[Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md),
+[SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md), and
+[Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md), and the
+config-hardening checklist in
+[Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md). It also
+closes the loop with [Vulnerability Disclosure Process](../07-vulnerability-disclosure/reporting-process.md)
+for what to do once a finding looks real.
+
+> **Framing:** Trivy and opengrep are not named anywhere in Gitea's own source documentation — they
+> are the tools this documentation set's stated focus asks us to reason about *adding*. Everything
+> below is therefore forward-looking integration guidance built on top of facts the source docs do
+> state (existing Make targets, existing workflows, existing gaps), not a description of tooling that
+> is already wired up. Where source docs already describe an equivalent or overlapping control, this
+> page says so explicitly rather than recommending a duplicate check.
+
+## Why These Two Tools, and Why Together
+
+Trivy and opengrep cover different, complementary layers of the same problem:
+
+| Tool class | What it's good at | What it's *not* good at |
+|---|---|---|
+| **Trivy** (SCA / dependency / container / IaC scanner) | Known-CVE detection against dependency manifests (`go.sum`, `pnpm-lock.yaml`), container image OS packages, misconfiguration scanning against Dockerfiles/Kubernetes manifests, license scanning, SBOM generation | Logic flaws, business-rule bugs, anything that isn't already a cataloged vulnerability or a structural misconfiguration pattern |
+| **opengrep** (Semgrep-class SAST / secret-detection / custom pattern matching) | Source-level pattern matching: insecure crypto usage, hardcoded secrets, missing sanitization calls, CI workflow anti-patterns, org-specific "this function must always be called this way" rules | Anything requiring cross-file data-flow reasoning beyond what a rule author encodes; it will not independently "understand" Gitea's authorization model the way a human reviewer does |
+
+As called out in [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md):
+
+> "Trivy will not find logic flaws in an authorization model — that requires either manual review or
+> SAST rules (opengrep/Semgrep) tuned to Gitea's specific `AccessMode`/`Access`/`Permission` vocabulary."
+
+That single sentence is the organizing principle for this whole playbook: **Trivy finds known-bad
+things in dependencies and artifacts; opengrep finds known-bad *patterns* in source and config; neither
+replaces a human reviewer for business-logic-level access-control bugs**, which remain the domain of
+manual review informed by the vocabulary this documentation set has already built up (see
+[Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md) and
+[Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md)).
+
+```mermaid
+graph TD
+  A[Security Finding Needed] --> B{What kind of question<br/>are you asking?}
+  B -->|"Is a dependency/image/base<br/>OS package known-vulnerable?"| C[Trivy: SCA / image / fs scan]
+  B -->|"Does source/config contain a<br/>known-bad pattern or secret?"| D[opengrep: SAST / secret rules]
+  B -->|"Is the access-control LOGIC<br/>correct for this feature?"| E[Manual review, informed by<br/>Authorization/Permission Model docs]
+  C --> F[Triage finding]
+  D --> F
+  E --> F
+  F --> G{Exploitable / leaks<br/>other users' data?}
+  G -->|Yes or unsure| H[security@gitea.io — private]
+  G -->|No| I[Normal bug/enhancement issue]
+```
+
+## Where Each Tool Fits in the Existing Pipeline
+
+Rather than bolting Trivy/opengrep on as an unrelated afterthought, both tools slot naturally into
+gaps in the pipeline already mapped out in
+[Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md). That
+page's diagram shows `files-changed.yml` fanning out into `lint-backend`, `lint-on-demand`, and
+`checks-backend` jobs inside `pull-compliance.yml`. The recommended integration points are:
+
+```mermaid
+graph TD
+  FC[files-changed.yml<br/>path-filter gatekeeper] --> LB[lint-backend<br/>make lint-backend]
+  FC --> LOD[lint-on-demand<br/>targeted linters]
+  FC --> CB[checks-backend<br/>make checks-backend]
+  FC --> PDD[pull-docker-dryrun.yml<br/>build-only today]
+
+  CB --> SC["security-check:<br/>govulncheck (non-fatal)"]
+  SC -.->|"NEW: add alongside,<br/>don't replace"| TRIVYFS["Trivy fs/repo scan<br/>go.sum + pnpm-lock.yaml<br/>(enforced, fail-on-finding)"]
+
+  LOD --> LA["lint-actions:<br/>actionlint + zizmor"]
+  LA -.->|"NEW: layer on top"| OGACTIONS["opengrep rules against<br/>.github/workflows<br/>(secret patterns, org-specific)"]
+
+  LB --> GL["golangci-lint (incl. depguard)"]
+  GL -.->|"NEW: complementary,<br/>not overlapping"| OGSAST["opengrep SAST rules<br/>against Go source<br/>(crypto, sanitizer bypass,<br/>SSRF client bypass)"]
+
+  PDD -.->|"NEW: add a scan job,<br/>keep the dry-run build"| TRIVYIMG["Trivy image scan<br/>against built Dockerfile /<br/>Dockerfile.rootless output"]
+```
+
+### 1. Dependency vulnerability scanning — Trivy alongside `govulncheck`
+
+`govulncheck` already runs as the `security-check` Makefile target, composed into `checks-backend`,
+which runs inside `pull-compliance.yml`'s `checks-backend` job on every backend-touching PR — see
+[Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md). But
+per `docs/build-cicd-deployment/makefile-and-build.md`, that target is invoked with a trailing `|| true`,
+meaning **a known Go-ecosystem vulnerability currently does not fail CI.**
+
+Recommended placement:
+
+- Add a `trivy fs`/`trivy repo` step to `checks-backend` (or a parallel job gated on the same
+  `files-changed` backend/frontend outputs) that scans **both** `go.sum` and `pnpm-lock.yaml` — Trivy's
+  Go-ecosystem coverage overlaps with `govulncheck`, but its npm/pnpm coverage is a documented gap:
+  per [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md),
+  "No equivalent NPM vulnerability scan is described in source docs — a clear Trivy/`pnpm audit`-class
+  gap."
+- Unlike `security-check`, **do not append `|| true`** to the new Trivy step. The entire value of
+  adding a second scanner here is closing the "known vulnerability passes CI silently" gap explicitly
+  flagged in the source docs; a non-fatal Trivy step would just duplicate the existing weakness under
+  a different tool name.
+- Treat `govulncheck` and Trivy as complementary, not redundant: `govulncheck` does reachability
+  analysis (is the vulnerable *function* actually called?), while Trivy's SCA scan is broader but
+  reachability-agnostic. Keep both; don't remove `govulncheck` when adding Trivy.
+
+### 2. Container image scanning — Trivy alongside `pull-docker-dryrun.yml`
+
+Per [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md)
+and `docs/build-cicd-deployment/github-workflows.md`, `pull-docker-dryrun.yml` already builds (but does
+not push) Docker images for `amd64`/`arm64`/`riscv64` on every PR that changes Docker-related files,
+gated by `needs.files-changed.outputs.docker == 'true'`. It validates that the image **builds**, not
+that it is free of known vulnerabilities.
+
+Recommended placement:
+
+- Add a `trivy image` step immediately after the existing build step in `pull-docker-dryrun.yml`,
+  scanning the just-built (not-yet-pushed) image for both `Dockerfile` (rootful) and
+  `Dockerfile.rootless` variants.
+- This closes the gap called out directly in the source-derived gap table: "Container image CVEs |
+  Not directly | `pull-docker-dryrun.yml` validates that images *build*, not that they're free of
+  known vulnerabilities | Direct fit for Trivy's container image scanning mode."
+- Since the base image is `alpine:3.24` (per
+  [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md)),
+  Trivy's OS-package (`apk`) vulnerability database coverage is directly applicable — this is broader
+  than `govulncheck`'s Go-only scope, since `trivy image` also covers Alpine `apk` packages baked into
+  the runtime stage.
+- Consider running this as an independent, informational step first (report-only) before making it a
+  merge-blocking gate, given the base image inherits whatever Alpine CVEs exist at build time
+  regardless of anything Gitea's own code does — a hard gate here needs an agreed remediation SLA
+  (rebuild cadence) before it can fail PRs, or it risks blocking unrelated PRs on upstream Alpine CVEs.
+
+### 3. SBOM generation — Trivy filling a documented gap
+
+Per [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md):
+
+> "the source docs do not describe a Software Bill of Materials (SBOM) being generated at any point
+> in the release pipeline (no `cosign attest`, no `syft`/SPDX/CycloneDX artifact mentioned)."
+
+Recommended placement: add a `trivy image --format cyclonedx` (for container images) or `trivy fs
+--format cyclonedx` (for the source tree) step to the release workflows (`release-nightly.yml`,
+`release-tag-rc.yml`, `release-tag-version.yml`) immediately after the existing Cosign/GPG signing
+step described in that page. Since Cosign is **already installed and authenticated** in those
+workflows for `sign-blob`, using `cosign attest` to bind the generated SBOM to the same signing
+identity is a natural extension rather than a new secret/credential to provision.
+
+### 4. GitHub Actions security — opengrep layered on top of `zizmor` + `actionlint`
+
+`zizmor` and `actionlint` already run together as the `lint-actions` Makefile target, invoked from the
+`lint-on-demand` job whenever `.github`-path files change — see
+[Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md). `zizmor`
+specifically targets GitHub Actions security anti-patterns (`pull_request_target` misuse, script
+injection, unpinned actions).
+
+Recommended placement: **do not duplicate `zizmor`'s coverage.** opengrep's marginal value here is:
+
+- **Secret-detection rules** scanning `.github/workflows/*.yml` for literal credential-shaped strings
+  that shouldn't be in workflow YAML at all (as opposed to `zizmor`'s structural/semantic focus).
+- **Org-specific custom rules** not built into `zizmor`'s generic rule set — e.g., flagging any
+  workflow that doesn't route through the existing `files-changed.yml` reusable path-filter pattern
+  when it plausibly should, or flagging any new workflow granting `packages: write` outside the
+  documented `release-tag-version.yml` case (per
+  [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md)).
+- Add this as an *additional* step in the same `lint-actions` target / `lint-on-demand` job, not a
+  separate pipeline stage — it shares the same trigger condition (`.github` files changed) and the
+  same `uv`-managed Python tool group already used for `zizmor`/`djlint`/`yamllint` (per
+  `docs/build-cicd-deployment/docker-and-packaging.md`'s description of `deps-py`), so it's a natural
+  fit for the same dependency group rather than a new one.
+
+### 5. Application-layer SAST — opengrep filling the single largest documented gap
+
+Per [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md)'s
+gap table: "Application-layer SAST (injection, insecure crypto, secrets-in-code) | Not directly |
+General linters (`golangci-lint`, ESLint) check style/quality, not security semantics | Primary
+opengrep/Semgrep-class opportunity." This is the most clear-cut, unambiguous gap identified anywhere
+in this documentation set — no existing tool touches this at all.
+
+Recommended placement: a new `lint-security` (or similarly named) Makefile target, run as part of
+`lint-backend` (Go source) and a separate frontend-focused pass (JS/TS), gated the same way other
+`lint-on-demand` categories are gated on `files-changed` outputs. See the next section for concrete
+rule targets synthesized from every attack-surface page in this documentation set.
+
+## Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)
+
+Every attack-surface page in this documentation set ends with its own "Trivy/opengrep Focus
+Checklist" or equivalent scanning-guidance table. This section consolidates them into one
+cross-referenced rule-authoring backlog, organized by rule category rather than by source page, so a
+scanner operator can prioritize by risk class instead of re-reading four separate pages.
+
+### Secret detection
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| Literal values for `BindPassword`, `LDAP_BIND_PASSWORD`, `LFS_JWT_SECRET`, `SECRET_KEY`, `INTERNAL_TOKEN` in `app.ini`-style files or Go source | Repo-wide, and any deployment-specific config shipped alongside the repo | [Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md) |
+| Literal secret values for `SECRET_KEY`, `INTERNAL_TOKEN`, `[database] PASSWD`, `[mailer] PASSWD`, LDAP `BindPassword`, OAuth2 client secrets committed into a tracked `app.ini`, Helm values file, or Kubernetes `ConfigMap` (as opposed to a `Secret` resource or `*_FILE` indirection) | Configuration/deployment artifacts | [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) |
+| Any credential-shaped string embedded directly in `.github/workflows/*.yml` | CI configuration | This page, §4 above |
+
+> **Reference pattern to compare against, not a target:** `models/auth/access_token.go`'s
+> `TokenHash`/`TokenSalt` fields are the *correct* pattern — Personal Access Tokens are stored only as
+> a salted hash plus a `TokenLastEight` shortcut, never in plaintext, with constant-time comparison via
+> `crypto/subtle`. Per [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md),
+> this is "a good reference pattern to compare against if opengrep flags any *other* token/credential
+> storage code in this codebase that does **not** follow the same hash-only-at-rest convention."
+
+### Weak/incorrect cryptography
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| MD5/SHA1 used for anything key-derivation- or signature-adjacent | `models/auth/twofactor.go`-style patterns, and any similar code elsewhere in the tree | [Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md); flagged again in [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) as "exactly the kind of `crypto/md5` usage that an opengrep SAST rule" should catch, alongside an explicit caveat that the specific instance noted there may be a legacy/compatibility artifact requiring manual confirmation rather than an automatic "fix this" verdict |
+
+### Access-control / authorization logic
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| Handler code that calls a **repo-wide** permission check (`AccessLevel`) but then serves **unit-specific** content (issues, wiki, packages) | Any handler touching `RepoUnit`-gated features | [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md) |
+| Mismatched `unitType` arguments passed to `AccessLevelUnit`/`HasAccessUnit`/`CheckRepoUnitUser` | Same surface | [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md) |
+
+> This category is explicitly flagged as needing rules "tuned to Gitea's specific
+> `AccessMode`/`Access`/`Permission` vocabulary" — a generic, off-the-shelf opengrep ruleset will not
+> catch these; they require custom rules written against the vocabulary documented in
+> [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md).
+
+### CSRF / auth-bypass surfaces
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| Use of `DisableCrossOriginProtection` / `optSignInFromAnyOrigin` outside the documented git-smart-HTTP/API cases | Auth middleware chain | [Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md) |
+
+### Sanitizer / XSS-defense bypass
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| New code constructing a `bluemonday.Policy` without going through the shared `addSanitizerRules` helper | Any new `Renderer` implementation | [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md) |
+| Raw/`text/html`-typed content re-embedded into an already-rendered document without an explicit `markup.Sanitize()`/`SanitizeReader` call immediately before insertion | Rendering pipeline (Jupyter `text/html` handler is the reference-correct pattern) | [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md) |
+| Any diff touching `sanitizer_default.go`'s `AllowURLSchemeWithCustomPolicy` calls, or new code emitting `href`/`src` attributes without going through the shared sanitizer | Rendering pipeline | [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md) |
+| New `Renderer` implementations without an empty `SanitizerRules()` (i.e., not falling back to the shared default policy) or without an intentionally scoped, reviewed rule set | Markup engine registration | [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md) |
+
+### SSRF / outbound-request safety
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| New `http.Client{}`/`http.Get` instantiations in code paths that consume external URLs, bypassing `webhookHTTPClient` (or an equivalent shared, host-restricted client) | Webhooks, migrations, Camo, federation | [SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md) |
+
+### Dockerfile / container config
+
+| Pattern to detect | Where it applies | Source |
+|---|---|---|
+| Missing `USER` directive, `ADD` used instead of `COPY`, secrets passed via `ARG`/`ENV` | `Dockerfile`, `Dockerfile.rootless`, and `docker/root`/`docker/rootless` shell scripts | [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md) — "no dedicated Dockerfile linter documented" |
+
+## Manual-Review-Only Concerns (Not a Scanner Target)
+
+Not every risk identified in this documentation set is something either tool will catch. Be explicit
+about routing these to human review rather than expecting automated coverage:
+
+| Concern | Why it's manual-only | Source |
+|---|---|---|
+| Auth-chain ordering regressions (`newWebAuthMiddleware`, `buildAuthGroup`, `Group.Add(...)` call order) | Requires understanding intended precedence semantics, not a pattern match | [Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md) |
+| `RENDER_CONTENT_MODE = no-sanitizer` wired to a command that processes attacker-influenced input | Requires judgment about whether a specific command's inputs are actually attacker-influenced in a given deployment | [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md) |
+| Whether a leaked webhook `Secret` has actually been exploited for signature forgery | Requires incident-specific investigation, not a static pattern | [SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md) |
+| Whether a specific `AccessLevel`/`AccessLevelUnit` mismatch is exploitable in context | Requires tracing the specific handler's data flow, beyond generic rule matching | [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md) |
+
+## Cross-Cutting Configuration & Deployment Scan Targets
+
+Beyond source code, the configuration surface itself is a scan target. Per
+[Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md), a scanner
+operator reviewing a live deployment's `app.ini` (or the environment-variable/`*_FILE` equivalents)
+should check:
+
+- `SECRET_KEY`/`INTERNAL_TOKEN` supplied via `*_URI`/`*_FILE` indirection, never committed to version
+  control.
+- `MIN_PASSWORD_LENGTH`, `PASSWORD_HASH_ALGO` (default `pbkdf2` vs. `argon2`/`bcrypt`/`scrypt`),
+  `PASSWORD_CHECK_PWN` (off by default), `TWO_FACTOR_AUTH` (not enforced by default).
+- `DISABLE_GIT_HOOKS` left at its default `true` unless custom-hook installation is an explicit,
+  reviewed requirement.
+- `REVERSE_PROXY_AUTHENTICATION_*` only enabled behind a verified, header-stripping trusted proxy,
+  with `REVERSE_PROXY_TRUSTED_PROXIES` scoped tightly.
+- `ALLOWED_HOST_LIST` reviewed against the SSRF control discussion in
+  [SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md).
+- `[webhook] SKIP_TLS_VERIFY` and `[mailer] FORCE_TRUST_SERVER_CERT` both `false` in production.
+- `[migrations]` and `[camo]`/`[federation]` allow/block lists treated as **independent** SSRF
+  surfaces from `ALLOWED_HOST_LIST` — hardening one does not imply the others are hardened, per
+  [SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md).
+
+`opengrep`/config-lint tooling is the natural home for automating checks against these keys across
+one or many `app.ini` files; Trivy's `config`/misconfiguration-scanning mode can play a similar role
+against Kubernetes manifests or Helm values files that inject these settings via `GITEA__SECTION__KEY`
+environment variables, as described in
+[Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md).
+
+## Practical Rollout Checklist
+
+Use this as an ordered adoption plan, sequenced to close the highest-value, most clearly-documented
+gaps first before moving into rule-authoring work that requires more Gitea-specific tuning:
+
+1. **[ ] Add Trivy `fs`/`repo` scanning of `go.sum` and `pnpm-lock.yaml`** to `checks-backend`
+   (or a parallel gated job), enforced (no `|| true`) — closes the npm/pnpm CVE gap and adds a
+   second, enforced check alongside the existing non-fatal `govulncheck` step.
+2. **[ ] Add a `trivy image` step to `pull-docker-dryrun.yml`**, scanning both `Dockerfile` and
+   `Dockerfile.rootless` build outputs — closes the "builds but isn't scanned" container gap.
+3. **[ ] Add Trivy or Cosign-based SBOM generation** to the release workflows, alongside the
+   existing `cosign sign-blob`/GPG signing steps — closes the documented "no SBOM anywhere" gap.
+4. **[ ] Add opengrep secret-detection rules** targeting `app.ini`-style files, Go source, and
+   `.github/workflows/*.yml` for the credential patterns listed above — highest-confidence,
+   lowest-false-positive starting point for opengrep adoption.
+5. **[ ] Author Gitea-specific opengrep SAST rules** for the weak-crypto, sanitizer-bypass, and
+   SSRF-client-bypass patterns catalogued above — these require the most up-front rule-authoring
+   effort but target concrete, already-identified risk classes rather than generic OWASP boilerplate.
+6. **[ ] Treat the authorization-logic and auth-chain-ordering concerns as permanent manual-review
+   line items** in PR review guidance, not scanner backlog items — document this distinction for
+   reviewers so effort isn't wasted trying to force a scanner rule where the source docs themselves
+   indicate manual review is the appropriate control.
+7. **[ ] Wire a triage gate before any finding reaches a public surface.** Per
+   [Vulnerability Disclosure Process](../07-vulnerability-disclosure/reporting-process.md), findings
+   that plausibly expose another user's data or grant unintended access must go to
+   `security@gitea.io`, not a public PR comment, public issue, or public CI log. Configure whatever
+   CI integration you choose (PR comment bots, SARIF upload, etc.) to route above-threshold findings
+   to a private channel first.
+8. **[ ] Re-run the gap analysis periodically.** The tool inventory in
+   [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md) is
+   a snapshot of what's documented as of this writing — if `govulncheck` is later made fatal, or an
+   SBOM step is added, or an NPM audit step is introduced independently, re-check for overlap before
+   assuming Trivy/opengrep coverage is still additive rather than duplicative.
+
+## From Finding to Resolution
+
+Once a scan produces something that looks like a genuine issue rather than noise, follow the triage
+flow established in [Vulnerability Disclosure Process](../07-vulnerability-disclosure/reporting-process.md):
+
+```mermaid
+flowchart TD
+    A[Trivy / opengrep finding] --> B{Plausibly exposes another<br/>user's data or grants<br/>unintended access?}
+    B -- "Yes / unsure" --> C[Do NOT post publicly]
+    C --> D["Email security@gitea.io<br/>encrypt with PGP key 6FCD2D5B<br/>(verify key hasn't expired first)"]
+    D --> E[Maintainers triage privately]
+    B -- "No — style/lint/<br/>non-exploitable/<br/>dev-only dependency" --> F[File as normal bug/<br/>enhancement issue,<br/>or fix in normal PR]
+```
+
+Key operational rules carried over from that page, restated here because they apply directly to
+scanner output:
+
+- **Never auto-post scanner findings to public PR comments, public issues, or public build logs**
+  above a "this could be real" bar — bulk automated output is exactly the kind of noise the private
+  `security@gitea.io` channel exists to keep off the public tracker.
+- **A `govulncheck`/Trivy hit that reveals the existing `security-check` non-fatal gap itself** (i.e.,
+  "this exact CVE class should have failed CI and didn't") is worth separately noting as process
+  feedback — but only escalate it through the private channel if there's a demonstrated exploit path
+  against a currently-running instance; otherwise it's normal `enhancement`/`refactoring` feedback per
+  `CONTRIBUTING.md`'s taxonomy.
+- **Understand the remediation horizon.** Per `docs/release-management.md` (as summarized in
+  [Vulnerability Disclosure Process](../07-vulnerability-disclosure/reporting-process.md)), Gitea
+  publishes security fixes only for the last major release and its immediate predecessor — a Trivy hit
+  against an older, unsupported release line will not get a dedicated patch; upgrading is the
+  documented remediation path.
+
+## Cross-References
+
+- [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md) —
+  the full existing tool inventory and gap table this playbook builds on.
+- [Build, Release & Container Posture](../05-supply-chain-and-container-security/build-release-and-container-posture.md) —
+  the supply-chain gap table (SBOM, container CVEs, Dockerfile linting) this playbook operationalizes.
+- [Authentication & Sessions](../03-attack-surface/authentication-and-sessions.md),
+  [Authorization / Permission Model](../03-attack-surface/authorization-permission-model.md),
+  [Input Handling & XSS Defense](../03-attack-surface/input-handling-and-xss-defense.md),
+  [SSRF, Webhooks & Outbound Requests](../03-attack-surface/ssrf-webhooks-and-outbound-requests.md) —
+  the four attack-surface pages whose individual focus checklists are consolidated into the rule
+  backlog above.
+- [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) — the
+  `app.ini`/secrets-management surface this playbook's config-scan section targets.
+- [Vulnerability Disclosure Process](../07-vulnerability-disclosure/reporting-process.md) — what to do
+  once a scan produces a finding that looks genuinely exploitable.

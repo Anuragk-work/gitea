@@ -1,0 +1,6 @@
+=== FILE: templates/mail/user/auth/register_notify.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] DisplayName: User Display Name Username: Username
+
+DisplayName: User Display Name
+Username: Username

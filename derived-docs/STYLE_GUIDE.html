@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation Style & Conventions (Internal Reference)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="index.html">Home</a> &rsaquo; Documentation Style & Conventions (Internal Reference)</div>
+<h1>Documentation Style & Conventions (Internal Reference)</h1>
+<h1 id="documentation-style-conventions-internal-reference">Documentation Style &amp; Conventions (Internal Reference)</h1>
+<blockquote>
+<p>This page is an internal authoring reference for the <code>security-issues</code> derived documentation set.
+It is not part of the primary navigation flow, but it is kept in the tree so the conventions used
+across every page in <code>derived-docs/</code> are traceable and consistent. Later phases should follow these
+rules exactly; do not introduce new formatting conventions mid-way through the set.</p>
+</blockquote>
+<h2 id="purpose-of-this-documentation-set">Purpose of This Documentation Set<a href="#purpose-of-this-documentation-set" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>This derived wiki reorganizes Gitea's existing Markdown documentation (root-level <code>SECURITY.md</code>,
+<code>CONTRIBUTING.md</code>, <code>WORKSPACE_ANALYSIS.md</code>, and the <code>docs/**/*.md</code> tree) around a single focus:
+<strong>finding and reasoning about security issues using tools like Trivy (SCA / dependency / container
+vulnerability scanning) and opengrep (Semgrep-class SAST / secret-detection / CI-config linting)</strong>.</p>
+<p>No new facts are invented. Every claim in every page must trace back to something actually stated in
+the source <code>.md</code> files. Where the source is silent or ambiguous, pages say so explicitly rather than
+guessing.</p>
+<h2 id="directory-structure">Directory Structure<a href="#directory-structure" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="highlight"><code>derived-docs/
+├── index.md                                    # Wiki home / navigation hub (placeholder now, finalized last)
+├── STYLE_GUIDE.md                              # This file — authoring conventions only, not end-user content
+├── 01-overview/
+│   └── security-posture-overview.md            # Executive framing, threat model summary
+├── 02-ci-security-tooling/
+│   └── existing-security-tooling-in-ci.md       # govulncheck, zizmor, actionlint, depguard, license scan, Renovate
+├── 03-attack-surface/
+│   ├── authentication-and-sessions.md           # auth.Method chain, tokens, 2FA, LDAP secret encryption
+│   ├── authorization-permission-model.md        # AccessMode / Access table / Permission
+│   ├── input-handling-and-xss-defense.md         # bluemonday sanitizer, URL scheme blocklist, iframe sandbox
+│   └── ssrf-webhooks-and-outbound-requests.md    # ALLOWED_HOST_LIST, webhook HMAC signing, LFS JWT auth
+├── 04-configuration-hardening/
+│   └── security-relevant-settings.md            # [security]/[cors] settings catalog, secrets management, headers
+├── 05-supply-chain-and-container-security/
+│   └── build-release-and-container-posture.md   # Cosign/GPG signing, Docker rootless, license scan, dependency pinning
+├── 06-scanning-playbook/
+│   └── running-trivy-and-opengrep.md            # How to slot Trivy/opengrep into this repo's existing pipeline
+└── 07-vulnerability-disclosure/
+    └── reporting-process.md                     # SECURITY.md process, PGP key, triage labels</code></pre>
+<p>Each numbered top-level directory maps to one coherent theme in the security-issues narrative, in the
+order a reader should ideally consume them: overview → what's already automated → what the attack
+surface looks like → how it's configured/hardened → supply chain → how to actually run scanners →
+what to do with a real finding.</p>
+<h2 id="source-material-provenance">Source Material Provenance<a href="#source-material-provenance" class="heading-anchor" aria-label="Link">#</a></h2>
+<blockquote>
+<p><strong>Important caveat carried through every page in this set:</strong> the literal directory named
+<code>security-issues/</code> referenced in this context's brief does not exist in this workspace. All content
+is instead synthesized from the general Gitea Markdown documentation tree, specifically:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>What it contributes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SECURITY.md</code></td>
+<td>Vulnerability disclosure process, PGP key</td>
+</tr>
+<tr>
+<td><code>CONTRIBUTING.md</code></td>
+<td><code>security issue</code> label/triage routing</td>
+</tr>
+<tr>
+<td><code>WORKSPACE_ANALYSIS.md</code></td>
+<td>Architecture, forbidden/required libraries (<code>depguard</code>), coding conventions</td>
+</tr>
+<tr>
+<td><code>docs/build-cicd-deployment/makefile-and-build.md</code></td>
+<td><code>security-check</code>/<code>govulncheck</code>, <code>lint-actions</code>/<code>zizmor</code>/<code>actionlint</code>, <code>lint-go</code>/<code>golangci-lint</code></td>
+</tr>
+<tr>
+<td><code>docs/build-cicd-deployment/github-workflows.md</code></td>
+<td>CI workflow catalog, release signing, Renovate, <code>zizmor</code> suppression pattern</td>
+</tr>
+<tr>
+<td><code>docs/build-cicd-deployment/docker-and-packaging.md</code></td>
+<td>Dockerfile posture, <code>uv</code>-managed lint tools</td>
+</tr>
+<tr>
+<td><code>docs/08-services/auth-providers.md</code></td>
+<td>Auth chain, tokens, 2FA, LDAP secret encryption</td>
+</tr>
+<tr>
+<td><code>docs/05-database-models/permissions-model.md</code></td>
+<td><code>AccessMode</code>/<code>Access</code>/<code>Permission</code> model</td>
+</tr>
+<tr>
+<td><code>docs/09-core-modules/markup-engines.md</code></td>
+<td>HTML sanitization / XSS defense</td>
+</tr>
+<tr>
+<td><code>docs/09-core-modules/notify-mailer-webhook.md</code></td>
+<td>Webhook signing, SSRF protection</td>
+</tr>
+<tr>
+<td><code>docs/09-core-modules/lfs-and-hooks.md</code></td>
+<td>LFS JWT auth, credential-safe logging</td>
+</tr>
+<tr>
+<td><code>docs/04-configuration/settings-catalog.md</code>, <code>docs/03-getting-started/configuration-app-ini.md</code></td>
+<td><code>[security]</code>/<code>[cors]</code> settings</td>
+</tr>
+<tr>
+<td><code>docs/02-architecture/deployment-topologies.md</code></td>
+<td>Container privilege-dropping</td>
+</tr>
+<tr>
+<td><code>docs/11-authentication/README.md</code></td>
+<td>Auth docs index</td>
+</tr>
+</tbody>
+</table>
+<p>Every deliverable page must cite the specific source file(s) it draws from, using the format described
+below, so a reader can verify claims against the original documentation.</p>
+<h2 id="writing-conventions">Writing Conventions<a href="#writing-conventions" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="heading-levels">Heading Levels<a href="#heading-levels" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li><code>#</code> (H1): exactly one per page, matching the page title. No page has more than one H1.</li>
+<li><code>##</code> (H2): major sections of the page (e.g., "Threat Model", "Configuration Reference").</li>
+<li><code>###</code> (H3): sub-topics within a section (e.g., specific settings, specific auth providers).</li>
+<li>Avoid H4+ except in rare cases (e.g., deeply nested reference tables); prefer restructuring instead.</li>
+</ul>
+<h3 id="citations">Citations<a href="#citations" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Cite source documentation inline, in prose, the first time a fact from that source is introduced on a
+page, using this pattern:</p>
+<blockquote>
+<p>As described in the <a href="../08-services/auth-providers.html">Auth Providers docs</a>...</p>
+</blockquote>
+<p>Because these derived pages live under <code>derived-docs/</code>, not under the original <code>docs/</code> tree, citation
+links should point back to the <em>original</em> source path relative to the repository root when the source
+lives outside <code>derived-docs/</code> (e.g. <code>../../docs/08-services/auth-providers.md</code> from a page two levels
+deep, or plain prose citation with the filename in backticks — e.g. <code>`docs/08-services/auth-providers.md`</code>
+— when a working relative link cannot be guaranteed). Prefer the backtick-filename citation style for
+robustness across the final directory layout; use relative Markdown links for cross-references <em>within</em>
+<code>derived-docs/</code> itself, since those paths are fully controlled by this plan.</p>
+<h3 id="cross-links-within-this-wiki">Cross-Links Within This Wiki<a href="#cross-links-within-this-wiki" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li>Same directory: <code>[Other Page](other-page.md)</code></li>
+<li>Parent directory: <code>[Home](../index.md)</code></li>
+<li>Sibling directory: <code>[Attack Surface](../03-attack-surface/authentication-and-sessions.md)</code></li>
+<li>Always use relative paths, never absolute paths starting with <code>/</code>.</li>
+</ul>
+<h3 id="mermaid-diagrams">Mermaid Diagrams<a href="#mermaid-diagrams" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li>Use fenced <code>```mermaid</code> blocks.</li>
+<li>Raw <code>&lt;</code>/<code>&gt;</code> characters only — never HTML-entity-escape inside a mermaid block.</li>
+<li>Generics/parameterized labels: use <code>~T~</code> or quote the whole label (e.g. <code>A["List&lt;T&gt;"]</code>).</li>
+<li>Line breaks inside a node label: use <code>&lt;br/&gt;</code> inside a quoted label.</li>
+<li>Keep diagrams to 5–15 nodes; prefer several small focused diagrams over one large one.</li>
+<li>Every diagram must be traceable to something described in the source docs (e.g., the layered-monolith
+  diagram in <code>WORKSPACE_ANALYSIS.md</code> is the base for the annotated security-control diagram in the
+  overview page) — diagrams may add structure/callouts not spelled out verbatim in prose, but must not
+  invent components that don't exist in the source material.</li>
+</ul>
+<h3 id="tables">Tables<a href="#tables" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Use pipe tables for:
+- Settings/config references (name, purpose, default, security implication)
+- Tool comparisons (e.g., existing CI tool vs. Trivy vs. opengrep — what each covers)
+- Threat-model summaries (threat actor → relevant page → existing mitigation)</p>
+<h3 id="code-blocks">Code Blocks<a href="#code-blocks" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li>Preserve real snippets (Makefile targets, <code>app.ini</code> keys, YAML workflow fragments, Go type/field
+  names as described in prose) exactly as named in the source docs.</li>
+<li>Never fabricate example code that isn't grounded in something the source docs actually describe.</li>
+<li>Use language tags: <code>ini</code> for <code>app.ini</code> fragments, <code>yaml</code> for workflow snippets, <code>makefile</code> for Make
+  targets, <code>go</code> only when quoting a type/field name exactly as named in source prose (not real Go
+  source, which was never read directly).</li>
+</ul>
+<h3 id="tone-framing">Tone &amp; Framing<a href="#tone-framing" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li>Written for a security engineer or scanner operator who needs to (a) understand what Gitea already
+  does for security, and (b) know where to point Trivy/opengrep and what to do with results.</li>
+<li>Explicitly call out gaps/hardening opportunities noted in source docs (e.g., <code>govulncheck</code> currently
+  being non-fatal in CI) rather than glossing over them.</li>
+<li>Use <code>&gt;</code> blockquotes for caveats, gaps, and "verify before relying on this" notes — especially where
+  the source material itself flags something as unverified.</li>
+</ul>
+<h2 id="page-template">Page Template<a href="#page-template" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="highlight"><code class="language-markdown"># Page Title
+
+One-paragraph intro: what this page covers, and which source docs it synthesizes.
+
+## Section Heading
+
+Synthesized content, citing sources inline.
+
+### Sub-topic
+
+...
+
+## Cross-References
+
+- [Related Page](../0X-section/page.md) — one-line description of the relevance.</code></pre>
+<h2 id="completion-checklist-final-phase-verified">Completion Checklist (final phase — verified)<a href="#completion-checklist-final-phase-verified" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li>[x] Every file listed in the directory structure above exists and is non-empty (verified via
+      <code>ls -R derived-docs/</code> — 10 content pages plus <code>index.md</code> and this style guide, ranging from
+      ~13KB to ~30KB each).</li>
+<li>[x] Every page has exactly one real H1 matching its title (the only page with two <code>#</code> lines is
+      this style guide, where the second occurrence is inside a fenced <code>markdown</code> template
+      example, not a rendered heading).</li>
+<li>[x] Every Mermaid diagram across the set uses raw <code>&lt;</code>/<code>&gt;</code> characters (no HTML-entity escaping) and
+      stays within the 5–15 node guideline.</li>
+<li>[x] Every cross-link within <code>derived-docs/</code> (checked via grep across all <code>.md</code> files) resolves to
+      an actual file in this tree; every citation link back to the original <code>docs/**/*.md</code> /
+      <code>SECURITY.md</code> / <code>CONTRIBUTING.md</code> / <code>WORKSPACE_ANALYSIS.md</code> source tree uses the
+      <code>../../docs/...</code>-relative or backtick-filename citation style described above.</li>
+<li>[x] <code>index.md</code> links to every page, grouped by section, with a "Quick Start for Scanner Operators"
+      callout, a full navigation table, an organization diagram, a consolidated threat-model table,
+      and a source-provenance summary — it is no longer a placeholder.</li>
+</ul>
+<div class="page-nav">
+<span></span>
+<a href="index.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#purpose-of-this-documentation-set" class="" data-anchor="purpose-of-this-documentation-set">Purpose of This Documentation Set</a>
+<a href="#directory-structure" class="" data-anchor="directory-structure">Directory Structure</a>
+<a href="#source-material-provenance" class="" data-anchor="source-material-provenance">Source Material Provenance</a>
+<a href="#writing-conventions" class="" data-anchor="writing-conventions">Writing Conventions</a>
+<a href="#heading-levels" class="toc-h3" data-anchor="heading-levels">Heading Levels</a>
+<a href="#citations" class="toc-h3" data-anchor="citations">Citations</a>
+<a href="#cross-links-within-this-wiki" class="toc-h3" data-anchor="cross-links-within-this-wiki">Cross-Links Within This Wiki</a>
+<a href="#mermaid-diagrams" class="toc-h3" data-anchor="mermaid-diagrams">Mermaid Diagrams</a>
+<a href="#tables" class="toc-h3" data-anchor="tables">Tables</a>
+<a href="#code-blocks" class="toc-h3" data-anchor="code-blocks">Code Blocks</a>
+<a href="#tone-framing" class="toc-h3" data-anchor="tone-framing">Tone &amp; Framing</a>
+<a href="#page-template" class="" data-anchor="page-template">Page Template</a>
+<a href="#completion-checklist-final-phase-verified" class="" data-anchor="completion-checklist-final-phase-verified">Completion Checklist (final phase — verified)</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

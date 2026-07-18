@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/continue_on_error_expr.out.yaml",
+  "format": "yaml",
+  "size_bytes": 407,
+  "source_modified": "2026-07-18T06:05:26.859935+00:00",
+  "indexed_at": "2026-07-18T07:39:40.093447+00:00",
+  "text_length": 407,
+  "line_count": 26
+}

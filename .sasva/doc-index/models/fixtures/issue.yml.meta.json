@@ -1,0 +1,9 @@
+{
+  "source": "models/fixtures/issue.yml",
+  "format": "yml",
+  "size_bytes": 6471,
+  "source_modified": "2026-07-18T06:05:26.803192+00:00",
+  "indexed_at": "2026-07-18T07:39:39.913526+00:00",
+  "text_length": 6471,
+  "line_count": 377
+}

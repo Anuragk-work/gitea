@@ -1,0 +1,185 @@
+=== FILE: docs/10-git-integration/gitrepo-and-repository-access.md ===
+=== METADATA: format=md ===
+[SUMMARY] # GitRepo & Repository Access `modules/gitrepo/` is the thin but important layer that sits **between** Gitea's database models (`models/repo.Repository`, `StorageRepo`, etc.) and the low-level `modules/git` package. Almost nothing outside `modules/git` itself calls `git.
+
+# GitRepo & Repository Access
+
+`modules/gitrepo/` is the thin but important layer that sits **between**
+Gitea's database models (`models/repo.Repository`, `StorageRepo`, etc.) and
+the low-level `modules/git` package. Almost nothing outside `modules/git`
+itself calls `git.OpenRepository()` directly against a raw filesystem path —
+instead, `services/`, `routers/`, and `cmd/` code call into `modules/gitrepo`
+with a `Repository`-shaped value, and `gitrepo` resolves that into the actual
+on-disk path and opens/caches the `*git.Repository` handle on the caller's
+behalf.
+
+## The `gitrepo.Repository` Interface
+
+`modules/gitrepo` doesn't know or care what a "repository" is at the
+database-model level — it only needs one thing from its caller:
+
+```go
+// modules/gitrepo/gitrepo.go
+type Repository interface {
+    RelativePath() string // e.g. "myorg/myrepo.git" — no assumption about directory layout
+}
+```
+
+This tiny interface is what lets `gitrepo` remain decoupled from
+`models/repo` (avoiding an import cycle, since `models/repo` cannot import
+service-layer/git code) while still being fully type-safe. Two concrete
+implementations exist:
+
+| Implementer | `RelativePath()` | Used for |
+|---|---|---|
+| `repo_model.Repository` (`models/repo/repo.go`) | `strings.ToLower(OwnerName) + "/" + strings.ToLower(Name) + ".git"` | The overwhelming majority of calls — any operation against a real, DB-tracked repository |
+| `repo_model.StorageRepo` (a `string` type alias) | Returns itself verbatim | Ad-hoc paths that don't correspond to a `Repository` row — e.g. a repo's wiki storage path, or a path constructed for migration/restore flows |
+
+```go
+// modules/gitrepo/gitrepo.go
+var repoPath = func(repo Repository) string {
+    return filepath.Join(setting.RepoRootPath, filepath.FromSlash(repo.RelativePath()))
+}
+```
+
+Every exported `gitrepo` function takes a `Repository` value as a parameter
+and internally calls this `repoPath()` helper — callers never construct
+filesystem paths themselves, which centralizes (and makes auditable) exactly
+one place where `setting.RepoRootPath` is joined with user/repo-controlled
+path segments.
+
+## Why Not Just Call `modules/git` Directly?
+
+Three reasons `gitrepo` exists as a distinct layer rather than having every
+caller use `git.OpenRepository(ctx, somePath)` directly:
+
+1. **Path resolution is centralized.** Only `gitrepo` needs to know the
+   on-disk layout convention (`<RepoRootPath>/<owner>/<repo>.git`,
+   lower-cased). If that convention ever changes, only `gitrepo.go` changes.
+2. **Repository handles are cached per HTTP/gRPC-style request.**
+   `RepositoryFromRequestContextOrOpen` (below) means a single incoming
+   request that touches the same repository from multiple services (e.g. a
+   PR-merge request that reads the diff, then reads commit metadata, then
+   updates branches) reuses **one** open `*git.Repository` — and therefore
+   one cat-file-batch subprocess — instead of spawning a fresh one per call.
+3. **Higher-level git operations are pre-wired with the right working
+   directory, locking, and environment.** Functions like `Push`, `Clone`,
+   `GitConfigSet`, and hook installation all need the resolved repo path,
+   global write-locking (see below), and often need to coordinate *two*
+   repository paths at once (e.g. push from a temp clone into a managed
+   repo). `gitrepo` provides these as one-liners so callers don't
+   re-implement path plumbing and locking themselves.
+
+## Opening a Repository: Two Ways
+
+```go
+// modules/gitrepo/gitrepo.go
+
+// OpenRepository — the caller owns the returned handle and MUST close it
+func OpenRepository(ctx context.Context, repo Repository) (*git.Repository, error) {
+    return git.OpenRepository(ctx, repoPath(repo))
+}
+
+// RepositoryFromContextOrOpen — reuses a cached handle if a request-scoped
+// context is available, otherwise falls back to a fresh OpenRepository().
+// The caller must still call the returned io.Closer.Close().
+func RepositoryFromContextOrOpen(ctx context.Context, repo Repository) (*git.Repository, io.Closer, error)
+
+// RepositoryFromRequestContextOrOpen — the request-scoped context is
+// authoritative: repos opened this way are auto-closed when the request ends.
+// Callers must NOT call Close() themselves.
+func RepositoryFromRequestContextOrOpen(ctx reqctx.RequestContext, repo Repository) (*git.Repository, error) {
+    ck := contextKey{repoPath: repoPath(repo)}
+    if gitRepo, ok := ctx.Value(ck).(*git.Repository); ok {
+        return gitRepo, nil // already open in this request — reuse it
+    }
+    gitRepo, err := git.OpenRepository(ctx, ck.repoPath)
+    if err != nil {
+        return nil, err
+    }
+    ctx.AddCloser(gitRepo)          // closed automatically when the request context finishes
+    ctx.SetContextValue(ck, gitRepo)
+    return gitRepo, nil
+}
+```
+
+`reqctx.RequestContext` (`modules/reqctx`) is Gitea's request-scoped data
+store/closer-registry — every web request and every `cmd/` internal-API
+handler that flows through `services/context` sets one of these up.
+`RepositoryFromRequestContextOrOpen` is therefore the **preferred** entry
+point in `services/`/`routers/` code; `OpenRepository` is reserved for
+contexts where no request scope exists (background jobs, `cmd/` one-shot
+invocations) and the caller is responsible for the `defer gitRepo.Close()`.
+
+`hookPostReceiveSyncDatabaseBranches` (the internal post-receive handler
+covered on [Git Operations & Server-Side Hooks](git-operations-and-hooks.md))
+is a good concrete example: it opens the pushed-to repository via
+`gitrepo.RepositoryFromRequestContextOrOpen` and reads commits back out
+through the very same `Repository`/`Commit` abstractions described in the
+[Git Module](../09-core-modules/git-module.md) page — this is the seam where
+`gitrepo` hands off to `modules/git`.
+
+## What `gitrepo` Adds on Top of `modules/git`
+
+Beyond opening handles, `modules/gitrepo` provides path-aware wrappers for
+essentially every git operation a service needs, so that no caller has to
+resolve a repo path itself:
+
+| File | Responsibility |
+|---|---|
+| `command.go` | `RunCmd`/`RunCmdString`/`RunCmdBytes`/`RunCmdWithStderr` — run an arbitrary `gitcmd.Command` with `WithDir(repoPath(repo))` pre-applied |
+| `clone.go` | `Clone`, `CloneExternalRepo`, `CloneRepoToLocal` — clone between managed repos, external URLs, and local temp paths |
+| `push.go` | `Push`, `PushToExternal`, `PushFromLocal` — push between managed repos or to/from external remotes/local paths |
+| `branch.go` | `GetBranchesByPath`, `GetBranchCommitID`, `SetDefaultBranch`, `GetDefaultBranch`, `CreateBranch`, `DeleteBranch`, `RenameBranch`, `IsBranchExist`/`IsReferenceExist` |
+| `commit.go`, `commit_file.go` | Reading commits and per-file commit history against a resolved repo path |
+| `tag.go`, `ref.go` | Tag and generic ref operations |
+| `diff.go`, `compare.go` | Diff/compare operations between refs |
+| `blame.go` | `git blame` support |
+| `merge.go`, `merge_tree.go` | Merge and merge-tree (conflict-preview) operations |
+| `archive.go` | Repository archive (zip/tar.gz) generation |
+| `fsck.go` | `git fsck` integrity checking (used by repository health checks / `gitea doctor`) |
+| `size.go` | On-disk repository size calculation |
+| `config.go` | `GitConfigAdd`/`GitConfigSet` — per-repository `.git/config` mutation, wrapped in a `globallock` critical section |
+| `repo_lock.go` | `getRepoWriteLockKey` — the global-lock key namespace used to serialize concurrent write operations against the same repository path and avoid on-disk corruption |
+| `hooks.go` | `CreateDelegateHooks`/`CheckDelegateHooks` — installs/verifies the server-side hook scripts covered in detail on [Git Operations & Server-Side Hooks](git-operations-and-hooks.md) |
+| `walk_gogit.go` / `walk_nogogit.go` | Backend-specific tree-walking, mirroring the `gogit`/`nogogit` split in `modules/git` itself |
+| `url.go`, `remote.go` | Remote URL construction/parsing for migrations and mirrors |
+| `commitgraph.go` | Commit-graph generation support |
+
+Most of these are simple one- or two-line wrappers — e.g. `SetDefaultBranch`
+just resolves the path and runs `symbolic-ref HEAD refs/heads/<name>` via
+`RunCmdString`. The value is architectural, not algorithmic: every one of
+these operations goes through the same path-resolution, request-scoped
+caching, and (where relevant) locking that `gitrepo.go` centralizes, which is
+exactly what makes it safe for many independent services to concurrently
+operate on the same on-disk repository without each having to reinvent path
+handling.
+
+## Write Serialization
+
+Git repositories are not safe for unbounded concurrent writers — two
+`git push` operations (or a push racing a server-side merge) against the
+same bare repository can corrupt refs or packed-refs files. `repo_lock.go`
+defines the global-lock namespace (`"repo-write:" + path`) that
+write-oriented `gitrepo` operations acquire via `modules/globallock` before
+touching the repository on disk; `config.go`'s `GitConfigAdd`/`GitConfigSet`
+are concrete examples that wrap their `git config` invocation in
+`globallock.LockAndDo(ctx, getRepoConfigLockKey(repo.RelativePath()), ...)`.
+This is the same distributed-lock mechanism used elsewhere in Gitea for
+cross-process mutual exclusion (see the queue/cache/storage coverage in
+[Core Modules](../09-core-modules/storage-queue-cache.md)), so the guarantee
+holds even when Gitea is deployed with multiple application server
+processes/nodes sharing the same repository storage.
+
+## Related Pages
+
+- [Git Backends & Cat-File Batch Processes](git-backends-and-catfile.md) —
+  the `modules/git` layer that `gitrepo` opens handles into
+- [Git Operations & Server-Side Hooks](git-operations-and-hooks.md) — the
+  push/receive pipeline, most of which is orchestrated through `gitrepo`
+  (`CreateDelegateHooks`, `RepositoryFromRequestContextOrOpen`, branch sync)
+- [Git Module](../09-core-modules/git-module.md) — the underlying
+  `Repository`/`Commit`/`Blob` API that `gitrepo.OpenRepository` returns
+- [Repository Model](../05-database-models/repository-model.md) — the
+  `models/repo.Repository` struct that is the most common implementer of
+  `gitrepo.Repository`

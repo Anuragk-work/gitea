@@ -1,0 +1,7 @@
+=== FILE: models/fixtures/gpg_key_import.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] [] # empty # DO NOT add more test data in the fixtures, test case should prepare their own test data separately and clearly
+
+[] # empty
+
+# DO NOT add more test data in the fixtures, test case should prepare their own test data separately and clearly

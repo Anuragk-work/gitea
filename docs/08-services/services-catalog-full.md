@@ -1,0 +1,185 @@
+# Services Catalog (Full)
+
+[services-catalog.md](services-catalog.md) walks through the business-logic layer narratively,
+with code samples and sequence diagrams for the packages that most benefit from deep-dive
+treatment. This page is the **complete, flat inventory**: one table row per subpackage that
+exists directly under [`services/`](../../services) — all 40 of them — with a one-line
+responsibility statement and a pointer to wherever it's covered in depth elsewhere in this
+documentation set. Use this page to answer "where does `services/X` live and what does it do?"
+in one lookup; use `services-catalog.md` (or the dedicated pages linked from the table) to go
+deeper.
+
+> Counting method: `ls services/` — every immediate child directory of `services/` that contains
+> Go source is one row. Nested subpackages (e.g. `services/auth/source/ldap`,
+> `services/packages/container`, `services/repository/archiver`) are called out in the
+> **Notable sub-packages** column of their parent row rather than being listed separately, since
+> they are implementation details of that one service rather than independent business-logic
+> packages callable from routers.
+
+## Functional Clusters
+
+The 40 packages fall into nine functional clusters. Packages within a cluster tend to be called
+together by the same router handlers and often depend on each other directly (e.g. `pull` calls
+`asymkey.SignMerge`; `automergequeue` feeds `automerge`).
+
+```mermaid
+graph TD
+    subgraph C1["Auth & Identity"]
+        auth["auth"]
+        asymkey["asymkey"]
+        externalaccount["externalaccount"]
+        oauth2_provider["oauth2_provider"]
+        secrets["secrets"]
+    end
+
+    subgraph C2["Git & Repository Lifecycle"]
+        agit["agit"]
+        git["git"]
+        gitdiff["gitdiff"]
+        repository["repository"]
+        release["release"]
+        mirror["mirror"]
+        wiki["wiki"]
+    end
+
+    subgraph C3["Issues & Pull Requests"]
+        issue["issue"]
+        pull["pull"]
+    end
+
+    subgraph C4["Content & API Glue"]
+        convert["convert"]
+        forms["forms"]
+        attachment["attachment"]
+        feed["feed"]
+        projects["projects"]
+        context["context"]
+        contexttest["contexttest"]
+    end
+
+    subgraph C5["Notifications & Delivery"]
+        notify["notify"]
+        webhook["webhook"]
+        mailer["mailer"]
+        uinotification["uinotification"]
+    end
+
+    subgraph C6["CI/CD & Automation"]
+        actions["actions"]
+        automerge["automerge"]
+        automergequeue["automergequeue"]
+        task["task"]
+        cron["cron"]
+    end
+
+    subgraph C7["Packages & Registry"]
+        packages["packages"]
+    end
+
+    subgraph C8["Search & Content Rendering"]
+        indexer["indexer"]
+        markup["markup"]
+        lfs["lfs"]
+    end
+
+    subgraph C9["Platform Ops & Migration"]
+        doctor["doctor"]
+        migrations["migrations"]
+        versioned_migration["versioned_migration"]
+        webtheme["webtheme"]
+        org["org"]
+        user["user"]
+    end
+
+    C6 -->|"triggers checks on"| C3
+    C3 -->|"emits events to"| C5
+    C2 -->|"emits events to"| C5
+    C1 -->|"gates every request into"| C2
+    C1 -->|"gates every request into"| C3
+    C4 -->|"binds/serializes for"| C2
+    C4 -->|"binds/serializes for"| C3
+    C8 -->|"reindexes/renders content from"| C2
+    C9 -->|"maintains/diagnoses"| C2
+    C7 -->|"reuses auth from"| C1
+```
+
+## Full Catalog Table
+
+| # | Package | Path | Cluster | Responsibility | Notable sub-packages |
+|---|---|---|---|---|---|
+| 1 | `actions` | [`services/actions`](../../services/actions) | CI/CD & Automation | Actions/CI runtime: job emission, runner task tokens, commit-status reporting, artifacts, reusable-workflow resolution, and GitHub Actions-compatible permission parsing. | — |
+| 2 | `agit` | [`services/agit`](../../services/agit) | Git & Repository Lifecycle | Implements AGit-flow: creates/updates pull requests purely from `refs/for/<base>/<topic>` pushes, without a fork or a separate PR-creation API call. | — |
+| 3 | `asymkey` | [`services/asymkey`](../../services/asymkey) | Auth & Identity | GPG/SSH key management (deploy keys, `authorized_keys`/`authorized_principals` regeneration) and the server-side commit-signing policy engine for auto-generated commits. | — |
+| 4 | `attachment` | [`services/attachment`](../../services/attachment) | Content & API Glue | Centralizes upload validation, size limiting, and object-storage placement for issue/PR-comment and release-asset attachments. | — |
+| 5 | `auth` | [`services/auth`](../../services/auth) | Auth & Identity | Defines the `auth.Method` interface and composes pluggable HTTP auth methods (session, basic, OAuth2, reverse-proxy, SSPI, HTTP-signature) into ordered `Group` auth chains; login-source backends live under `source/`. | `source/db`, `source/ldap`, `source/oauth2`, `source/pam`, `source/smtp`, `source/sspi` |
+| 6 | `automerge` | [`services/automerge`](../../services/automerge) | CI/CD & Automation | Consumer/business layer for scheduled auto-merge: records `pull_model.AutoMerge` rows and merges a PR once required checks pass. | — |
+| 7 | `automergequeue` | [`services/automergequeue`](../../services/automergequeue) | CI/CD & Automation | Owns the `AutoMergeQueue` worker-pool queue and `StartPRCheckAndAutoMerge`, which resolves a PR's current head SHA and enqueues it for `automerge` to evaluate. | — |
+| 8 | `context` | [`services/context`](../../services/context) | Content & API Glue | Defines the Web/API/Private request `Context` types, repo/org/package assignment middleware, response helpers, pagination, and permission plumbing shared by every router handler. | `upload` |
+| 9 | `contexttest` | [`services/contexttest`](../../services/contexttest) | Content & API Glue | Test-only helper package that constructs `services/context` Web/API contexts backed by fixture models, used across router and service unit tests. | — |
+| 10 | `convert` | [`services/convert`](../../services/convert) | Content & API Glue | The sole translation layer from internal `models/*` persistence types to the public `modules/structs` API DTOs, keeping the versioned REST contract decoupled from schema changes. | — |
+| 11 | `cron` | [`services/cron`](../../services/cron) | CI/CD & Automation | In-process cron scheduler (built on `gocron`) for maintenance tasks: mirror sync, repo health checks, archive/package cleanup, external-user sync, Actions housekeeping. | — |
+| 12 | `doctor` | [`services/doctor`](../../services/doctor) | Platform Ops & Migration | Registry and runner for `gitea doctor` diagnostic/repair checks — DB consistency, storage integrity, repository/LFS health, misc filesystem checks. | — |
+| 13 | `externalaccount` | [`services/externalaccount`](../../services/externalaccount) | Auth & Identity | Links OAuth2/SSO (`goth`) identities to local Gitea accounts and re-points migrated content once an external identity is confirmed. | — |
+| 14 | `feed` | [`services/feed`](../../services/feed) | Content & API Glue | Read/write path for the Dashboard and repository Activity pages (`activities_model.Action`); `NotifyWatchers` fans events out to every relevant watcher's personal feed. | — |
+| 15 | `forms` | [`services/forms`](../../services/forms) | Content & API Glue | Struct-tag-validated request-binding forms (`gitea.com/go-chi/binding`) for nearly every HTML form and many JSON bodies submitted to `routers/web`. | — |
+| 16 | `git` | [`services/git`](../../services/git) | Git & Repository Lifecycle | Thin service-layer helpers atop `modules/git`/`gitrepo` for commit lookups and branch/ref comparison, used by higher-level repository/pull services. | — |
+| 17 | `gitdiff` | [`services/gitdiff`](../../services/gitdiff) | Git & Repository Lifecycle | Parses raw unified-diff output from `git diff`/`git show` into a structured, render-ready tree used by both the web UI diff views and the REST API. | — |
+| 18 | `indexer` | [`services/indexer`](../../services/indexer) | Search & Content Rendering | Queue wiring and the `indexerNotifier` that keep the code, issue, and repo-stats indexers (in `modules/indexer`) in sync with repository/issue activity. | — |
+| 19 | `issue` | [`services/issue`](../../services/issue) | Issues & Pull Requests | Issue domain logic: assignees, comments, commit cross-references, labels, milestones, reactions, review requests, and issue-template parsing. | — |
+| 20 | `lfs` | [`services/lfs`](../../services/lfs) | Search & Content Rendering | Implements the Git LFS HTTP Batch API (batch/upload/download/verify) and the LFS file-locking API, shared by the web and internal SSH-proxy routers. | — |
+| 21 | `mailer` | [`services/mailer`](../../services/mailer) | Notifications & Delivery | Async outgoing-email queue, per-domain mail builders (issue, comment, release, repo, workflow-run, team invite), and the `notify.Notifier` implementation that fans out to email. | `incoming`, `sender`, `token` |
+| 22 | `markup` | [`services/markup`](../../services/markup) | Search & Content Rendering | Render-helper glue (code preview, issue icon/title expansion, mention resolution) that customizes `modules/markup` rendering with request-scoped context. | — |
+| 23 | `migrations` | [`services/migrations`](../../services/migrations) | Platform Ops & Migration | Downloaders/uploaders for importing repositories (issues, PRs, releases, Git history) from GitHub, GitLab, Gogs, Gitbucket, CodeCommit, and generic Git remotes. | — |
+| 24 | `mirror` | [`services/mirror`](../../services/mirror) | Git & Repository Lifecycle | Pull- and push-mirror synchronization, the mirror-sync queue, and the notifier that schedules mirror updates on relevant repo events. | — |
+| 25 | `notify` | [`services/notify`](../../services/notify) | Notifications & Delivery | Defines the central `notify.Notifier` interface and the fan-out dispatch functions (`notify.NewIssue`, `notify.PushCommits`, ...) that every notification-producing code path calls into. | — |
+| 26 | `oauth2_provider` | [`services/oauth2_provider`](../../services/oauth2_provider) | Auth & Identity | Gitea acting as an OAuth2 **provider** (not consumer): access/refresh token issuance and revocation, JWT signing-key management, additional-scopes handling. | — |
+| 27 | `org` | [`services/org`](../../services/org) | Platform Ops & Migration | Organization/team lifecycle logic beyond simple CRUD: org deletion/purge, visibility-change cascades, member removal, team lifecycle, and team invitations. | — |
+| 28 | `packages` | [`services/packages`](../../services/packages) | Packages & Registry | Shared package-registry logic (auth, spec parsing, package/version CRUD, cleanup policies) plus one sub-package per supported ecosystem. | `alpine`, `arch`, `cargo`, `cleanup`, `container`, `debian`, `pkgspec`, `rpm`, `terraform` |
+| 29 | `projects` | [`services/projects`](../../services/projects) | Content & API Glue | Kanban-style Project board logic: drag-and-drop issue/column reordering (`MoveIssuesOnProjectColumn`) and per-project issue-count read helpers. | — |
+| 30 | `pull` | [`services/pull`](../../services/pull) | Issues & Pull Requests | Pull request merge engine: mergeability checks, merge strategies (merge/rebase/squash/fast-forward-only), reviews, patch application, commit statuses, branch updates. | — |
+| 31 | `release` | [`services/release`](../../services/release) | Git & Repository Lifecycle | Git tag and Release lifecycle — create/update/delete releases and tags, auto-generated release notes, and background tag/DB synchronization. | — |
+| 32 | `repository` | [`services/repository`](../../services/repository) | Git & Repository Lifecycle | The largest service package: full repository lifecycle — create, adopt, fork, delete, transfer, template-generate, branch management, collaborators, hooks, LFS, license detection, contributors graph. | `archiver`, `commitstatus`, `files`, `gitgraph` |
+| 33 | `secrets` | [`services/secrets`](../../services/secrets) | Auth & Identity | Encrypted CRUD for Actions secrets (repo/org/user-scoped), with GitHub Actions-compatible name validation. | — |
+| 34 | `task` | [`services/task`](../../services/task) | CI/CD & Automation | Queue-backed async background-job runner scoped to repository migration/import; tracks task status/progress and translates low-level import errors into user-facing messages. | — |
+| 35 | `uinotification` | [`services/uinotification`](../../services/uinotification) | Notifications & Delivery | Implements `notify.Notifier` to populate Gitea's in-app notification inbox (the bell-icon UI), independent of email/webhook delivery. | — |
+| 36 | `user` | [`services/user`](../../services/user) | Platform Ops & Migration | Account lifecycle operations that touch more than the `User` row alone: rename, delete/purge, profile updates, email address management, avatars, and user-blocking side effects. | — |
+| 37 | `versioned_migration` | [`services/versioned_migration`](../../services/versioned_migration) | Platform Ops & Migration | Thin global-lock wrapper (`globallock`) around the `models/migrations` schema-migration runner, so only one instance runs versioned migrations during a multi-instance rolling restart. | — |
+| 38 | `webhook` | [`services/webhook`](../../services/webhook) | Notifications & Delivery | Outgoing webhook delivery: per-target payload builders (Slack, Discord, Matrix, Telegram, MS Teams, Feishu, WeChat Work, Packagist, generic) and the delivery/retry queue. | — |
+| 39 | `webtheme` | [`services/webtheme`](../../services/webtheme) | Platform Ops & Migration | Discovers and parses CSS theme metadata (light/dark, colorblind-friendliness) for the theme picker in user settings, including a Vite-dev-server fast path. | — |
+| 40 | `wiki` | [`services/wiki`](../../services/wiki) | Git & Repository Lifecycle | Wiki page CRUD backed by a per-repository bare `<repo>.wiki.git` Git repository, with a reversible title-to-file-path escaping scheme. | — |
+
+## Cluster Summary
+
+| Cluster | Package count | Packages |
+|---|---|---|
+| Auth & Identity | 5 | `auth`, `asymkey`, `externalaccount`, `oauth2_provider`, `secrets` |
+| Git & Repository Lifecycle | 7 | `agit`, `git`, `gitdiff`, `repository`, `release`, `mirror`, `wiki` |
+| Issues & Pull Requests | 2 | `issue`, `pull` |
+| Content & API Glue | 7 | `convert`, `forms`, `attachment`, `feed`, `projects`, `context`, `contexttest` |
+| Notifications & Delivery | 4 | `notify`, `webhook`, `mailer`, `uinotification` |
+| CI/CD & Automation | 5 | `actions`, `automerge`, `automergequeue`, `task`, `cron` |
+| Packages & Registry | 1 | `packages` |
+| Search & Content Rendering | 3 | `indexer`, `markup`, `lfs` |
+| Platform Ops & Migration | 6 | `doctor`, `migrations`, `versioned_migration`, `webtheme`, `org`, `user` |
+| **Total** | **40** | |
+
+## Related Pages
+
+- [Services Catalog](services-catalog.md) — narrative deep-dive with code samples and sequence
+  diagrams for `agit`, `asymkey`, `attachment`, `automerge`/`automergequeue`, `convert`, `cron`,
+  `doctor`, `externalaccount`, `feed`, `forms`, `gitdiff`, `org`, `projects`, `release`,
+  `repository`, `secrets`, `task`, `versioned_migration`, `webtheme`, `user`, and `wiki`.
+- [Authentication & Authorization](auth-providers.md) — deep-dive on `services/auth` (Auth &
+  Identity cluster).
+- [Actions Architecture](../14-actions-ci/actions-architecture.md) — deep-dive on `services/actions`
+  (CI/CD & Automation cluster).
+- [Notify, Mailer & Webhook](../09-core-modules/notify-mailer-webhook.md) — deep-dive on
+  `services/notify`, `services/webhook`, `services/mailer`, `services/uinotification`
+  (Notifications & Delivery cluster).
+- [Search & Indexing](../09-core-modules/indexers.md) — deep-dive on `services/indexer` (Search &
+  Content Rendering cluster).
+- [LFS & Hooks](../09-core-modules/lfs-and-hooks.md) — deep-dive on `services/lfs`.
+- [Supported Ecosystems](../15-packages-registry/supported-ecosystems.md) / [Package Flow](../15-packages-registry/package-flow.md) — deep-dive on `services/packages` (Packages & Registry
+  cluster).
+- [Core Modules Catalog (Full)](../09-core-modules/modules-catalog-full.md) — the equivalent full
+  catalog for `modules/*`, the layer directly beneath `services/*`.

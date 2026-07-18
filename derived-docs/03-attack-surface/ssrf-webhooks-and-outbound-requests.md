@@ -1,0 +1,345 @@
+# SSRF, Webhooks & Outbound Requests
+
+Beyond rendering untrusted content safely (see
+[Input Handling & XSS Defense](input-handling-and-xss-defense.md)), Gitea's other major
+"untrusted-input-becomes-a-network-action" surface is everything that makes Gitea itself
+originate outbound HTTP requests on behalf of a repository/organization configuration:
+outgoing webhooks, LFS's internal HTTP calls, migrations, and (per the settings catalog) proxy
+and CORS configuration governing all of it. This page synthesizes that surface primarily from
+[`docs/09-core-modules/notify-mailer-webhook.md`](../../docs/09-core-modules/notify-mailer-webhook.md),
+[`docs/09-core-modules/lfs-and-hooks.md`](../../docs/09-core-modules/lfs-and-hooks.md), and the
+`[security]`/`[webhook]`/`[cors]`/`[proxy]` sections described in
+[`docs/03-getting-started/configuration-app-ini.md`](../../docs/03-getting-started/configuration-app-ini.md)
+and [`docs/04-configuration/settings-catalog.md`](../../docs/04-configuration/settings-catalog.md).
+
+> **Why this matters for SSRF specifically:** a webhook URL, migration source URL, or any other
+> admin/user-supplied target host is exactly the shape of input that classic SSRF exploits
+> (reach internal-only services, cloud metadata endpoints, loopback-bound admin panels) target.
+> Gitea's primary control against this class of issue is the `ALLOWED_HOST_LIST` mechanism
+> described below — a scanner operator should verify it is *actually enforced* on every
+> outbound HTTP path, not just the webhook path it was originally designed for.
+
+## The Outbound Request Surfaces
+
+| Surface | Trigger | Where it's implemented |
+|---|---|---|
+| Outgoing webhooks | Any subscribed domain event (issue, PR, push, release, ...) | `services/webhook/` |
+| LFS internal API calls (SSH transfer → HTTP backend) | `git-lfs` over SSH | `modules/lfstransfer` → internal HTTP API |
+| Repository migrations | Admin/user imports a repo from GitHub/GitLab/etc. | `[migrations]` allow/block lists (per settings catalog) |
+| Outbound proxy | Any of the above, if `[proxy]` is configured | `modules/setting/proxy.go` |
+
+This page focuses mainly on the webhook path, since it is the most thoroughly documented in
+the source material and the most directly attacker-influenceable (a repository owner or
+organization admin can configure an arbitrary webhook URL themselves).
+
+## Webhook Fan-Out Architecture
+
+Per the [Notifications, Mailer & Webhooks docs](../../docs/09-core-modules/notify-mailer-webhook.md),
+every domain event flows through a single dispatch point, `notify.notifiers[]`, before
+reaching the webhook subsystem:
+
+```mermaid
+flowchart LR
+    subgraph Domain["Domain services"]
+        A["issue_service.NewIssue()"]
+    end
+
+    A -->|"notify.NewIssue(ctx, issue, mentions)"| N["notify.notifiers[] fan-out loop<br/>(services/notify/notify.go)"]
+
+    N --> W["webhookNotifier<br/>services/webhook"]
+    N --> M["mailNotifier<br/>services/mailer"]
+
+    W -->|PrepareWebhooks + HookTask row| WQ["webhook_sender queue"]
+    WQ -->|Deliver()| HTTP["HTTP POST to configured webhook URL<br/>(Slack/Discord/Matrix/Generic...)"]
+```
+
+### Data Model
+
+Two persisted models back webhooks (both in `models/webhook/`):
+
+- **`Webhook`** — the configured hook itself: `URL`, `HTTPMethod`, `ContentType` (JSON or
+  form), `Secret`, `Type` (`gitea`, `slack`, `discord`, `dingtalk`, `telegram`, `msteams`,
+  `feishu`, `matrix`, `wechatwork`, `packagist`, ...), the serialized `Events`/`HookEvent`
+  selection, `BranchFilter`, and `IsSystemWebhook` (a webhook an admin applies to *every* repo).
+- **`HookTask`** — one row per delivery attempt, including the original `PayloadContent`,
+  `EventType`, `IsDelivered`/`IsSucceed` flags, and recorded `RequestInfo`/`ResponseInfo` used
+  to render delivery history in the web UI:
+
+```go
+// models/webhook/hooktask.go
+type HookTask struct {
+    ID             int64  `xorm:"pk autoincr"`
+    HookID         int64  `xorm:"index"`
+    UUID           string `xorm:"unique"`
+    PayloadContent string `xorm:"LONGTEXT"`
+    PayloadVersion int    `xorm:"DEFAULT 1"`
+
+    EventType   webhook_module.HookEventType
+    IsDelivered bool
+    Delivered   timeutil.TimeStampNano
+
+    IsSucceed       bool
+    RequestContent  string        `xorm:"LONGTEXT"`
+    RequestInfo     *HookRequest  `xorm:"-"`
+    ResponseContent string        `xorm:"LONGTEXT"`
+    ResponseInfo    *HookResponse `xorm:"-"`
+}
+```
+
+### Preparing & Queuing a Delivery
+
+`services/webhook/webhook.go`'s `PrepareWebhooks`/`PrepareWebhook` perform the gating checks
+**before** a `HookTask` is even created — this is the first line of defense, though it's about
+policy (is this webhook enabled/subscribed/branch-matched), not about the target host itself:
+
+```go
+func PrepareWebhook(ctx context.Context, w *webhook_model.Webhook, event webhook_module.HookEventType, p api.Payloader) error {
+    if setting.DisableWebhooks {
+        return nil
+    }
+    if !w.HasEvent(event) {
+        return nil
+    }
+    if ref := getPayloadRef(p); ref != "" && !checkBranchFilter(w.BranchFilter, ref) {
+        return nil
+    }
+    payload, err := p.JSONPayload()
+    ...
+    task, err := webhook_model.CreateHookTask(ctx, &webhook_model.HookTask{...})
+    ...
+    return enqueueHookTask(task.ID)
+}
+```
+
+The queue (`hookQueue`, a `queue.WorkerPoolQueue[int64]`) is created/started in
+`webhook.Init()` (called from `routers/init.go`); a background goroutine
+(`populateWebhookSendingQueue`) re-enqueues any previously undelivered tasks on start-up so
+deliveries survive restarts.
+
+## SSRF Defense: `ALLOWED_HOST_LIST`
+
+The actual SSRF control lives one layer down, at delivery time. `Deliver(ctx, task)`
+(`services/webhook/deliver.go`) executes the HTTP request using a shared, hardened HTTP
+client:
+
+```go
+func Deliver(ctx context.Context, t *webhook_model.HookTask) error {
+    w, err := webhook_model.GetWebhookByID(ctx, t.HookID)
+    ...
+    newRequest := webhookRequesters[w.Type]
+    if t.PayloadVersion == 1 || newRequest == nil {
+        newRequest = newDefaultRequest
+    }
+    req, body, err := newRequest(ctx, w, t)
+    ...
+    resp, err := webhookHTTPClient.Do(req.WithContext(ctx))
+    ...
+    t.IsSucceed = resp.StatusCode/100 == 2
+    ...
+}
+```
+
+Per the source docs, `webhookHTTPClient` is an `http.Client` **whose `Transport` enforces
+`security.ALLOWED_HOST_LIST`** and separately honors `[webhook]` section settings for
+`PROXY_URL`/`PROXY_HOSTS`/`SKIP_TLS_VERIFY`. This is the single mechanism standing between a
+user-supplied webhook URL and Gitea issuing an arbitrary outbound request to it.
+
+`ALLOWED_HOST_LIST` itself is documented in the `[security]` section of
+[`configuration-app-ini.md`](../../docs/03-getting-started/configuration-app-ini.md):
+
+> `ALLOWED_HOST_LIST` — restricts which hosts webhook/OAuth2 clients are allowed to call
+> (`loopback`, `private`, `external`, `*`, CIDRs, or wildcard hostnames).
+
+```ini
+[security]
+INSTALL_LOCK = false
+SECRET_KEY =
+INTERNAL_TOKEN =
+LOGIN_REMEMBER_DAYS = 31
+MIN_PASSWORD_LENGTH = 8
+PASSWORD_HASH_ALGO = pbkdf2
+PASSWORD_CHECK_PWN = false
+TWO_FACTOR_AUTH =
+; ALLOWED_HOST_LIST = external   ; not shown in the excerpted example block, but documented
+                                  ; in the same [security] section
+```
+
+### What the Allowed Values Mean
+
+| Value | Meaning | SSRF implication |
+|---|---|---|
+| `loopback` | Only loopback addresses (`127.0.0.1`, `::1`) are reachable | Effectively disables real webhook usage; mainly for local testing |
+| `private` | Private/internal network ranges are reachable | Permits intranet targeting — appropriate only for trusted internal integrations |
+| `external` | Only external (non-private, non-loopback) hosts are reachable | The recommended production posture — blocks the classic SSRF targets (cloud metadata endpoints, internal admin panels, loopback services) |
+| `*` | All hosts allowed | No SSRF protection at the webhook layer at all |
+| CIDRs / wildcard hostnames | Explicit allow/deny by network range or hostname pattern | Fine-grained allowlisting for specific trusted integrations |
+
+> **Gap to flag explicitly (source-documented default posture is not fully specified here):**
+> the source documentation states what the possible `ALLOWED_HOST_LIST` values mean and that it
+> restricts webhook/OAuth2 client targets, but does not spell out the shipped *default* value
+> in the excerpted `[security]` block. Treat the effective value on any given deployment as
+> unverified until checked directly — this is exactly the kind of setting a Trivy/opengrep
+> config-scanning pass (or a simple `grep ALLOWED_HOST_LIST app.ini` check) should surface for
+> every deployment, since `*` (or an unset value defaulting permissively) would silently negate
+> this entire SSRF control.
+
+### Signature & Identification Headers — Defense for the *Receiving* End
+
+Separately from SSRF protection (which protects Gitea's own infrastructure from being abused
+as a request proxy), `addDefaultHeaders` in `deliver.go` protects **receivers** of Gitea's
+webhooks from spoofed/tampered deliveries by computing HMAC-SHA1 and HMAC-SHA256 signatures
+over the raw payload body using the webhook's per-hook `Secret`:
+
+| Header | Purpose |
+|---|---|
+| `X-Gitea-Delivery` / `X-Gogs-Delivery` / `X-GitHub-Delivery` | Unique `HookTask.UUID` for this delivery |
+| `X-Gitea-Event` / `X-Gogs-Event` / `X-GitHub-Event` | Normalized event name (e.g. `issues`, `pull_request`) |
+| `X-Gitea-Event-Type` | The specific `HookEventType` (e.g. `pull_request_review_approved`) |
+| `X-Gitea-Signature` / `X-Gogs-Signature` | HMAC-SHA256 hex signature |
+| `X-Hub-Signature` | HMAC-SHA1, `sha1=...` (GitHub-compatible) |
+| `X-Hub-Signature-256` | HMAC-SHA256, `sha256=...` (GitHub-compatible) |
+| `X-Gitea-Hook-Installation-Target-Type` / `X-GitHub-Hook-Installation-Target-Type` | `system`, `repository`, `organization`, or `user` |
+
+This means a webhook receiver can verify a delivery genuinely came from this Gitea instance
+and wasn't forged/tampered with — but it says nothing about *where* Gitea itself is permitted
+to send the request, which is why it's a distinct control from `ALLOWED_HOST_LIST` and should
+not be mistaken for SSRF protection.
+
+### Requester-Specific Payload Transformation
+
+Per-vendor `Requester` functions (registered via `RegisterWebhookRequester`) transform the
+generic Gitea payload into vendor-specific JSON for Slack, Discord, Matrix, MSTeams, Feishu,
+WeChat Work, DingTalk, Telegram, and Packagist (`services/webhook/slack.go`, `discord.go`,
+`matrix.go`, etc.). If no vendor-specific requester is registered — or the stored task uses
+the legacy `PayloadVersion == 1` — `newDefaultRequest` falls back to sending the raw
+Gitea/Gogs-format JSON (or a form-encoded body if `ContentType == ContentTypeForm`). Each of
+these transformation functions is itself a place where a bug could leak more data than
+intended into a third-party service, though that's a data-exposure concern distinct from SSRF.
+
+### Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions
+
+`TestHook` (backing the "Test Delivery" button and the REST API's `POST
+/repos/{owner}/{repo}/hooks/{id}/tests`) calls `PrepareTestWebhook`, which **bypasses
+event-subscription and branch-filter checks** so a delivery is always attempted — useful for
+verifying connectivity without a real event. Because it still routes through the same
+`Deliver`/`webhookHTTPClient` path, it is still subject to `ALLOWED_HOST_LIST`; but it's worth
+noting as a slightly different code path when auditing for any place the SSRF check might be
+skipped. `ReplayHookTask` similarly lets an admin/repo-owner re-send a previously recorded
+delivery by UUID, going through the same delivery machinery.
+
+## LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs
+
+Git LFS is a related but distinct outbound/internal-request surface, described in
+[`docs/09-core-modules/lfs-and-hooks.md`](../../docs/09-core-modules/lfs-and-hooks.md). Unlike
+webhooks, LFS's internal HTTP calls are **not** directed at attacker-supplied URLs — they are
+always Gitea talking to itself (its own Batch API), so the relevant control is authentication
+rather than host allowlisting:
+
+```mermaid
+flowchart LR
+    subgraph Client["git-lfs CLI"]
+        GitLFS["git lfs push / pull"]
+    end
+
+    GitLFS -->|"HTTPS batch API"| Router["routers/common/lfs.go"]
+    Router --> Server["services/lfs/server.go<br/>BatchHandler / UploadHandler / DownloadHandler"]
+    Server --> Store["modules/lfs/content_store.go<br/>ContentStore"]
+
+    GitLFS -->|"SSH: git-lfs-transfer"| Serv["cmd/serv.go (SSH dispatch)"]
+    Serv --> Transfer["modules/lfstransfer<br/>GiteaBackend"]
+    Transfer -->|"internal HTTP API<br/>(Bearer + internal auth)"| Server
+```
+
+Key points relevant to outbound-request safety:
+
+- LFS HTTP requests are authorized via a **short-lived JWT** (`Claims{RepoID, Op, UserID}`,
+  HS256-signed with `setting.LFS.JWTSecretBytes`, expiring after `setting.LFS.HTTPAuthExpiry`,
+  default 24h). This bounds the blast radius of a leaked/stolen LFS token to a specific
+  repo/operation/user and a short time window.
+- The SSH-to-HTTP bridge (`modules/lfstransfer`) proxies through an **internal** HTTP API using
+  Bearer + internal auth, not a general-purpose outbound request — so it inherits Gitea's
+  internal-token trust boundary rather than being exposed to arbitrary host targeting.
+- A defensive anti-auto-linking check in `BatchHandler` deliberately treats an object as **not
+  existing** if its content-addressed bytes already exist in the shared `ContentStore` (e.g.
+  uploaded via a different repo) but no `LFSMetaObject` yet links it to *this* repo — this
+  prevents a deploy-key/single-repo-scoped token from being used to infer or "claim" the
+  existence of objects belonging to other repositories without proving possession by
+  re-uploading hash-verified bytes:
+
+```go
+// services/lfs/server.go (BatchHandler)
+if exists && meta == nil {
+    // Do not auto-link cross-repo objects based on token scope alone (deploy-key/single-repo tokens);
+    // require the client to re-upload (hash-verified) bytes to prove possession.
+    exists = false
+}
+```
+
+This is not classic network-layer SSRF, but it is the same *category* of concern — using a
+narrowly-scoped credential to infer information about resources outside its intended scope —
+and is worth keeping in the same mental model as the webhook host-allowlist control.
+
+## Related Outbound-Request Configuration Surfaces
+
+Per the [Settings Catalog](../../docs/04-configuration/settings-catalog.md), several other
+`app.ini` sections govern or interact with outbound requests and are worth cataloging
+alongside `[security]`/`[webhook]`:
+
+| Settings file | INI section(s) | Relevance to outbound-request safety |
+|---|---|---|
+| `security.go` | `[security]` (cross-reads `[cors]` for `X_FRAME_OPTIONS`) | Owns `ALLOWED_HOST_LIST`, `SECRET_KEY`/`INTERNAL_TOKEN`, HTTP security headers |
+| `webhook.go` | `[webhook]` | Outgoing webhook delivery timeout, allowed target host list enforcement point, `PROXY_URL`/`PROXY_HOSTS`/`SKIP_TLS_VERIFY`, delivery history retention |
+| `proxy.go` | `[proxy]` | Outbound HTTP proxy used for webhooks, migrations, and other outgoing requests — a misconfigured proxy could itself become an SSRF pivot if it trusts requests to internal ranges |
+| `cors.go` | `[cors]` | Cross-Origin Resource Sharing policy for the API — governs which *browser-originated* cross-origin requests are permitted to reach Gitea's API, the inverse direction of SSRF but part of the same "what can talk to/through Gitea" threat model |
+| `migrations.go` | `[migrations]` | Repository migration (import from GitHub/GitLab/etc.) allow/block lists and timeout — the other major place a user supplies an arbitrary remote URL that Gitea will fetch from |
+| `camo.go` | `[camo]` | Optional image-proxy (Camo) settings — proxies external image URLs referenced in rendered content, avoiding mixed-content and referrer-leak issues; also relevant to reviewing what target hosts the image proxy itself is willing to fetch from |
+| `federation.go` | `[federation]` | ActivityPub federation enable flag and request size limits — federation inherently means accepting/making requests to other, less-trusted Gitea/ActivityPub instances |
+
+> **Scanner note:** `[migrations]` is explicitly documented as having its own allow/block list
+> mechanism, separate from `ALLOWED_HOST_LIST`. When reviewing a deployment for SSRF exposure,
+> treat webhook targets, migration source URLs, and Camo/federation targets as **three
+> separate allowlist surfaces** that each need to be independently verified — a hardened
+> `ALLOWED_HOST_LIST` does not automatically imply the migration or Camo allow/block lists are
+> equally strict.
+
+## Trivy / opengrep Focus Checklist
+
+- [ ] **Verify `[security].ALLOWED_HOST_LIST` is set to `external` (or a tightly scoped
+      CIDR/hostname list)** on every reviewed deployment's `app.ini` — flag any deployment
+      where it is unset or `*`.
+- [ ] **Confirm every outbound HTTP call path that accepts a user/admin-supplied host**
+      (webhooks, migrations, Camo, federation) is routed through a shared, host-restricted
+      `http.Client`/`Transport` rather than a raw `http.Get`/`http.Client{}` constructed
+      ad hoc — opengrep-class SAST rules can specifically flag any new `http.Client{}`
+      instantiation that bypasses `webhookHTTPClient` (or an equivalent shared, restricted
+      client) in code paths that consume external URLs.
+- [ ] **Check `[webhook]` `PROXY_URL`/`PROXY_HOSTS`/`SKIP_TLS_VERIFY`** — an overly broad
+      `PROXY_HOSTS` pattern or `SKIP_TLS_VERIFY = true` weakens the trust model for webhook
+      deliveries even when `ALLOWED_HOST_LIST` is correctly configured.
+- [ ] **Audit `[migrations]` allow/block lists** as a parallel, independent SSRF surface to the
+      webhook host list — a user importing a repository supplies an arbitrary remote URL.
+- [ ] **Treat leaked webhook `Secret`s as a signature-forgery risk**, not an SSRF risk — rotate
+      via the webhook edit UI/API rather than assuming `ALLOWED_HOST_LIST` mitigates a leaked
+      secret.
+- [ ] **Confirm LFS JWT expiry (`setting.LFS.HTTPAuthExpiry`, default 24h) and secret
+      (`setting.LFS.JWTSecretBytes`) are set appropriately** for the deployment's risk
+      tolerance; a very long expiry widens the window in which a leaked LFS bearer token
+      remains useful.
+- [ ] **Re-check the anti-auto-linking guard in `BatchHandler`** (`exists = false` when
+      `exists && meta == nil`) whenever the LFS batch/content-store code changes — regressing
+      this check would let a narrowly-scoped LFS token infer the existence of objects
+      belonging to other repositories.
+
+## Cross-References
+
+- [Input Handling & XSS Defense](input-handling-and-xss-defense.md) — the companion
+  "untrusted content" attack surface, covering HTML sanitization rather than outbound
+  requests.
+- [Authorization / Permission Model](authorization-permission-model.md) — who is allowed to
+  configure a webhook or trigger a migration in the first place.
+- `docs/09-core-modules/notify-mailer-webhook.md` — full source document for the webhook fan-out
+  architecture, payload formats, and e-mail/notification subsystems.
+- `docs/09-core-modules/lfs-and-hooks.md` — full source document for LFS architecture, JWT
+  auth, and server-side push hooks.
+- `docs/04-configuration/settings-catalog.md` / `docs/03-getting-started/configuration-app-ini.md`
+  — full settings reference for `[security]`, `[webhook]`, `[proxy]`, `[cors]`, `[migrations]`.

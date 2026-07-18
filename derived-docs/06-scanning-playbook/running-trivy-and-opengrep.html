@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running Trivy and Opengrep Against This Repository</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../06-scanning-playbook/README.html">Scanning Playbook</a> &rsaquo; Running Trivy and Opengrep Against This Repository</div>
+<h1>Running Trivy and Opengrep Against This Repository</h1>
+<h1 id="running-trivy-and-opengrep-against-this-repository">Running Trivy and Opengrep Against This Repository</h1>
+<p>This page is the operational playbook: given everything the other pages in this set establish about
+Gitea's existing CI tooling, attack surface, configuration, and supply chain, <strong>where do you actually
+point Trivy and opengrep, how do you slot them into the existing pipeline without duplicating work,
+and what do you do with a finding once you have one?</strong></p>
+<p>It synthesizes the tool-inventory and gap analysis from
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>, the
+supply-chain gap table in
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>,
+the per-surface "Trivy/opengrep Focus Checklist" sections in
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a>,
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a>,
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a>, and
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>, and the
+config-hardening checklist in
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a>. It also
+closes the loop with <a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+for what to do once a finding looks real.</p>
+<blockquote>
+<p><strong>Framing:</strong> Trivy and opengrep are not named anywhere in Gitea's own source documentation — they
+are the tools this documentation set's stated focus asks us to reason about <em>adding</em>. Everything
+below is therefore forward-looking integration guidance built on top of facts the source docs do
+state (existing Make targets, existing workflows, existing gaps), not a description of tooling that
+is already wired up. Where source docs already describe an equivalent or overlapping control, this
+page says so explicitly rather than recommending a duplicate check.</p>
+</blockquote>
+<h2 id="why-these-two-tools-and-why-together">Why These Two Tools, and Why Together<a href="#why-these-two-tools-and-why-together" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Trivy and opengrep cover different, complementary layers of the same problem:</p>
+<table>
+<thead>
+<tr>
+<th>Tool class</th>
+<th>What it's good at</th>
+<th>What it's <em>not</em> good at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Trivy</strong> (SCA / dependency / container / IaC scanner)</td>
+<td>Known-CVE detection against dependency manifests (<code>go.sum</code>, <code>pnpm-lock.yaml</code>), container image OS packages, misconfiguration scanning against Dockerfiles/Kubernetes manifests, license scanning, SBOM generation</td>
+<td>Logic flaws, business-rule bugs, anything that isn't already a cataloged vulnerability or a structural misconfiguration pattern</td>
+</tr>
+<tr>
+<td><strong>opengrep</strong> (Semgrep-class SAST / secret-detection / custom pattern matching)</td>
+<td>Source-level pattern matching: insecure crypto usage, hardcoded secrets, missing sanitization calls, CI workflow anti-patterns, org-specific "this function must always be called this way" rules</td>
+<td>Anything requiring cross-file data-flow reasoning beyond what a rule author encodes; it will not independently "understand" Gitea's authorization model the way a human reviewer does</td>
+</tr>
+</tbody>
+</table>
+<p>As called out in <a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>:</p>
+<blockquote>
+<p>"Trivy will not find logic flaws in an authorization model — that requires either manual review or
+SAST rules (opengrep/Semgrep) tuned to Gitea's specific <code>AccessMode</code>/<code>Access</code>/<code>Permission</code> vocabulary."</p>
+</blockquote>
+<p>That single sentence is the organizing principle for this whole playbook: <strong>Trivy finds known-bad
+things in dependencies and artifacts; opengrep finds known-bad <em>patterns</em> in source and config; neither
+replaces a human reviewer for business-logic-level access-control bugs</strong>, which remain the domain of
+manual review informed by the vocabulary this documentation set has already built up (see
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a> and
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a>).</p>
+<pre class="mermaid">graph TD
+  A[Security Finding Needed] --> B{What kind of question<br/>are you asking?}
+  B -->|"Is a dependency/image/base<br/>OS package known-vulnerable?"| C[Trivy: SCA / image / fs scan]
+  B -->|"Does source/config contain a<br/>known-bad pattern or secret?"| D[opengrep: SAST / secret rules]
+  B -->|"Is the access-control LOGIC<br/>correct for this feature?"| E[Manual review, informed by<br/>Authorization/Permission Model docs]
+  C --> F[Triage finding]
+  D --> F
+  E --> F
+  F --> G{Exploitable / leaks<br/>other users' data?}
+  G -->|Yes or unsure| H[security@gitea.io — private]
+  G -->|No| I[Normal bug/enhancement issue]</pre>
+<h2 id="where-each-tool-fits-in-the-existing-pipeline">Where Each Tool Fits in the Existing Pipeline<a href="#where-each-tool-fits-in-the-existing-pipeline" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Rather than bolting Trivy/opengrep on as an unrelated afterthought, both tools slot naturally into
+gaps in the pipeline already mapped out in
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>. That
+page's diagram shows <code>files-changed.yml</code> fanning out into <code>lint-backend</code>, <code>lint-on-demand</code>, and
+<code>checks-backend</code> jobs inside <code>pull-compliance.yml</code>. The recommended integration points are:</p>
+<pre class="mermaid">graph TD
+  FC[files-changed.yml<br/>path-filter gatekeeper] --> LB[lint-backend<br/>make lint-backend]
+  FC --> LOD[lint-on-demand<br/>targeted linters]
+  FC --> CB[checks-backend<br/>make checks-backend]
+  FC --> PDD[pull-docker-dryrun.yml<br/>build-only today]
+
+  CB --> SC["security-check:<br/>govulncheck (non-fatal)"]
+  SC -.->|"NEW: add alongside,<br/>don't replace"| TRIVYFS["Trivy fs/repo scan<br/>go.sum + pnpm-lock.yaml<br/>(enforced, fail-on-finding)"]
+
+  LOD --> LA["lint-actions:<br/>actionlint + zizmor"]
+  LA -.->|"NEW: layer on top"| OGACTIONS["opengrep rules against<br/>.github/workflows<br/>(secret patterns, org-specific)"]
+
+  LB --> GL["golangci-lint (incl. depguard)"]
+  GL -.->|"NEW: complementary,<br/>not overlapping"| OGSAST["opengrep SAST rules<br/>against Go source<br/>(crypto, sanitizer bypass,<br/>SSRF client bypass)"]
+
+  PDD -.->|"NEW: add a scan job,<br/>keep the dry-run build"| TRIVYIMG["Trivy image scan<br/>against built Dockerfile /<br/>Dockerfile.rootless output"]</pre>
+<h3 id="1-dependency-vulnerability-scanning-trivy-alongside-govulncheck">1. Dependency vulnerability scanning — Trivy alongside <code>govulncheck</code><a href="#1-dependency-vulnerability-scanning-trivy-alongside-govulncheck" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>govulncheck</code> already runs as the <code>security-check</code> Makefile target, composed into <code>checks-backend</code>,
+which runs inside <code>pull-compliance.yml</code>'s <code>checks-backend</code> job on every backend-touching PR — see
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>. But
+per <code>docs/build-cicd-deployment/makefile-and-build.md</code>, that target is invoked with a trailing <code>|| true</code>,
+meaning <strong>a known Go-ecosystem vulnerability currently does not fail CI.</strong></p>
+<p>Recommended placement:</p>
+<ul>
+<li>Add a <code>trivy fs</code>/<code>trivy repo</code> step to <code>checks-backend</code> (or a parallel job gated on the same
+  <code>files-changed</code> backend/frontend outputs) that scans <strong>both</strong> <code>go.sum</code> and <code>pnpm-lock.yaml</code> — Trivy's
+  Go-ecosystem coverage overlaps with <code>govulncheck</code>, but its npm/pnpm coverage is a documented gap:
+  per <a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>,
+  "No equivalent NPM vulnerability scan is described in source docs — a clear Trivy/<code>pnpm audit</code>-class
+  gap."</li>
+<li>Unlike <code>security-check</code>, <strong>do not append <code>|| true</code></strong> to the new Trivy step. The entire value of
+  adding a second scanner here is closing the "known vulnerability passes CI silently" gap explicitly
+  flagged in the source docs; a non-fatal Trivy step would just duplicate the existing weakness under
+  a different tool name.</li>
+<li>Treat <code>govulncheck</code> and Trivy as complementary, not redundant: <code>govulncheck</code> does reachability
+  analysis (is the vulnerable <em>function</em> actually called?), while Trivy's SCA scan is broader but
+  reachability-agnostic. Keep both; don't remove <code>govulncheck</code> when adding Trivy.</li>
+</ul>
+<h3 id="2-container-image-scanning-trivy-alongside-pull-docker-dryrunyml">2. Container image scanning — Trivy alongside <code>pull-docker-dryrun.yml</code><a href="#2-container-image-scanning-trivy-alongside-pull-docker-dryrunyml" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>
+and <code>docs/build-cicd-deployment/github-workflows.md</code>, <code>pull-docker-dryrun.yml</code> already builds (but does
+not push) Docker images for <code>amd64</code>/<code>arm64</code>/<code>riscv64</code> on every PR that changes Docker-related files,
+gated by <code>needs.files-changed.outputs.docker == 'true'</code>. It validates that the image <strong>builds</strong>, not
+that it is free of known vulnerabilities.</p>
+<p>Recommended placement:</p>
+<ul>
+<li>Add a <code>trivy image</code> step immediately after the existing build step in <code>pull-docker-dryrun.yml</code>,
+  scanning the just-built (not-yet-pushed) image for both <code>Dockerfile</code> (rootful) and
+  <code>Dockerfile.rootless</code> variants.</li>
+<li>This closes the gap called out directly in the source-derived gap table: "Container image CVEs |
+  Not directly | <code>pull-docker-dryrun.yml</code> validates that images <em>build</em>, not that they're free of
+  known vulnerabilities | Direct fit for Trivy's container image scanning mode."</li>
+<li>Since the base image is <code>alpine:3.24</code> (per
+  <a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>),
+  Trivy's OS-package (<code>apk</code>) vulnerability database coverage is directly applicable — this is broader
+  than <code>govulncheck</code>'s Go-only scope, since <code>trivy image</code> also covers Alpine <code>apk</code> packages baked into
+  the runtime stage.</li>
+<li>Consider running this as an independent, informational step first (report-only) before making it a
+  merge-blocking gate, given the base image inherits whatever Alpine CVEs exist at build time
+  regardless of anything Gitea's own code does — a hard gate here needs an agreed remediation SLA
+  (rebuild cadence) before it can fail PRs, or it risks blocking unrelated PRs on upstream Alpine CVEs.</li>
+</ul>
+<h3 id="3-sbom-generation-trivy-filling-a-documented-gap">3. SBOM generation — Trivy filling a documented gap<a href="#3-sbom-generation-trivy-filling-a-documented-gap" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>:</p>
+<blockquote>
+<p>"the source docs do not describe a Software Bill of Materials (SBOM) being generated at any point
+in the release pipeline (no <code>cosign attest</code>, no <code>syft</code>/SPDX/CycloneDX artifact mentioned)."</p>
+</blockquote>
+<p>Recommended placement: add a <code>trivy image --format cyclonedx</code> (for container images) or <code>trivy fs
+--format cyclonedx</code> (for the source tree) step to the release workflows (<code>release-nightly.yml</code>,
+<code>release-tag-rc.yml</code>, <code>release-tag-version.yml</code>) immediately after the existing Cosign/GPG signing
+step described in that page. Since Cosign is <strong>already installed and authenticated</strong> in those
+workflows for <code>sign-blob</code>, using <code>cosign attest</code> to bind the generated SBOM to the same signing
+identity is a natural extension rather than a new secret/credential to provision.</p>
+<h3 id="4-github-actions-security-opengrep-layered-on-top-of-zizmor-actionlint">4. GitHub Actions security — opengrep layered on top of <code>zizmor</code> + <code>actionlint</code><a href="#4-github-actions-security-opengrep-layered-on-top-of-zizmor-actionlint" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>zizmor</code> and <code>actionlint</code> already run together as the <code>lint-actions</code> Makefile target, invoked from the
+<code>lint-on-demand</code> job whenever <code>.github</code>-path files change — see
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>. <code>zizmor</code>
+specifically targets GitHub Actions security anti-patterns (<code>pull_request_target</code> misuse, script
+injection, unpinned actions).</p>
+<p>Recommended placement: <strong>do not duplicate <code>zizmor</code>'s coverage.</strong> opengrep's marginal value here is:</p>
+<ul>
+<li><strong>Secret-detection rules</strong> scanning <code>.github/workflows/*.yml</code> for literal credential-shaped strings
+  that shouldn't be in workflow YAML at all (as opposed to <code>zizmor</code>'s structural/semantic focus).</li>
+<li><strong>Org-specific custom rules</strong> not built into <code>zizmor</code>'s generic rule set — e.g., flagging any
+  workflow that doesn't route through the existing <code>files-changed.yml</code> reusable path-filter pattern
+  when it plausibly should, or flagging any new workflow granting <code>packages: write</code> outside the
+  documented <code>release-tag-version.yml</code> case (per
+  <a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>).</li>
+<li>Add this as an <em>additional</em> step in the same <code>lint-actions</code> target / <code>lint-on-demand</code> job, not a
+  separate pipeline stage — it shares the same trigger condition (<code>.github</code> files changed) and the
+  same <code>uv</code>-managed Python tool group already used for <code>zizmor</code>/<code>djlint</code>/<code>yamllint</code> (per
+  <code>docs/build-cicd-deployment/docker-and-packaging.md</code>'s description of <code>deps-py</code>), so it's a natural
+  fit for the same dependency group rather than a new one.</li>
+</ul>
+<h3 id="5-application-layer-sast-opengrep-filling-the-single-largest-documented-gap">5. Application-layer SAST — opengrep filling the single largest documented gap<a href="#5-application-layer-sast-opengrep-filling-the-single-largest-documented-gap" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>'s
+gap table: "Application-layer SAST (injection, insecure crypto, secrets-in-code) | Not directly |
+General linters (<code>golangci-lint</code>, ESLint) check style/quality, not security semantics | Primary
+opengrep/Semgrep-class opportunity." This is the most clear-cut, unambiguous gap identified anywhere
+in this documentation set — no existing tool touches this at all.</p>
+<p>Recommended placement: a new <code>lint-security</code> (or similarly named) Makefile target, run as part of
+<code>lint-backend</code> (Go source) and a separate frontend-focused pass (JS/TS), gated the same way other
+<code>lint-on-demand</code> categories are gated on <code>files-changed</code> outputs. See the next section for concrete
+rule targets synthesized from every attack-surface page in this documentation set.</p>
+<h2 id="concrete-opengrep-rule-targets-synthesized-from-the-attack-surface-pages">Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)<a href="#concrete-opengrep-rule-targets-synthesized-from-the-attack-surface-pages" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Every attack-surface page in this documentation set ends with its own "Trivy/opengrep Focus
+Checklist" or equivalent scanning-guidance table. This section consolidates them into one
+cross-referenced rule-authoring backlog, organized by rule category rather than by source page, so a
+scanner operator can prioritize by risk class instead of re-reading four separate pages.</p>
+<h3 id="secret-detection">Secret detection<a href="#secret-detection" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Literal values for <code>BindPassword</code>, <code>LDAP_BIND_PASSWORD</code>, <code>LFS_JWT_SECRET</code>, <code>SECRET_KEY</code>, <code>INTERNAL_TOKEN</code> in <code>app.ini</code>-style files or Go source</td>
+<td>Repo-wide, and any deployment-specific config shipped alongside the repo</td>
+<td><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a></td>
+</tr>
+<tr>
+<td>Literal secret values for <code>SECRET_KEY</code>, <code>INTERNAL_TOKEN</code>, <code>[database] PASSWD</code>, <code>[mailer] PASSWD</code>, LDAP <code>BindPassword</code>, OAuth2 client secrets committed into a tracked <code>app.ini</code>, Helm values file, or Kubernetes <code>ConfigMap</code> (as opposed to a <code>Secret</code> resource or <code>*_FILE</code> indirection)</td>
+<td>Configuration/deployment artifacts</td>
+<td><a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a></td>
+</tr>
+<tr>
+<td>Any credential-shaped string embedded directly in <code>.github/workflows/*.yml</code></td>
+<td>CI configuration</td>
+<td>This page, §4 above</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Reference pattern to compare against, not a target:</strong> <code>models/auth/access_token.go</code>'s
+<code>TokenHash</code>/<code>TokenSalt</code> fields are the <em>correct</em> pattern — Personal Access Tokens are stored only as
+a salted hash plus a <code>TokenLastEight</code> shortcut, never in plaintext, with constant-time comparison via
+<code>crypto/subtle</code>. Per <a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a>,
+this is "a good reference pattern to compare against if opengrep flags any <em>other</em> token/credential
+storage code in this codebase that does <strong>not</strong> follow the same hash-only-at-rest convention."</p>
+</blockquote>
+<h3 id="weakincorrect-cryptography">Weak/incorrect cryptography<a href="#weakincorrect-cryptography" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MD5/SHA1 used for anything key-derivation- or signature-adjacent</td>
+<td><code>models/auth/twofactor.go</code>-style patterns, and any similar code elsewhere in the tree</td>
+<td><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a>; flagged again in <a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a> as "exactly the kind of <code>crypto/md5</code> usage that an opengrep SAST rule" should catch, alongside an explicit caveat that the specific instance noted there may be a legacy/compatibility artifact requiring manual confirmation rather than an automatic "fix this" verdict</td>
+</tr>
+</tbody>
+</table>
+<h3 id="access-control-authorization-logic">Access-control / authorization logic<a href="#access-control-authorization-logic" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Handler code that calls a <strong>repo-wide</strong> permission check (<code>AccessLevel</code>) but then serves <strong>unit-specific</strong> content (issues, wiki, packages)</td>
+<td>Any handler touching <code>RepoUnit</code>-gated features</td>
+<td><a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a></td>
+</tr>
+<tr>
+<td>Mismatched <code>unitType</code> arguments passed to <code>AccessLevelUnit</code>/<code>HasAccessUnit</code>/<code>CheckRepoUnitUser</code></td>
+<td>Same surface</td>
+<td><a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>This category is explicitly flagged as needing rules "tuned to Gitea's specific
+<code>AccessMode</code>/<code>Access</code>/<code>Permission</code> vocabulary" — a generic, off-the-shelf opengrep ruleset will not
+catch these; they require custom rules written against the vocabulary documented in
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>.</p>
+</blockquote>
+<h3 id="csrf-auth-bypass-surfaces">CSRF / auth-bypass surfaces<a href="#csrf-auth-bypass-surfaces" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Use of <code>DisableCrossOriginProtection</code> / <code>optSignInFromAnyOrigin</code> outside the documented git-smart-HTTP/API cases</td>
+<td>Auth middleware chain</td>
+<td><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sanitizer-xss-defense-bypass">Sanitizer / XSS-defense bypass<a href="#sanitizer-xss-defense-bypass" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>New code constructing a <code>bluemonday.Policy</code> without going through the shared <code>addSanitizerRules</code> helper</td>
+<td>Any new <code>Renderer</code> implementation</td>
+<td><a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a></td>
+</tr>
+<tr>
+<td>Raw/<code>text/html</code>-typed content re-embedded into an already-rendered document without an explicit <code>markup.Sanitize()</code>/<code>SanitizeReader</code> call immediately before insertion</td>
+<td>Rendering pipeline (Jupyter <code>text/html</code> handler is the reference-correct pattern)</td>
+<td><a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a></td>
+</tr>
+<tr>
+<td>Any diff touching <code>sanitizer_default.go</code>'s <code>AllowURLSchemeWithCustomPolicy</code> calls, or new code emitting <code>href</code>/<code>src</code> attributes without going through the shared sanitizer</td>
+<td>Rendering pipeline</td>
+<td><a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a></td>
+</tr>
+<tr>
+<td>New <code>Renderer</code> implementations without an empty <code>SanitizerRules()</code> (i.e., not falling back to the shared default policy) or without an intentionally scoped, reviewed rule set</td>
+<td>Markup engine registration</td>
+<td><a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ssrf-outbound-request-safety">SSRF / outbound-request safety<a href="#ssrf-outbound-request-safety" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>New <code>http.Client{}</code>/<code>http.Get</code> instantiations in code paths that consume external URLs, bypassing <code>webhookHTTPClient</code> (or an equivalent shared, host-restricted client)</td>
+<td>Webhooks, migrations, Camo, federation</td>
+<td><a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dockerfile-container-config">Dockerfile / container config<a href="#dockerfile-container-config" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern to detect</th>
+<th>Where it applies</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing <code>USER</code> directive, <code>ADD</code> used instead of <code>COPY</code>, secrets passed via <code>ARG</code>/<code>ENV</code></td>
+<td><code>Dockerfile</code>, <code>Dockerfile.rootless</code>, and <code>docker/root</code>/<code>docker/rootless</code> shell scripts</td>
+<td><a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a> — "no dedicated Dockerfile linter documented"</td>
+</tr>
+</tbody>
+</table>
+<h2 id="manual-review-only-concerns-not-a-scanner-target">Manual-Review-Only Concerns (Not a Scanner Target)<a href="#manual-review-only-concerns-not-a-scanner-target" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Not every risk identified in this documentation set is something either tool will catch. Be explicit
+about routing these to human review rather than expecting automated coverage:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Why it's manual-only</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth-chain ordering regressions (<code>newWebAuthMiddleware</code>, <code>buildAuthGroup</code>, <code>Group.Add(...)</code> call order)</td>
+<td>Requires understanding intended precedence semantics, not a pattern match</td>
+<td><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a></td>
+</tr>
+<tr>
+<td><code>RENDER_CONTENT_MODE = no-sanitizer</code> wired to a command that processes attacker-influenced input</td>
+<td>Requires judgment about whether a specific command's inputs are actually attacker-influenced in a given deployment</td>
+<td><a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a></td>
+</tr>
+<tr>
+<td>Whether a leaked webhook <code>Secret</code> has actually been exploited for signature forgery</td>
+<td>Requires incident-specific investigation, not a static pattern</td>
+<td><a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a></td>
+</tr>
+<tr>
+<td>Whether a specific <code>AccessLevel</code>/<code>AccessLevelUnit</code> mismatch is exploitable in context</td>
+<td>Requires tracing the specific handler's data flow, beyond generic rule matching</td>
+<td><a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="cross-cutting-configuration-deployment-scan-targets">Cross-Cutting Configuration &amp; Deployment Scan Targets<a href="#cross-cutting-configuration-deployment-scan-targets" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Beyond source code, the configuration surface itself is a scan target. Per
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a>, a scanner
+operator reviewing a live deployment's <code>app.ini</code> (or the environment-variable/<code>*_FILE</code> equivalents)
+should check:</p>
+<ul>
+<li><code>SECRET_KEY</code>/<code>INTERNAL_TOKEN</code> supplied via <code>*_URI</code>/<code>*_FILE</code> indirection, never committed to version
+  control.</li>
+<li><code>MIN_PASSWORD_LENGTH</code>, <code>PASSWORD_HASH_ALGO</code> (default <code>pbkdf2</code> vs. <code>argon2</code>/<code>bcrypt</code>/<code>scrypt</code>),
+  <code>PASSWORD_CHECK_PWN</code> (off by default), <code>TWO_FACTOR_AUTH</code> (not enforced by default).</li>
+<li><code>DISABLE_GIT_HOOKS</code> left at its default <code>true</code> unless custom-hook installation is an explicit,
+  reviewed requirement.</li>
+<li><code>REVERSE_PROXY_AUTHENTICATION_*</code> only enabled behind a verified, header-stripping trusted proxy,
+  with <code>REVERSE_PROXY_TRUSTED_PROXIES</code> scoped tightly.</li>
+<li><code>ALLOWED_HOST_LIST</code> reviewed against the SSRF control discussion in
+  <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a>.</li>
+<li><code>[webhook] SKIP_TLS_VERIFY</code> and <code>[mailer] FORCE_TRUST_SERVER_CERT</code> both <code>false</code> in production.</li>
+<li><code>[migrations]</code> and <code>[camo]</code>/<code>[federation]</code> allow/block lists treated as <strong>independent</strong> SSRF
+  surfaces from <code>ALLOWED_HOST_LIST</code> — hardening one does not imply the others are hardened, per
+  <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a>.</li>
+</ul>
+<p><code>opengrep</code>/config-lint tooling is the natural home for automating checks against these keys across
+one or many <code>app.ini</code> files; Trivy's <code>config</code>/misconfiguration-scanning mode can play a similar role
+against Kubernetes manifests or Helm values files that inject these settings via <code>GITEA__SECTION__KEY</code>
+environment variables, as described in
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a>.</p>
+<h2 id="practical-rollout-checklist">Practical Rollout Checklist<a href="#practical-rollout-checklist" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Use this as an ordered adoption plan, sequenced to close the highest-value, most clearly-documented
+gaps first before moving into rule-authoring work that requires more Gitea-specific tuning:</p>
+<ol>
+<li><strong>[ ] Add Trivy <code>fs</code>/<code>repo</code> scanning of <code>go.sum</code> and <code>pnpm-lock.yaml</code></strong> to <code>checks-backend</code>
+   (or a parallel gated job), enforced (no <code>|| true</code>) — closes the npm/pnpm CVE gap and adds a
+   second, enforced check alongside the existing non-fatal <code>govulncheck</code> step.</li>
+<li><strong>[ ] Add a <code>trivy image</code> step to <code>pull-docker-dryrun.yml</code></strong>, scanning both <code>Dockerfile</code> and
+   <code>Dockerfile.rootless</code> build outputs — closes the "builds but isn't scanned" container gap.</li>
+<li><strong>[ ] Add Trivy or Cosign-based SBOM generation</strong> to the release workflows, alongside the
+   existing <code>cosign sign-blob</code>/GPG signing steps — closes the documented "no SBOM anywhere" gap.</li>
+<li><strong>[ ] Add opengrep secret-detection rules</strong> targeting <code>app.ini</code>-style files, Go source, and
+   <code>.github/workflows/*.yml</code> for the credential patterns listed above — highest-confidence,
+   lowest-false-positive starting point for opengrep adoption.</li>
+<li><strong>[ ] Author Gitea-specific opengrep SAST rules</strong> for the weak-crypto, sanitizer-bypass, and
+   SSRF-client-bypass patterns catalogued above — these require the most up-front rule-authoring
+   effort but target concrete, already-identified risk classes rather than generic OWASP boilerplate.</li>
+<li><strong>[ ] Treat the authorization-logic and auth-chain-ordering concerns as permanent manual-review
+   line items</strong> in PR review guidance, not scanner backlog items — document this distinction for
+   reviewers so effort isn't wasted trying to force a scanner rule where the source docs themselves
+   indicate manual review is the appropriate control.</li>
+<li><strong>[ ] Wire a triage gate before any finding reaches a public surface.</strong> Per
+   <a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>, findings
+   that plausibly expose another user's data or grant unintended access must go to
+   <code>security@gitea.io</code>, not a public PR comment, public issue, or public CI log. Configure whatever
+   CI integration you choose (PR comment bots, SARIF upload, etc.) to route above-threshold findings
+   to a private channel first.</li>
+<li><strong>[ ] Re-run the gap analysis periodically.</strong> The tool inventory in
+   <a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a> is
+   a snapshot of what's documented as of this writing — if <code>govulncheck</code> is later made fatal, or an
+   SBOM step is added, or an NPM audit step is introduced independently, re-check for overlap before
+   assuming Trivy/opengrep coverage is still additive rather than duplicative.</li>
+</ol>
+<h2 id="from-finding-to-resolution">From Finding to Resolution<a href="#from-finding-to-resolution" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Once a scan produces something that looks like a genuine issue rather than noise, follow the triage
+flow established in <a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>:</p>
+<pre class="mermaid">flowchart TD
+    A[Trivy / opengrep finding] --> B{Plausibly exposes another<br/>user's data or grants<br/>unintended access?}
+    B -- "Yes / unsure" --> C[Do NOT post publicly]
+    C --> D["Email security@gitea.io<br/>encrypt with PGP key 6FCD2D5B<br/>(verify key hasn't expired first)"]
+    D --> E[Maintainers triage privately]
+    B -- "No — style/lint/<br/>non-exploitable/<br/>dev-only dependency" --> F[File as normal bug/<br/>enhancement issue,<br/>or fix in normal PR]</pre>
+<p>Key operational rules carried over from that page, restated here because they apply directly to
+scanner output:</p>
+<ul>
+<li><strong>Never auto-post scanner findings to public PR comments, public issues, or public build logs</strong>
+  above a "this could be real" bar — bulk automated output is exactly the kind of noise the private
+  <code>security@gitea.io</code> channel exists to keep off the public tracker.</li>
+<li><strong>A <code>govulncheck</code>/Trivy hit that reveals the existing <code>security-check</code> non-fatal gap itself</strong> (i.e.,
+  "this exact CVE class should have failed CI and didn't") is worth separately noting as process
+  feedback — but only escalate it through the private channel if there's a demonstrated exploit path
+  against a currently-running instance; otherwise it's normal <code>enhancement</code>/<code>refactoring</code> feedback per
+  <code>CONTRIBUTING.md</code>'s taxonomy.</li>
+<li><strong>Understand the remediation horizon.</strong> Per <code>docs/release-management.md</code> (as summarized in
+  <a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>), Gitea
+  publishes security fixes only for the last major release and its immediate predecessor — a Trivy hit
+  against an older, unsupported release line will not get a dedicated patch; upgrading is the
+  documented remediation path.</li>
+</ul>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a> —
+  the full existing tool inventory and gap table this playbook builds on.</li>
+<li><a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a> —
+  the supply-chain gap table (SBOM, container CVEs, Dockerfile linting) this playbook operationalizes.</li>
+<li><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a>,
+  <a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>,
+  <a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a>,
+  <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> —
+  the four attack-surface pages whose individual focus checklists are consolidated into the rule
+  backlog above.</li>
+<li><a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a> — the
+  <code>app.ini</code>/secrets-management surface this playbook's config-scan section targets.</li>
+<li><a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a> — what to do
+  once a scan produces a finding that looks genuinely exploitable.</li>
+</ul>
+
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#why-these-two-tools-and-why-together" class="" data-anchor="why-these-two-tools-and-why-together">Why These Two Tools, and Why Together</a>
+<a href="#where-each-tool-fits-in-the-existing-pipeline" class="" data-anchor="where-each-tool-fits-in-the-existing-pipeline">Where Each Tool Fits in the Existing Pipeline</a>
+<a href="#1-dependency-vulnerability-scanning-trivy-alongside-govulncheck" class="toc-h3" data-anchor="1-dependency-vulnerability-scanning-trivy-alongside-govulncheck">1. Dependency vulnerability scanning — Trivy alongside govulncheck</a>
+<a href="#2-container-image-scanning-trivy-alongside-pull-docker-dryrunyml" class="toc-h3" data-anchor="2-container-image-scanning-trivy-alongside-pull-docker-dryrunyml">2. Container image scanning — Trivy alongside pull-docker-dryrun.yml</a>
+<a href="#3-sbom-generation-trivy-filling-a-documented-gap" class="toc-h3" data-anchor="3-sbom-generation-trivy-filling-a-documented-gap">3. SBOM generation — Trivy filling a documented gap</a>
+<a href="#4-github-actions-security-opengrep-layered-on-top-of-zizmor-actionlint" class="toc-h3" data-anchor="4-github-actions-security-opengrep-layered-on-top-of-zizmor-actionlint">4. GitHub Actions security — opengrep layered on top of zizmor + actionlint</a>
+<a href="#5-application-layer-sast-opengrep-filling-the-single-largest-documented-gap" class="toc-h3" data-anchor="5-application-layer-sast-opengrep-filling-the-single-largest-documented-gap">5. Application-layer SAST — opengrep filling the single largest documented gap</a>
+<a href="#concrete-opengrep-rule-targets-synthesized-from-the-attack-surface-pages" class="" data-anchor="concrete-opengrep-rule-targets-synthesized-from-the-attack-surface-pages">Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)</a>
+<a href="#secret-detection" class="toc-h3" data-anchor="secret-detection">Secret detection</a>
+<a href="#weakincorrect-cryptography" class="toc-h3" data-anchor="weakincorrect-cryptography">Weak/incorrect cryptography</a>
+<a href="#access-control-authorization-logic" class="toc-h3" data-anchor="access-control-authorization-logic">Access-control / authorization logic</a>
+<a href="#csrf-auth-bypass-surfaces" class="toc-h3" data-anchor="csrf-auth-bypass-surfaces">CSRF / auth-bypass surfaces</a>
+<a href="#sanitizer-xss-defense-bypass" class="toc-h3" data-anchor="sanitizer-xss-defense-bypass">Sanitizer / XSS-defense bypass</a>
+<a href="#ssrf-outbound-request-safety" class="toc-h3" data-anchor="ssrf-outbound-request-safety">SSRF / outbound-request safety</a>
+<a href="#dockerfile-container-config" class="toc-h3" data-anchor="dockerfile-container-config">Dockerfile / container config</a>
+<a href="#manual-review-only-concerns-not-a-scanner-target" class="" data-anchor="manual-review-only-concerns-not-a-scanner-target">Manual-Review-Only Concerns (Not a Scanner Target)</a>
+<a href="#cross-cutting-configuration-deployment-scan-targets" class="" data-anchor="cross-cutting-configuration-deployment-scan-targets">Cross-Cutting Configuration &amp; Deployment Scan Targets</a>
+<a href="#practical-rollout-checklist" class="" data-anchor="practical-rollout-checklist">Practical Rollout Checklist</a>
+<a href="#from-finding-to-resolution" class="" data-anchor="from-finding-to-resolution">From Finding to Resolution</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

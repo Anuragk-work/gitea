@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/multiple_jobs.out.yaml",
+  "format": "yaml",
+  "size_bytes": 528,
+  "source_modified": "2026-07-18T06:05:26.860898+00:00",
+  "indexed_at": "2026-07-18T07:39:40.087768+00:00",
+  "text_length": 528,
+  "line_count": 40
+}

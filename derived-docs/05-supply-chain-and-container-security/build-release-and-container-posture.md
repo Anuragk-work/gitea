@@ -1,0 +1,377 @@
+# Build, Release & Container Security Posture
+
+This page synthesizes Gitea's **supply chain and container security posture** — everything between
+"code merged to `main`" and "a binary or image someone runs in production." It draws on
+`docs/build-cicd-deployment/docker-and-packaging.md`, `docs/build-cicd-deployment/github-workflows.md`,
+`docs/build-cicd-deployment/makefile-and-build.md`, `docs/02-architecture/deployment-topologies.md`,
+and `WORKSPACE_ANALYSIS.md`. The goal is to give a scanner operator a map of *where artifacts come
+from, how they're signed, what runs as root, and what dependency/license hygiene already exists* —
+so that Trivy and opengrep can be pointed at the gaps rather than re-discovering what's already known.
+
+> **Framing note:** as flagged in [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md),
+> the current pipeline has strong *provenance* controls (signing, checksums, pinned tool versions) but
+> comparatively thin *vulnerability scanning* — there is no SCA/CVE step for Go modules or npm packages,
+> and no container image vulnerability scan anywhere in the workflow catalog. That's precisely the gap
+> Trivy is positioned to fill; see [Running Trivy and opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md).
+
+## Supply Chain Overview
+
+```mermaid
+graph TD
+  A["Source: go.mod/go.sum,<br/>package.json/pnpm-lock.yaml"] --> B["make deps-backend / deps-frontend"]
+  B --> C["make frontend (Vite/pnpm)<br/>make backend (go build, bindata)"]
+  C --> D["make release<br/>(xgo cross-compile, all platforms)"]
+  D --> E["release-compress (gxz)<br/>release-check (SHA-256)"]
+  E --> F["Cosign sign-blob (Sigstore bundle)<br/>+ detached GPG signature (.asc)"]
+  F --> G["Upload to S3<br/>(nightly / rc / release prefix)"]
+
+  C --> H["Docker build-env stage<br/>(per-platform go build)"]
+  H --> I["Alpine runtime stage<br/>(rootful or rootless)"]
+  I --> J["docker/metadata-action tags<br/>+ push to Docker Hub & GHCR"]
+```
+
+Two artifact families come out of this pipeline: **signed binary/source tarballs** (uploaded to S3)
+and **multi-arch container images** (pushed to Docker Hub and GHCR). Both are produced from the same
+`make frontend` / `make backend` build steps described in
+[Makefile & Build System](../../docs/build-cicd-deployment/makefile-and-build.md), just packaged
+differently.
+
+## Release Signing & Integrity
+
+As described in [GitHub Workflows](../../docs/build-cicd-deployment/github-workflows.md), every
+release-producing workflow — `release-nightly.yml`, `release-tag-rc.yml`, and `release-tag-version.yml`
+— follows the same signing sequence for the `nightly-binary`/release job:
+
+1. `git fetch --unshallow --quiet --tags --force` (accurate `git describe` versioning)
+2. `make deps-frontend deps-backend`
+3. `make release` with `TAGS=bindata` — the `xgo`-based cross-compile pipeline
+   (see [Makefile & Build System → Cross-Compilation via xgo](../../docs/build-cicd-deployment/makefile-and-build.md#cross-compilation-via-xgo))
+4. **Install Cosign**, **import a GPG signing key** (`GPGSIGN_KEY` / `GPGSIGN_PASSPHRASE` secrets), then
+   for every artifact in `dist/release/*`:
+   - create a **Sigstore bundle** via `cosign sign-blob ... --bundle *.sigstore.json`
+   - create a **detached GPG signature** (`*.asc`)
+5. Upload all `dist/release` artifacts to S3 under a version-derived prefix (e.g. `main-nightly`,
+   `v1.22-nightly`)
+
+This means every published binary/source tarball carries **two independent signature mechanisms**:
+a modern Sigstore/Cosign bundle and a traditional detached GPG signature. `release-tag-version.yml`
+additionally holds `packages: write` permission specifically to push Docker images to GHCR — a
+narrower-scoped permission than the nightly workflow needs.
+
+Before signing, the release pipeline also computes **integrity checksums**: the Makefile's
+`release-check` target SHA-256-checksums every artifact (`shasum -a 256` / `$(SHASUM)`), and
+`release-compress` applies `gxz` (xz, `-k -9`) compression prior to that. `release-sources` produces
+a `gitea-src-$(VERSION).tar.gz` source tarball that explicitly excludes `.git`, `data`, `indexers`,
+`queues`, `log`, `node_modules`, the built binary, `dist/`, `.make_evidence`, and `.air` — i.e. the
+source tarball is a clean checkout, not a snapshot of a dirty working tree.
+
+> **Gap to note for Trivy/opengrep runs:** the source docs do not describe a Software Bill of
+> Materials (SBOM) being generated at any point in the release pipeline (no `cosign attest`, no
+> `syft`/SPDX/CycloneDX artifact mentioned). If SBOM generation is a requirement, it is not currently
+> present according to the documentation read for this page — Trivy's `trivy image --format cyclonedx`
+> or `trivy fs` could fill this gap; see the scanning playbook.
+
+### Signing & Checksum Flow
+
+```mermaid
+sequenceDiagram
+  participant CI as release-nightly.yml / release-tag-*.yml
+  participant Make as make release (xgo)
+  participant Cosign as Cosign + GPG
+  participant S3 as S3 bucket
+
+  CI->>Make: make release TAGS=bindata
+  Make->>Make: release-windows/linux/darwin/freebsd
+  Make->>Make: release-copy, release-compress (gxz)
+  Make->>Make: release-check (SHA-256 checksums)
+  CI->>Cosign: cosign sign-blob --bundle *.sigstore.json
+  CI->>Cosign: gpg --detach-sign -> *.asc
+  CI->>S3: upload dist/release/* under version prefix
+```
+
+## Tool & Dependency Version Pinning
+
+As described in [Makefile & Build System](../../docs/build-cicd-deployment/makefile-and-build.md),
+tool versions used by the build/lint pipeline are pinned directly as Makefile variables, each
+annotated with a `# renovate: datasource=go` comment so Renovate can auto-detect and bump them:
+
+```makefile
+GOLANGCI_LINT_PACKAGE ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 # renovate: datasource=go
+SWAGGER_PACKAGE       ?= github.com/go-swagger/go-swagger/cmd/swagger@v0.35.0           # renovate: datasource=go
+XGO_PACKAGE           ?= src.techknowlogick.com/xgo@v1.9.0                              # renovate: datasource=go
+```
+
+This is a deliberate supply-chain control: every build/lint tool invoked by CI is version-locked to
+an exact release, not resolved against a floating `@latest`, and the pinning mechanism is itself
+machine-readable so dependency updates are proposed automatically rather than drifting unnoticed.
+`XGO_VERSION := go-1.26.x` similarly pins the cross-compilation Go toolchain used for official
+release binaries.
+
+### Renovate Bot
+
+`cron-renovate.yml` (hourly, `23 * * * *`) runs a **self-hosted Renovate** instance against
+`renovate.json5`, scoped to `go-gitea/gitea` only. Per
+[GitHub Workflows](../../docs/build-cicd-deployment/github-workflows.md), it is permitted to run a
+whitelisted set of post-upgrade commands — `make tidy`, `make svg`, `make generate-codemirror-languages`
+— meaning dependency-bump PRs can automatically re-run generators that depend on updated packages
+rather than leaving generated artifacts stale after an update.
+
+### License Regeneration (`cron-licenses.yml`)
+
+`cron-licenses.yml` is scheduled weekly but **currently commented out / manual-dispatch only**. When
+run, it regenerates `go-licenses.json` and `.gitignore` files (via `make generate-gitignore`, backed
+by `build/generate-gitignores.go`) and commits the result back to `main` via
+`appleboy/git-push-action` using a dedicated `DEPLOY_KEY` secret under the `GiteaBot`/`teabot@gitea.io`
+identity. Both `cron-licenses.yml` and `cron-translations.yml` guard with
+`if: github.repository == 'go-gitea/gitea'` so forks never attempt to push back to a repo they don't
+own.
+
+Independently, the fast PR gate's `checks-backend` job runs with `make --always-make checks-backend`,
+which forces the **`go-licenses` sub-target to always run** on every PR (not just when cached state
+looks stale) — so third-party Go dependency license compliance is checked on every pull request, even
+though the *regeneration* of the tracked license manifest itself is a separate, currently-disabled
+cron job.
+
+> **Gap to note:** because `cron-licenses.yml`'s scheduled trigger is commented out, `go-licenses.json`
+> only gets refreshed on manual dispatch. If a new dependency introduces an incompatible license, the
+> per-PR `go-licenses` check (part of `checks-backend`) is the actual enforcement point — the cron job
+> is bookkeeping, not the gate.
+
+## Docker Image Build & Supply-Chain Details
+
+As described in [Docker & Packaging](../../docs/build-cicd-deployment/docker-and-packaging.md), both
+`Dockerfile` (rootful, `gitea/gitea`) and `Dockerfile.rootless` (`gitea/gitea:*-rootless`) share a
+three-stage shape: `frontend-build` → `build-env` → `runtime`.
+
+```mermaid
+graph TD
+  subgraph "Stage 1: frontend-build (native arch)"
+    A["golang:1.26-alpine3.24 + pnpm"] --> A1["pnpm install --frozen-lockfile"]
+    A1 --> A2["make frontend -> public/assets"]
+  end
+  subgraph "Stage 2: build-env (target platform)"
+    B["golang:1.26-alpine3.24"] --> B1["go mod download"]
+    B1 --> B2["make backend<br/>(.git bind-mounted only for git describe)"]
+    B2 --> B3["chmod 755 entrypoint/scripts"]
+  end
+  subgraph "Stage 3: runtime (alpine:3.24)"
+    C["apk add runtime deps"] --> C1["create git user/group"]
+    C1 --> C2["COPY binary + root overlay"]
+    C2 --> C3["ENTRYPOINT/CMD"]
+  end
+  A2 -->|"public/assets"| B2
+  B3 -->|"binary + overlay"| C2
+```
+
+Supply-chain-relevant details called out in the source docs:
+
+- **`.git` is never copied into an image layer.** It is only *bind-mounted* during the `make backend`
+  step (so `git describe` can compute `GITEA_VERSION`), then discarded — the final image contains no
+  Git history, `.git` metadata, or repo-level secrets that might have been committed to history.
+- **Frozen lockfile installs.** `pnpm install --frozen-lockfile` in `frontend-build` fails the build
+  if `pnpm-lock.yaml` doesn't exactly match `package.json` — this is the same lockfile-integrity
+  guarantee also enforced separately by the Makefile's `lockfile-check` target (see
+  [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md)).
+- **`--platform=$BUILDPLATFORM` pin on `frontend-build`.** This stage always runs on the build
+  machine's native architecture (never emulated), which is a build-performance optimization, not a
+  security control — but it's worth knowing when reasoning about whether QEMU-emulated Go compilation
+  could silently produce different binaries per target arch. Actual per-architecture Go compilation
+  happens in `build-env`, which is *not* platform-pinned.
+- **`TAGS` always includes `bindata timetzdata`.** This embeds all frontend/template/locale assets and
+  the IANA timezone database directly into the binary, producing a self-contained image with no
+  runtime dependency on host-installed `tzdata`.
+- **`HEALTHCHECK` is intentionally absent** from both Dockerfiles — a code comment
+  (`HINT: HEALTH-CHECK-ENDPOINT`) marks this as deliberate, deferring health checking to the
+  orchestrator (Kubernetes probes, Compose `healthcheck:`) rather than baking it into the image.
+- **Runtime dependencies are pulled from Alpine's package repos at build time**
+  (`apk --no-cache add bash ca-certificates curl gettext git linux-pam openssh s6 sqlite su-exec gnupg`
+  for rootful; a smaller set — `bash ca-certificates dumb-init gettext git curl gnupg openssh-keygen`
+  — for rootless). Since these are resolved against Alpine's package index at build time rather than
+  pinned to a specific package version/hash, this is a natural target for Trivy's OS-package
+  vulnerability scanning (`trivy image` covers Alpine `apk` packages, not just Go modules).
+
+### Container Publishing
+
+Per [GitHub Workflows](../../docs/build-cicd-deployment/github-workflows.md), the `nightly-container`
+job (and the equivalent step in the tag-triggered release workflows):
+
+1. Sets up QEMU + Buildx for multi-arch builds.
+2. Computes Docker tags/annotations via `docker/metadata-action` for **both** the regular and
+   `-rootless`-suffixed image flavors.
+3. Logs into **both Docker Hub and GHCR**.
+4. Builds and pushes `linux/amd64,linux/arm64,linux/riscv64` images for both `Dockerfile` and
+   `Dockerfile.rootless`, using separate registry-backed BuildKit cache scopes
+   (`buildcache-rootful` / `buildcache-rootless`).
+
+`pull-docker-dryrun.yml` validates (without pushing) that both Dockerfiles still build across
+`linux/amd64`, `linux/arm64`, and `linux/riscv64` on every PR that touches Docker-related files —
+`amd64` runs on any Docker-file change (fast, native arch, ~4 min); the QEMU-emulated `arm64`/`riscv64`
+builds only run when the Dockerfiles themselves change (40–50 min), to bound PR turnaround time.
+
+> **Gap to note:** neither the dry-run validation nor the publish pipeline appears (per the source
+> docs read) to run a container vulnerability scan, a `docker scout`/Trivy step, or an SBOM
+> attestation before pushing to Docker Hub/GHCR. This is the primary reason a Trivy `image` scan should
+> be inserted into (or run against the output of) this pipeline — see
+> [Running Trivy and opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md).
+
+## Rootful vs. Rootless — Container Privilege Posture
+
+This is the single most important container-security decision point in the packaging surface, covered
+in both [Docker & Packaging](../../docs/build-cicd-deployment/docker-and-packaging.md) and
+[Deployment Topologies](../../docs/02-architecture/deployment-topologies.md).
+
+| Aspect | Rootful (`Dockerfile`) | Rootless (`Dockerfile.rootless`) |
+|---|---|---|
+| Runtime user | Container **starts as root**, entrypoint fixes up bind-mounted volume ownership, then drops to `git` per-process via `su-exec` | Runs as fixed **non-root `1000:1000`** for the *entire* container lifetime — no root process ever runs |
+| SSH server | Built-in OpenSSH `sshd` supervised by `s6` (port 22) | No SSH daemon shipped; port `2222` is a placeholder — Gitea's own built-in SSH server (`modules/ssh`, `[server] START_SSH_SERVER = true`) must be used instead |
+| Process supervisor | `s6` (`s6-svscan /etc/s6`) manages `gitea` + `openssh` as independent restart-on-crash services | `dumb-init` — a minimal init wrapping the single foreground `gitea web` process |
+| Data volumes | Single `/data` volume (`gitea`, `git`, `ssh` subfolders) | Two volumes: `/var/lib/gitea` (state) and `/etc/gitea` (config) — enables mounting config read-only/as a Secret separately from writable state |
+| UID/GID remap | Supported at runtime via `USER_UID`/`USER_GID` env vars (entrypoint rewrites `/etc/passwd`/`/etc/group`) | **Not supported** — UID/GID fixed at `1000:1000` |
+| Kubernetes fit | Requires root-capable `SecurityContext` for the fix-up step | Compatible with `runAsNonRoot`, read-only root filesystem, and dropped Linux capabilities |
+| Best for | Traditional Docker/Compose hosts where volume-permission fix-up convenience matters | Kubernetes and other hardened container runtimes enforcing non-root policies |
+
+```mermaid
+graph LR
+  subgraph "Rootful image"
+    A1["s6-svscan (PID 1, root)"] --> A2["gitea web (dropped to git:git via su-exec)"]
+    A1 --> A3["sshd (root, in-container)"]
+  end
+  subgraph "Rootless image"
+    B1["dumb-init (PID 1, UID 1000)"] --> B2["gitea web<br/>(built-in SSH server on :2222)"]
+  end
+```
+
+> **Security takeaway:** the rootless image is the stronger default for any environment that can
+> enforce Kubernetes `PodSecurityPolicy`/`SecurityContext` restrictions — it removes the root-owned
+> permission fix-up step entirely and never runs an in-container privileged SSH daemon. The rootful
+> image's root-then-drop model is a *convenience* trade-off for bind-mount permission handling on
+> plain Docker/Compose hosts, not a hardening feature.
+
+### s6 Supervision Detail (Rootful Only)
+
+The rootful image's `gitea` service `run` script execs `su-exec $USER /usr/local/bin/gitea web`; its
+`setup` script does the actual privilege-relevant work at boot: creates `/data/git/.ssh` with
+`chmod 700`/`600`, templates `app.ini` via `envsubst` (only if it doesn't already exist), applies
+`GITEA__SECTION__KEY`-style environment overrides via `environment-to-ini`, and `chown`s
+`/data/gitea`, `/app/gitea`, `/data/git` to `git` **only if ownership doesn't already match** — an
+explicit optimization to avoid an expensive recursive `chown` on every container restart. The
+top-level `/usr/bin/entrypoint` script performs the actual UID/GID remap (via `sed` on
+`/etc/passwd`/`/etc/group`) before finally `exec`ing `s6-svscan`.
+
+## Secrets & Configuration Injection into Containers
+
+Both container variants honor environment variables prefixed `GITEA__<SECTION>__<KEY>` (mapped by
+`modules/setting`'s environment-to-INI logic, exposed as the `environment-to-ini` helper and also as
+the `gitea` CLI's `--apply-env` flag per `docs/16-cli-admin/cli-commands.md`). This lets an operator
+inject configuration — including secret-bearing settings like `SECRET_KEY` and `INTERNAL_TOKEN` — via
+Kubernetes Secrets or Docker/Compose environment injection rather than baking them into a mounted
+`app.ini` file. The rootless image's two-volume split (`/var/lib/gitea` for state vs. `/etc/gitea` for
+config) specifically supports mounting the config volume — where `app.ini` and any secret values that
+end up written to it live — separately and more restrictively than the writable data volume.
+
+> This connects directly to the settings catalog covered in
+> [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) — the
+> container posture described here is the *delivery mechanism* for those settings, not a separate
+> secret store.
+
+## Distro-Level Service Units (Non-Container Deployments)
+
+For hosts that install the `gitea` binary directly (no container), `contrib/service/` ships init
+definitions for essentially every init system in active use — `systemd`, SysV init, OpenWrt, Gentoo
+OpenRC, Supervisor, FreeBSD/OpenBSD `rc.d`, macOS `launchd`, and Solaris/illumos SMF. The `systemd`
+unit is the most-referenced example, per
+[Docker & Packaging](../../docs/build-cicd-deployment/docker-and-packaging.md):
+
+```ini
+[Unit]
+Description=Gitea (Git with a cup of tea)
+After=network.target
+
+[Service]
+RestartSec=2s
+Type=simple
+User=git
+Group=git
+WorkingDirectory=/var/lib/gitea/
+ExecStart=/usr/local/bin/gitea web --config /etc/gitea/app.ini
+Restart=always
+Environment=USER=git HOME=/home/git GITEA_WORK_DIR=/var/lib/gitea
+
+[Install]
+WantedBy=multi-user.target
+```
+
+It ships heavily commented-out sections for optional database service ordering dependencies
+(`mysql.service`, `postgresql.service`, `redis.service`) and for **socket activation** — binding
+privileged ports via a companion `.socket` unit combined with
+`CapabilityBoundingSet=CAP_NET_BIND_SERVICE`, i.e. granting the single capability needed to bind a
+low port instead of running the whole process as root. This is the non-container equivalent of the
+rootless Docker image's privilege-minimization goal: run as the unprivileged `git` user, and grant
+only the exact capability needed for anything that would otherwise require root.
+
+## Dependency & Library Governance (Go Module Supply Chain)
+
+Beyond container/release packaging, [`WORKSPACE_ANALYSIS.md`](../../WORKSPACE_ANALYSIS.md) documents
+that Gitea enforces its internal and third-party dependency policy through tooling rather than review
+discipline alone — specifically `depguard`, configured in `.golangci.yml`, which is **CI-breaking**
+(a lint failure, not just a review comment) if violated:
+
+| Forbidden import | Required replacement | Rationale (as documented) |
+|---|---|---|
+| `encoding/json` | `gitea.dev/modules/json` | Centralized JSON handling |
+| `github.com/unknwon/com` | `gitea.dev/modules/util` | Internal utility replacement |
+| `io/ioutil` | `os` / `io` | Deprecated stdlib package |
+| `golang.org/x/exp` | stdlib equivalents | Avoid experimental APIs in production code |
+| `gopkg.in/ini.v1` | Gitea's own config system | Consistency with internal config loader |
+| `gitea.com/go-chi/cache` | Gitea's own cache system | Consistency with internal cache layer |
+| `github.com/pkg/errors` | builtin `errors` + `%w` wrapping | Modern stdlib error wrapping |
+
+Migration files (`models/migrations/v*.go`) are additionally forbidden — via the same `depguard`
+mechanism — from importing `models` or `modules/structs` at all; they must redefine any struct shapes
+they need locally, annotated with a rationale comment, so that historical migrations remain runnable
+independent of how the live schema types evolve.
+
+Every Go source file is also required to carry an SPDX license header as its final header line, e.g.:
+
+```go
+// SPDX-License-Identifier: MIT
+```
+
+This is a provenance/compliance control (machine-verifiable licensing per file) distinct from, but
+complementary to, the `go-licenses` dependency-license check described above — one governs Gitea's
+own source, the other governs the licenses of everything Gitea depends on.
+
+> **Where opengrep fits:** `depguard` already enforces import-level bans at the Go AST level as part
+> of `golangci-lint`. opengrep (Semgrep-class SAST) is complementary, not redundant — it can catch
+> *usage patterns* `depguard` can't see (e.g., a banned function called via reflection or an allowed
+> package used unsafely), and it can be pointed at the Dockerfiles, `.github/workflows/*.yml`, and
+> shell scripts in `docker/root`/`docker/rootless` for injection/secret-handling issues that are
+> outside `depguard`'s Go-import-only scope. See
+> [Running Trivy and opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md).
+
+## Summary: What's Already Covered vs. What Trivy/opengrep Should Target
+
+| Supply-chain concern | Current coverage (per source docs) | Scanner opportunity |
+|---|---|---|
+| Binary/tarball integrity | SHA-256 checksums (`release-check`) + Cosign Sigstore bundle + detached GPG signature | Verify signatures in a downstream policy check; Trivy doesn't sign/verify, but can scan the *contents* of `dist/release` artifacts |
+| Build tool version drift | Pinned via `# renovate: datasource=go` Makefile comments, auto-bumped by self-hosted Renovate | N/A — already automated |
+| Go dependency licenses | `go-licenses` check runs on every PR (`checks-backend`, forced via `--always-make`); manifest regeneration (`cron-licenses.yml`) currently manual-only | Trivy license scanning (`trivy fs --scanners license`) as a second, independent check |
+| Go/npm dependency **vulnerabilities** | `govulncheck` exists but is explicitly non-fatal (`\|\| true`) per [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md); no npm/pnpm audit step documented | Trivy `fs`/`repo` scan across `go.sum` and `pnpm-lock.yaml`, ideally enforced (fail-on-finding) unlike the current `govulncheck` step |
+| Container OS package vulnerabilities | Not documented anywhere in the packaging/CI docs read for this page | Trivy `image` scan against both `Dockerfile` and `Dockerfile.rootless` build outputs, run in CI alongside (or replacing) `pull-docker-dryrun.yml`'s build-only validation |
+| Dockerfile/workflow misconfiguration | `zizmor` + `actionlint` cover `.github/workflows` YAML (see [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md)); no dedicated Dockerfile linter documented | opengrep rules against Dockerfiles (e.g. missing `USER`, `ADD` vs `COPY`, secrets in `ARG`/`ENV`) and against `docker/root`/`docker/rootless` shell scripts |
+| SBOM / provenance attestation | Not documented | Trivy/Cosign `attest` step generating a CycloneDX/SPDX SBOM alongside the existing signing step |
+| Container runtime privilege | Explicit rootful/rootless choice, rootless recommended for hardened/K8s environments | N/A — already a documented, deliberate design choice; policy scanners (e.g. `trivy config` against Kubernetes manifests) could enforce *use* of the rootless image where required |
+
+## Cross-References
+
+- [Existing Security Tooling in CI](../02-ci-security-tooling/existing-security-tooling-in-ci.md) —
+  the linting/vulnerability tooling (`govulncheck`, `zizmor`, `actionlint`, `depguard`) that runs
+  *before* the build/release steps described here.
+- [Security-Relevant Settings](../04-configuration-hardening/security-relevant-settings.md) — the
+  `app.ini` / `[security]` / `[cors]` settings that get injected into containers via the
+  `environment-to-ini` mechanism described above.
+- [Running Trivy and opengrep](../06-scanning-playbook/running-trivy-and-opengrep.md) — how to slot
+  Trivy (image/fs/repo scanning) and opengrep (SAST/config linting) into the gaps identified in this
+  page's summary table.
+- [Security Posture Overview](../01-overview/security-posture-overview.md) — executive framing of how
+  this supply-chain layer fits into the overall threat model.

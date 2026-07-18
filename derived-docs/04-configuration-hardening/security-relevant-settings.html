@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security-Relevant Configuration & Secrets Management</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../04-configuration-hardening/README.html">Configuration Hardening</a> &rsaquo; Security-Relevant Configuration & Secrets Management</div>
+<h1>Security-Relevant Configuration & Secrets Management</h1>
+<h1 id="security-relevant-configuration-secrets-management">Security-Relevant Configuration &amp; Secrets Management</h1>
+<p>Gitea's entire configuration surface is a single INI file (conventionally <code>custom/conf/app.ini</code>),
+loaded and typed by <code>modules/setting/*.go</code>. Most of it is operational tuning, but a specific subset
+of sections and keys directly control the instance's security posture: encryption/signing secrets,
+password policy, HTTP security headers, reverse-proxy trust, outbound-request allowlisting, and
+session/cookie behavior. This page catalogs that subset, explains how secrets are supplied and
+protected in the loading pipeline itself, and flags what a scanner operator (Trivy for
+dependencies/containers, opengrep for source/secret patterns) should specifically look for in this
+repository's configuration files and templates.</p>
+<p>This page synthesizes <code>docs/04-configuration/settings-catalog.md</code>, <code>docs/03-getting-started/configuration-app-ini.md</code>,
+<code>docs/08-services/auth-providers.md</code>, and <code>docs/09-core-modules/notify-mailer-webhook.md</code>.</p>
+<h2 id="how-configuration-reaches-the-process-and-why-it-matters-for-secrets">How Configuration Reaches the Process (and Why It Matters for Secrets)<a href="#how-configuration-reaches-the-process-and-why-it-matters-for-secrets" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>As described in the <a href="../../docs/04-configuration/settings-catalog.html">Settings Catalog</a>, Gitea's
+config subsystem loads <code>app.ini</code> through <code>gopkg.in/ini.v1</code>, then layers environment variable
+overrides on top, before handing typed values to package-level Go variables:</p>
+<pre class="mermaid">flowchart LR
+    A["custom/conf/app.ini"] --> B["ini.File"]
+    E["GITEA__SECTION__KEY env vars"] --> C["EnvironmentToConfig()"]
+    C --> B
+    B --> D["ConfigProvider"]
+    D --> F["loadSecurityFrom(cfg)<br/>security.go"]
+    F --> G["setting.SecretKey<br/>setting.InternalToken"]
+    H["GITEA__SECURITY__SECRET_KEY__FILE"] -.->|"reads file contents"| C</pre>
+<p>Two mechanics are directly relevant to secret hygiene and to what a secret-scanner (opengrep-class
+tooling) should be configured to recognize:</p>
+<ol>
+<li><strong><code>GITEA__SECTION__KEY=value</code></strong> — any <code>app.ini</code> key can be overridden or supplied purely via
+   environment variable. <code>SECTION</code>/<code>KEY</code> are joined with a double underscore, and non-<code>[A-Z0-9_]</code>
+   characters (dots, dashes in sub-section names like <code>[log.console]</code>) are hex-escaped as
+   <code>_0x2E_</code>/<code>_0x2D_</code>.</li>
+<li><strong><code>GITEA__SECTION__KEY__FILE=/path</code></strong> — the standard pattern for injecting secrets from
+   Docker/Kubernetes secret mounts <em>without</em> putting the literal secret value in the environment
+   or in <code>app.ini</code> at all. <code>EnvironmentToConfig</code> reads the file's contents (trimming a trailing
+   newline) and uses that as the value. Gitea itself uses this pattern for the two most sensitive
+   settings:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">GITEA__SECURITY__SECRET_KEY__FILE=/run/secrets/gitea_secret_key
+GITEA__MAILER__PASSWD__FILE=/run/secrets/smtp_password</code></pre>
+<p>Both <code>SECRET_KEY</code> and <code>INTERNAL_TOKEN</code> also support an equivalent <code>*_URI</code> form directly in
+   <code>app.ini</code> (<code>SECRET_KEY_URI = file:/etc/gitea/secret_key</code>), mutually exclusive with setting the
+   plaintext value inline.</p>
+<blockquote>
+<p><strong>Scanner takeaway:</strong> when secret-scanning this repository or a deployed configuration bundle,
+treat literal, non-empty values for <code>SECRET_KEY</code>, <code>INTERNAL_TOKEN</code>, <code>[database] PASSWD</code>,
+<code>[mailer] PASSWD</code>, and any LDAP <code>BindPassword</code>/OAuth2 client secret written directly into an
+<code>app.ini</code> or Kubernetes <code>ConfigMap</code> (as opposed to a <code>Secret</code> or a <code>*_FILE</code>/<code>*_URI</code> reference) as
+a finding. The <code>__FILE</code>/<code>_URI</code> indirection pattern is the "correct" answer these scanners should
+not flag; a literal secret string is the anti-pattern they should.</p>
+</blockquote>
+<p><code>ClearEnvConfigKeys()</code> additionally unsets every <code>GITEA__*</code> variable from the process environment
+once installation completes, specifically so that environment-supplied secrets are not inherited by
+subprocesses Gitea spawns (e.g. git hooks) unless intentionally passed through — worth knowing when
+reasoning about whether a secret leaked via <code>GITEA__...</code> env vars could leak further into subprocess
+environments.</p>
+<h2 id="the-security-section-core-secrets-and-policy">The <code>[security]</code> Section — Core Secrets and Policy<a href="#the-security-section-core-secrets-and-policy" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>As documented in <a href="../../docs/03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a>
+and the <a href="../../docs/04-configuration/settings-catalog.html">Settings Catalog</a> (<code>security.go</code>), this is
+the single most security-dense section in the entire configuration surface.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Purpose</th>
+<th>Security implication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SECRET_KEY</code> (or <code>SECRET_KEY_URI</code>)</td>
+<td>Symmetric key used to encrypt data at rest — e.g. TOTP 2FA shared secrets (via an MD5-derived key, see below), LDAP bind passwords</td>
+<td><strong>Losing it means losing that encrypted data.</strong> Leaking it means an attacker who also has DB access can decrypt those secrets. Auto-generated by the install wizard; back it up, never commit it.</td>
+</tr>
+<tr>
+<td><code>INTERNAL_TOKEN</code> (or <code>INTERNAL_TOKEN_URI</code>)</td>
+<td>Secret used to authenticate internal/loopback API calls, e.g. from git hooks calling back into the <code>gitea web</code> process</td>
+<td>Also auto-generated at install; a leaked <code>INTERNAL_TOKEN</code> could let a local process impersonate Gitea's own hook-callback path.</td>
+</tr>
+<tr>
+<td><code>INSTALL_LOCK</code></td>
+<td><code>false</code> by default; set <code>true</code> to permanently disable the install wizard</td>
+<td>Leaving this <code>false</code> in a running production instance re-exposes the install wizard endpoint.</td>
+</tr>
+<tr>
+<td><code>LOGIN_REMEMBER_DAYS</code></td>
+<td>Lifetime of "remember me" persistent login cookies (default 31)</td>
+<td>Longer values increase the exposure window if a remember-me cookie is stolen (see <a href="#session-cookie-and-remember-me-security">Auth Tokens</a> below for how theft is detected).</td>
+</tr>
+<tr>
+<td><code>MIN_PASSWORD_LENGTH</code></td>
+<td>Minimum password length (default 8)</td>
+<td>Low defaults should be raised for hardened deployments.</td>
+</tr>
+<tr>
+<td><code>PASSWORD_HASH_ALGO</code></td>
+<td><code>argon2</code>, <code>pbkdf2</code> (default), <code>scrypt</code>, or <code>bcrypt</code></td>
+<td><code>argon2</code>/<code>bcrypt</code>/<code>scrypt</code> are generally preferred over <code>pbkdf2</code> for modern password-hashing guidance; worth confirming the deployment's chosen algorithm against current recommendations.</td>
+</tr>
+<tr>
+<td><code>PASSWORD_CHECK_PWN</code></td>
+<td><code>false</code> by default; checks new passwords against haveibeenpwned.com</td>
+<td>Off by default — a hardening opportunity worth calling out explicitly, per this documentation set's convention of not glossing over gaps.</td>
+</tr>
+<tr>
+<td><code>TWO_FACTOR_AUTH</code></td>
+<td>Set to <code>"enforced"</code> to require 2FA for all users</td>
+<td>Not enforced by default.</td>
+</tr>
+<tr>
+<td><code>DISABLE_GIT_HOOKS</code></td>
+<td><code>true</code> by default</td>
+<td>Governs whether users with hook privileges may install custom Git hooks — a powerful, potentially dangerous capability if flipped to <code>false</code>; treat any deployment with this <code>false</code> as higher-risk / needing extra review.</td>
+</tr>
+<tr>
+<td><code>DISABLE_WEBHOOKS</code>, <code>IMPORT_LOCAL_PATHS</code></td>
+<td>Feature toggles</td>
+<td>Both carry security implications per the source docs (webhook SSRF surface, local-filesystem-path import capability) — see <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a>.</td>
+</tr>
+<tr>
+<td><code>REVERSE_PROXY_AUTHENTICATION_USER</code> / <code>..._EMAIL</code> / <code>..._FULL_NAME</code></td>
+<td>Header names trusted for reverse-proxy SSO</td>
+<td><strong>Only safe if the reverse proxy is guaranteed to strip these headers from untrusted client input.</strong> A misconfigured proxy that passes through a client-supplied version of the trusted header is a full authentication bypass.</td>
+</tr>
+<tr>
+<td><code>REVERSE_PROXY_TRUSTED_PROXIES</code>, <code>REVERSE_PROXY_LIMIT</code></td>
+<td>Which upstream hops are trusted to set those headers</td>
+<td>Misconfiguration here is the concrete control that prevents the bypass above.</td>
+</tr>
+<tr>
+<td><code>X_FRAME_OPTIONS</code>, <code>X_CONTENT_TYPE_OPTIONS</code>, <code>CONTENT_SECURITY_POLICY_GENERAL</code></td>
+<td>HTTP security response headers</td>
+<td>See <a href="#http-security-headers">HTTP Security Headers</a> below.</td>
+</tr>
+<tr>
+<td><code>ALLOWED_HOST_LIST</code></td>
+<td>Restricts which hosts webhook/OAuth2 clients are allowed to call: <code>loopback</code>, <code>private</code>, <code>external</code>, <code>*</code>, CIDRs, or wildcard hostnames</td>
+<td>This is Gitea's primary <strong>SSRF control</strong> for outbound webhook/OAuth2/migration requests — see <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> for the enforcement path.</td>
+</tr>
+</tbody>
+</table>
+<pre class="highlight"><code class="language-ini">[security]
+INSTALL_LOCK = false        ; set true to disable the install wizard entirely
+SECRET_KEY =                ; VERY IMPORTANT: encrypts things like 2FA secrets — losing it means losing that data
+;SECRET_KEY_URI = file:/etc/gitea/secret_key   ; mutually exclusive with SECRET_KEY
+INTERNAL_TOKEN =            ; secret used for internal (loopback) API calls, e.g. from git hooks
+;INTERNAL_TOKEN_URI = file:/etc/gitea/internal_token
+LOGIN_REMEMBER_DAYS = 31
+MIN_PASSWORD_LENGTH = 8
+PASSWORD_HASH_ALGO = pbkdf2 ; argon2, pbkdf2, scrypt, or bcrypt
+PASSWORD_CHECK_PWN = false  ; check against haveibeenpwned.com
+TWO_FACTOR_AUTH =           ; set to "enforced" to require 2FA for all users</code></pre>
+<blockquote>
+<p>As noted in <a href="../../docs/03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a>:
+<code>SECRET_KEY</code> and <code>INTERNAL_TOKEN</code> are auto-generated the first time the install wizard runs
+(<code>modules/generate</code>, <code>routers/install/install.go</code>) — operators rarely set them by hand, but <strong>must
+back them up</strong>. A regenerated <code>SECRET_KEY</code> on an existing database instantly makes any data it had
+encrypted (2FA secrets, certain source credentials) unrecoverable.</p>
+</blockquote>
+<h3 id="where-secret_key-is-actually-used-to-encrypt-data">Where <code>SECRET_KEY</code> Is Actually Used to Encrypt Data<a href="#where-secret_key-is-actually-used-to-encrypt-data" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../../docs/08-services/auth-providers.html">Auth Providers</a>, <code>setting.SecretKey</code> is not just a
+theoretical value — it is the concrete key material behind at least two at-rest encryption
+mechanisms:</p>
+<ul>
+<li><strong>TOTP 2FA shared secrets</strong> (<code>models/auth/twofactor.go</code>): AES-encrypted at rest, with the AES key
+  <em>derived from <code>setting.SecretKey</code> via MD5</em> (<code>getEncryptionKey</code>), then Base64-encoded into the
+  <code>Secret</code> column.</li>
+<li><strong>LDAP <code>BindDN</code>/<code>BindPassword</code></strong> (<code>services/auth/source/ldap/source.go</code>): encrypted at rest via
+  <code>secret.EncryptSecret</code> in the source's <code>ToDB</code> method before being persisted to the login-source
+  table.</li>
+</ul>
+<blockquote>
+<p><strong>Note on the MD5-derived key:</strong> the source documentation explicitly calls out that the TOTP
+encryption key is derived from <code>SecretKey</code> "via MD5." MD5 is a broken hash for collision
+resistance, but here it is used purely as a key-derivation step, not for integrity/collision
+purposes — still, this is exactly the kind of <code>crypto/md5</code> usage that an opengrep SAST rule
+tuned for "weak cryptographic primitive" will flag in this codebase, and it is worth triaging
+against this documented, intentional design rather than assuming it is an oversight. See the
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Scanning Playbook</a> for how to route this
+kind of finding.</p>
+</blockquote>
+<h3 id="http-security-headers">HTTP Security Headers<a href="#http-security-headers" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>X_FRAME_OPTIONS</code>, <code>X_CONTENT_TYPE_OPTIONS</code>, and <code>CONTENT_SECURITY_POLICY_GENERAL</code> in <code>[security]</code>
+configure standard defensive response headers. Per the Settings Catalog, <code>security.go</code> additionally
+<strong>cross-reads <code>[cors]</code></strong> for <code>X_FRAME_OPTIONS</code> handling — meaning CORS policy and the frame-options
+header are not fully independent and should be reviewed together, not in isolation, when hardening
+either one.</p>
+<h2 id="the-cors-section">The <code>[cors]</code> Section<a href="#the-cors-section" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Per the Settings Catalog, <code>cors.go</code> owns Cross-Origin Resource Sharing policy for the API
+(<code>[cors]</code> section). The source documentation notes this section is cross-referenced by
+<code>security.go</code> for <code>X_FRAME_OPTIONS</code> — a scanner or reviewer checking CORS configuration should
+check both sections together rather than assuming <code>[cors]</code> is self-contained. Beyond that
+cross-reference, the settings catalog does not enumerate individual <code>[cors]</code> keys in the material
+reviewed for this page; treat the exact key list as something to verify directly against
+<code>custom/conf/app.example.ini</code> before writing a hardening rule against it, per this documentation
+set's convention of flagging gaps rather than guessing at specifics not confirmed in source docs.</p>
+<h2 id="session-cookie-configuration-session">Session &amp; Cookie Configuration — <code>[session]</code><a href="#session-cookie-configuration-session" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The Settings Catalog maps <code>session.go</code> to the <code>[session]</code> section, describing it as the "web
+session store backend and cookie behavior." The narrative <code>app.ini</code> walkthrough does not expand on
+individual <code>[session]</code> keys beyond that mapping, so this page does not fabricate a key-by-key table
+for it — but it is directly relevant to two mechanisms documented elsewhere in this set:</p>
+<ul>
+<li><strong>Session cookie behavior</strong> underlies the <code>Session</code> auth method (<code>services/auth/session.go</code>),
+  which reads the <code>uid</code> key from the session store; <code>handleSignIn</code> (<code>services/auth/auth.go</code>)
+  <strong>regenerates the session ID on login</strong> as session-fixation protection.</li>
+<li><strong>Cross-site request protection</strong> for session-authenticated browser requests is <em>not</em> a
+  classic CSRF-token-in-<code>[session]</code> mechanism in this codebase — per
+  <a href="../../docs/02-architecture/request-lifecycle.html">Request Lifecycle</a>, Gitea uses Go's standard
+  library <code>http.NewCrossOriginProtection().Check(ctx.Req)</code>, a <strong>Fetch Metadata</strong>
+  (<code>Sec-Fetch-Site</code> header) based cross-site check, applied in <code>verifyAuthWithOptions</code>
+  (<code>routers/web/web.go</code>) unless <code>SignOutRequired</code> or <code>DisableCrossOriginProtection</code> is set for a
+  route. Routes that must legitimately accept cross-origin requests (<code>git</code> smart-HTTP, PAT/OAuth2
+  API access) explicitly opt out.</li>
+</ul>
+<h3 id="session-cookie-and-remember-me-security">Session, Cookie, and Remember-Me Security<a href="#session-cookie-and-remember-me-security" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Two independent persistence mechanisms exist and should not be confused when reviewing session
+security, per <a href="../../docs/08-services/auth-providers.html">Auth Providers</a>:</p>
+<ol>
+<li><strong>Session cookie</strong> (short-lived, backed by <code>[session]</code> store config) — carries only a <code>uid</code>
+   lookup key; regenerated at login.</li>
+<li><strong>"Remember me" auth token cookie</strong> (<code>LOGIN_REMEMBER_DAYS</code> in <code>[security]</code>) — a <em>separate</em>
+   mechanism (<code>models/auth/auth_token.go</code>, <code>services/auth/auth_token.go</code>) modeled on
+   <a href="https://paragonie.com/blog/2015/04/secure-authentication-php-with-long-term-persistence">Paragon Initiative's secure remember-me design</a>.
+   The cookie value is <code>id:token</code>; the server stores only <code>TokenHash = sha256(token)</code>. Critically,
+   <strong>the hash is rotated on every login</strong> (<code>RegenerateAuthToken</code>) while the <code>id</code> stays the same —
+   if a stolen, already-used token is replayed, the hash mismatch triggers immediate revocation
+   (<code>DeleteAuthTokenByID</code>) of that device's token, forcing re-authentication. This is a concrete,
+   documented anti-token-theft control worth being aware of before assuming a long
+   <code>LOGIN_REMEMBER_DAYS</code> value is purely a liability.</li>
+</ol>
+<h2 id="lfs-webhooks-and-other-secret-bearing-settings">LFS, Webhooks, and Other Secret-Bearing Settings<a href="#lfs-webhooks-and-other-secret-bearing-settings" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Several settings outside <code>[security]</code> carry their own secret material or security-relevant
+behavior and are worth tracking in the same inventory:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Section / file</th>
+<th>Purpose</th>
+<th>Security note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LFS_JWT_SECRET</code> (+ <code>LFS_START_SERVER</code>, <code>LFS_ALLOW_PURE_SSH</code>)</td>
+<td><code>[server]</code>, via <code>lfs.go</code></td>
+<td>Signs the short-lived JWTs (<code>Claims{RepoID, Op, UserID}</code>, HS256) that authorize Git LFS batch/transfer requests</td>
+<td>Per <a href="../../docs/09-core-modules/lfs-and-hooks.html">Git LFS &amp; Server-Side Hooks</a>, tokens expire after <code>HTTPAuthExpiry</code> (default 24h); leaking <code>LFS_JWT_SECRET</code> lets an attacker mint arbitrary-repo LFS access tokens.</td>
+</tr>
+<tr>
+<td>Webhook <code>Secret</code> (per-webhook, stored in DB, not <code>app.ini</code>)</td>
+<td><code>services/webhook/deliver.go</code></td>
+<td>HMAC-SHA1 and HMAC-SHA256 signing of outgoing webhook payload bodies</td>
+<td>See <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> for the full signature-header table (<code>X-Gitea-Signature</code>, <code>X-Hub-Signature</code>, <code>X-Hub-Signature-256</code>).</td>
+</tr>
+<tr>
+<td><code>[webhook] PROXY_URL</code> / <code>PROXY_HOSTS</code> / <code>SKIP_TLS_VERIFY</code></td>
+<td><code>[webhook]</code></td>
+<td>Controls the <code>webhookHTTPClient</code> used for outgoing deliveries</td>
+<td><code>SKIP_TLS_VERIFY = true</code> disables TLS certificate validation for webhook targets — a hardening regression if enabled in production.</td>
+</tr>
+<tr>
+<td><code>[mailer] PASSWD</code>, <code>FORCE_TRUST_SERVER_CERT</code></td>
+<td><code>[mailer]</code></td>
+<td>SMTP credential; TLS trust override</td>
+<td><code>FORCE_TRUST_SERVER_CERT</code> disables TLS certificate validation for the mail server — per <a href="../../docs/03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a>, intended "only for trusted, non-production setups."</td>
+</tr>
+<tr>
+<td><code>[database] PASSWD</code></td>
+<td><code>[database]</code></td>
+<td>Database connection credential</td>
+<td>Supports the same back-tick quoting convention (<code>PASSWD = `your password`</code>) as any INI value containing special characters.</td>
+</tr>
+<tr>
+<td><code>AccessToken.TokenHash</code> / <code>TokenSalt</code> (not an <code>app.ini</code> setting, but a related secret-storage pattern)</td>
+<td><code>models/auth/access_token.go</code></td>
+<td>Personal Access Tokens are never stored in plaintext — only a salted hash and a <code>TokenLastEight</code> index shortcut are persisted; lookups use constant-time hash comparison (<code>crypto/subtle</code>)</td>
+<td>A good reference pattern to compare against if opengrep flags any <em>other</em> token/credential storage code in this codebase that does <strong>not</strong> follow the same hash-only-at-rest convention.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dynamic-runtime-editable-settings-are-explicitly-not-security-sensitive-by-design">Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design<a href="#dynamic-runtime-editable-settings-are-explicitly-not-security-sensitive-by-design" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Per the <a href="../../docs/04-configuration/settings-catalog.html">Settings Catalog</a>, a small, deliberately
+narrow set of options are <strong>dynamic</strong> — editable at runtime from <strong>Admin Panel → Configuration →
+Config Settings</strong> without a restart, backed by <code>config.Option[T]</code> and persisted to the
+<code>system_setting</code> database table instead of <code>app.ini</code>. The documented project convention is directly
+relevant to hardening review:</p>
+<blockquote>
+<p>Static <code>app.ini</code> options are favored for anything that "is security-sensitive and should be
+controlled by the file-system/deployment owner, not a web-authenticated admin session."
+Dynamic options are reserved for settings that are "safe for a web admin to toggle without
+SSH/file access to the host."</p>
+</blockquote>
+<p>The currently registered dynamic options — <code>picture.disable_gravatar</code>,
+<code>picture.enable_federated_avatar</code>, <code>repository.open-with.editor-apps</code>,
+<code>repository.git-guide-remote-name</code>, <code>instance.web_banner</code>, <code>instance.maintenance_mode</code> — are all
+cosmetic/availability toggles, consistent with that stated convention. None of the <code>[security]</code>,
+<code>[cors]</code>, <code>[webhook]</code>, <code>[mailer]</code>, or <code>[database]</code> secret-bearing keys catalogued above are dynamic;
+they can only be changed by someone with file-system or environment-variable access to the deployed
+instance, which is itself a deliberate security boundary — worth confirming stays true if new
+dynamic options are ever proposed for security-adjacent settings.</p>
+<h2 id="configuration-hardening-checklist">Configuration Hardening Checklist<a href="#configuration-hardening-checklist" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>A condensed checklist derived from the settings above, for use when auditing a specific Gitea
+deployment's <code>app.ini</code> / environment configuration (not a substitute for reading the full
+<a href="../../docs/04-configuration/settings-catalog.html">Settings Catalog</a>, only a starting point):</p>
+<ul>
+<li>[ ] <code>INSTALL_LOCK = true</code> in production.</li>
+<li>[ ] <code>SECRET_KEY</code> and <code>INTERNAL_TOKEN</code> are set via <code>*_URI</code>/<code>*_FILE</code> indirection (or at minimum
+      backed up securely), never committed to version control.</li>
+<li>[ ] <code>MIN_PASSWORD_LENGTH</code> raised above the default <code>8</code> if policy requires it.</li>
+<li>[ ] <code>PASSWORD_HASH_ALGO</code> reviewed against current guidance (<code>argon2</code>/<code>bcrypt</code>/<code>scrypt</code> vs. the
+      default <code>pbkdf2</code>).</li>
+<li>[ ] <code>PASSWORD_CHECK_PWN</code> considered — off by default.</li>
+<li>[ ] <code>TWO_FACTOR_AUTH = enforced</code> considered for sensitive instances — not enforced by default.</li>
+<li>[ ] <code>DISABLE_GIT_HOOKS</code> left at its default <code>true</code> unless custom-hook installation by
+      non-admin users is an explicit, reviewed requirement.</li>
+<li>[ ] <code>REVERSE_PROXY_AUTHENTICATION_*</code> only enabled with a verified, header-stripping trusted
+      proxy in front, and <code>REVERSE_PROXY_TRUSTED_PROXIES</code> scoped tightly.</li>
+<li>[ ] <code>ALLOWED_HOST_LIST</code> reviewed — see the SSRF control discussion in
+      <a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a>.</li>
+<li>[ ] <code>[webhook] SKIP_TLS_VERIFY</code> and <code>[mailer] FORCE_TRUST_SERVER_CERT</code> both <code>false</code> in
+      production.</li>
+<li>[ ] No literal secret values (<code>SECRET_KEY</code>, <code>INTERNAL_TOKEN</code>, <code>[database] PASSWD</code>,
+      <code>[mailer] PASSWD</code>, LDAP <code>BindPassword</code>, OAuth2 client secrets) committed into any tracked
+      <code>app.ini</code>, Helm values file, or Kubernetes <code>ConfigMap</code> (as opposed to a <code>Secret</code> resource or
+      file-based indirection).</li>
+</ul>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a> —
+  what already scans this configuration surface (or doesn't) before Trivy/opengrep are added.</li>
+<li><a href="../03-attack-surface/authentication-and-sessions.html">Authentication &amp; Sessions</a> — the auth-chain
+  and token mechanisms that consume <code>[security]</code>/<code>[session]</code> settings.</li>
+<li><a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> —
+  full detail on <code>ALLOWED_HOST_LIST</code> enforcement and webhook signature headers.</li>
+<li><a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a> —
+  how secrets flow into container builds and CI, complementing the <code>app.ini</code>/env-var view here.</li>
+<li><a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Scanning Playbook</a> — where to point
+  opengrep-class secret-detection rules at this configuration surface, and how to triage findings
+  like the MD5-derived TOTP key noted above.</li>
+</ul>
+
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#how-configuration-reaches-the-process-and-why-it-matters-for-secrets" class="" data-anchor="how-configuration-reaches-the-process-and-why-it-matters-for-secrets">How Configuration Reaches the Process (and Why It Matters for Secrets)</a>
+<a href="#the-security-section-core-secrets-and-policy" class="" data-anchor="the-security-section-core-secrets-and-policy">The [security] Section — Core Secrets and Policy</a>
+<a href="#where-secret_key-is-actually-used-to-encrypt-data" class="toc-h3" data-anchor="where-secret_key-is-actually-used-to-encrypt-data">Where SECRET_KEY Is Actually Used to Encrypt Data</a>
+<a href="#http-security-headers" class="toc-h3" data-anchor="http-security-headers">HTTP Security Headers</a>
+<a href="#the-cors-section" class="" data-anchor="the-cors-section">The [cors] Section</a>
+<a href="#session-cookie-configuration-session" class="" data-anchor="session-cookie-configuration-session">Session &amp; Cookie Configuration — [session]</a>
+<a href="#session-cookie-and-remember-me-security" class="toc-h3" data-anchor="session-cookie-and-remember-me-security">Session, Cookie, and Remember-Me Security</a>
+<a href="#lfs-webhooks-and-other-secret-bearing-settings" class="" data-anchor="lfs-webhooks-and-other-secret-bearing-settings">LFS, Webhooks, and Other Secret-Bearing Settings</a>
+<a href="#dynamic-runtime-editable-settings-are-explicitly-not-security-sensitive-by-design" class="" data-anchor="dynamic-runtime-editable-settings-are-explicitly-not-security-sensitive-by-design">Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design</a>
+<a href="#configuration-hardening-checklist" class="" data-anchor="configuration-hardening-checklist">Configuration Hardening Checklist</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

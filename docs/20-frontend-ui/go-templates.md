@@ -1,0 +1,428 @@
+# Go Templates & Views
+
+Gitea's server-rendered HTML pages are built with Go's standard [`html/template`](https://pkg.go.dev/html/template) package. This page documents the template engine setup, the helper-function ecosystem in `modules/templates/` and `modules/htmlutil/`, how the `templates/` directory mirrors the router package structure, and how site administrators can override any template via a `custom/` overlay directory.
+
+## Overview
+
+Every HTML response served by the web routers (`routers/web/...`) is rendered by calling `ctx.HTML(status, tplName)`, where `tplName` is a `templates.TplName` — effectively the template's file path (without the `.tmpl` extension) relative to the `templates/` directory. The rendering pipeline is:
+
+```mermaid
+flowchart LR
+    A["Router handler<br/>routers/web/*.go"] --> B["ctx.HTML(status, tplName)"]
+    B --> C["services/context<br/>Context.HTML()"]
+    C --> D["templates.PageRenderer()<br/>modules/templates/page.go"]
+    D --> E["scopedtmpl.ScopedTemplate<br/>modules/templates/scopedtmpl"]
+    E --> F["Layered asset FS<br/>custom/templates → templates/"]
+    F --> G[".tmpl file parsed<br/>with FuncMap injected"]
+    G --> H["Rendered HTML response"]
+```
+
+The same core machinery (with a different `FuncMap` and a separate template set) is reused for transactional e-mails, see [`modules/templates/mail.go`](#mail-templates) below.
+
+## Template Rendering Pipeline
+
+### `templates.PageRenderer()`
+
+`modules/templates/page.go` defines a lazily-initialized singleton (`sync.OnceValue`) that builds a `pageRenderer`:
+
+```go
+var PageRenderer = sync.OnceValue(func() *pageRenderer {
+	rendererType := util.Iif(setting.IsProd, "static", "auto-reloading")
+	assetFS := AssetFS()
+	tr := &tmplRender{
+		collectTemplateNames: func() ([]string, error) { /* lists all *.tmpl under templates/, excluding mail/ */ },
+		readTemplateContent:  func(name string) ([]byte, error) { return assetFS.ReadFile(name + ".tmpl") },
+	}
+	pr := &pageRenderer{tmplRenderer: tr}
+	if err := tr.recompileTemplates(pr.funcMapDummy()); err != nil {
+		processStartupTemplateError(err)
+	}
+	if !setting.IsProd {
+		go AssetFS().WatchLocalChanges(graceful.GetManager().ShutdownContext(), func() {
+			_ = tr.recompileTemplates(pr.funcMapDummy())
+		})
+	}
+	return pr
+})
+```
+
+Key behaviors:
+
+- In **production** (`setting.IsProd`), templates are compiled once at startup and any template error is fatal (`log.Fatal`).
+- In **development**, a filesystem watcher (`AssetFS().WatchLocalChanges`) triggers `PageRendererReload()` whenever a `.tmpl` file changes on disk, so edits are picked up without restarting the server.
+- `ReloadAllTemplates()` (in `modules/templates/htmlrenderer.go`) reloads both the page renderer and the mail renderer together — this is also exposed through the admin "Reload Templates" action.
+
+### Scoped templates (`modules/templates/scopedtmpl`)
+
+Go's `html/template` package normally shares one global namespace: defining `{{define "x"}}` in one file makes `x` visible (and overridable) from every other file in the same `*template.Template`. Gitea's `templates/` tree defines many small `{{define}}` blocks with generic names (e.g. `list`, `content`) across dozens of files, which would collide in a flat namespace.
+
+`scopedtmpl.ScopedTemplate` (in `modules/templates/scopedtmpl/scopedtmpl.go`) solves this by building, for each **top-level** template name requested (e.g. `repo/view`), an isolated `scopedTemplateSet` that only contains that file's `{{define}}` blocks plus whatever it explicitly `{{template ...}}`-includes — following Go template's parse-tree dependency graph. This means a `{{define "list"}}` in `templates/repo/issue/list.tmpl` cannot accidentally leak into or be shadowed by one in `templates/org/list.tmpl`.
+
+```go
+type ScopedTemplate struct {
+	all        *template.Template // superset containing every parsed .tmpl file
+	scopedTemplateSets map[string]*scopedTemplateSet // lazily built per top-level template
+}
+
+func (t *ScopedTemplate) Executor(name string, funcMap template.FuncMap) (TemplateExecutor, error) {
+	// looks up (or builds) the scoped set for `name`, then returns
+	// an executor bound to the caller-supplied FuncMap (which carries the request `ctx`)
+}
+```
+
+Because Go templates freeze their `FuncMap` at parse time, `ScopedTemplate.Freeze()` swaps in no-op stub functions before HTML-escaping analysis runs, and the *real* functions (which need the live per-request `context.Context`) are injected later, per-request, via `Executor(name, funcMap)`. This is why every rendered template funcmap always contains a `"ctx"` entry (see below).
+
+### Layered asset filesystem & custom overrides
+
+`modules/templates/base.go` builds the effective template filesystem as two (or three) stacked layers using `modules/assetfs`:
+
+```go
+func AssetFS() *assetfs.LayeredFS {
+	return assetfs.Layered(CustomAssets(), BuiltinAssets())
+}
+
+func CustomAssets() *assetfs.Layer {
+	return assetfs.Local("custom", setting.CustomPath, "templates")
+}
+```
+
+- **`BuiltinAssets()`** — the templates shipped with Gitea. Depending on the build tag, this is either the local `templates/` directory on disk (`templates_dynamic.go`, tag `!bindata`) or embedded bindata compiled into the binary (`templates_bindata.go`, tag `bindata`, generated via `go run build/generate-bindata.go`).
+- **`CustomAssets()`** — files under `<CustomPath>/templates/` (by default `custom/templates/` relative to the working directory, or `CustomPath` from `app.ini`).
+
+`assetfs.LayeredFS.ReadLayeredFile()` (in `modules/assetfs/layered.go`) walks the layers **top layer first** — so a file present in `custom/templates/repo/view.tmpl` completely replaces the built-in `templates/repo/view.tmpl` for that path. This is Gitea's supported mechanism for site-specific template customization; see [Custom Template Overrides](#custom-template-overrides) below.
+
+> Note: `Local()` resolves the layer's root as an absolute `os.DirFS`, and `WatchLocalChanges` uses `fsnotify` to detect changes in dev mode across **all** layers, so custom template edits are also hot-reloaded when `setting.IsProd` is false.
+
+### Error reporting
+
+`modules/templates/htmlrenderer.go` contains a small suite of regex-based "pretty" error formatters (`templateErrorPrettier`) that convert Go's terse `template: name:line: message` errors into a detailed, source-line-annotated message (with a `^^^` indicator under the offending token), including which asset **layer** (`custom` vs `builtin`) the broken file came from. This is surfaced via `templates.HandleTemplateRenderingError(err)`, used both at startup and by `Context.HTML()` when rendering fails at request time (falling back to the `status/500` template).
+
+## Template Directory Organization
+
+`templates/` mirrors the package structure of `routers/web/`: each router sub-package generally has a same-named subdirectory of `.tmpl` files, and `templates.TplName` string constants declared next to each handler point at that path (without extension).
+
+```mermaid
+flowchart TD
+    subgraph Routers["routers/web/"]
+        R1["repo/*.go"]
+        R2["admin/*.go"]
+        R3["org/*.go"]
+        R4["user/*.go"]
+        R5["explore/*.go"]
+        R6["devtest/*.go"]
+        R7["auth/*.go"]
+        R8["home.go / misc, healthcheck, feed..."]
+    end
+    subgraph Templates["templates/"]
+        T1["repo/"]
+        T2["admin/"]
+        T3["org/"]
+        T4["user/"]
+        T5["explore/"]
+        T6["devtest/"]
+        T7["user/auth/"]
+        T8["home.tmpl, status/, shared/"]
+    end
+    R1 -->|"templates.TplName = \"repo/...\""| T1
+    R2 -->|"\"admin/...\""| T2
+    R3 -->|"\"org/...\""| T3
+    R4 -->|"\"user/...\""| T4
+    R5 -->|"\"explore/...\""| T5
+    R6 -->|"\"devtest/...\""| T6
+    R7 -->|"\"user/auth/...\""| T7
+    R8 -->|"\"home\", \"status/500\"..."| T8
+
+    T9["templates/base/ — layout partials<br/>(head, footer, navbar, alerts)"]
+    T10["templates/custom/ — empty override hooks<br/>(header, footer, body_*_pre/post)"]
+    T11["templates/shared/ — cross-cutting partials"]
+    T12["templates/mail/ — e-mail bodies + subjects"]
+    T13["templates/swagger/, templates/api/ — API doc UI"]
+```
+
+Example mapping observed directly in code (`routers/web/repo/*.go` declaring `templates.TplName` constants):
+
+| Router file | `TplName` constant | Resolves to template file |
+|---|---|---|
+| `routers/web/repo/view.go` | `tplRepoView = "repo/view"` | `templates/repo/view.tmpl` |
+| `routers/web/repo/branch.go` | `tplBranch = "repo/branch/list"` | `templates/repo/branch/list.tmpl` |
+| `routers/web/repo/release.go` | `tplReleasesList = "repo/release/list"` | `templates/repo/release/list.tmpl` |
+| `routers/web/repo/commit.go` | `tplCommitPage = "repo/commit_page"` | `templates/repo/commit_page.tmpl` |
+| `routers/web/home.go` | `tplHome = "home"` | `templates/home.tmpl` |
+| `services/context/context_response.go` | `tplStatus500 = "status/500"` | `templates/status/500.tmpl` |
+
+Top-level directories under `templates/`:
+
+| Directory | Purpose | Matching router package |
+|---|---|---|
+| `templates/repo/` | Repository pages: code browser, commits, issues, PRs, releases, wiki, settings | `routers/web/repo/` |
+| `templates/admin/` | Site administration panel | `routers/web/admin/` |
+| `templates/org/` | Organization pages | `routers/web/org/` |
+| `templates/user/` | User profile, dashboard, settings, auth flows | `routers/web/user/`, `routers/web/auth/` |
+| `templates/explore/` | Explore repos/users/orgs/code | `routers/web/explore/` |
+| `templates/package/` | Package registry UI | package-related routers |
+| `templates/projects/` | Project boards | project routers |
+| `templates/webhook/` | Webhook configuration forms | webhook routers |
+| `templates/devtest/` | Internal UI component test/demo pages | `routers/web/devtest/` |
+| `templates/api/`, `templates/swagger/` | API documentation UI (Swagger) | `routers/web/swagger_json.go` |
+| `templates/status/` | Error pages (404, 500, etc.) | shared across routers via `ctx.HTTPError` |
+| `templates/base/` | Layout building blocks (`<head>`, navbar, footer, alerts, pagination) included by nearly every page | n/a (layout partials) |
+| `templates/shared/` | Reusable cross-feature partials | n/a |
+| `templates/mail/` | Transactional e-mail bodies/subjects, organized as `mail/<user\|repo\|org>/...` | services that send mail (e.g. `services/mailer`) |
+| `templates/custom/` | Empty *extension points* meant to be overridden by admins (see below) | n/a |
+| `templates/install.tmpl`, `templates/post-install.tmpl` | The installer wizard | `routers/install` |
+
+At the repository root, `templates/` in this convention is the **built-in** template source tree; the second, independent `custom/` directory at the repo/working-directory root (see [Custom Template Overrides](#custom-template-overrides)) is the **override** layer applied on top of it at runtime — they are not the same directory.
+
+## Template Naming & Composition Conventions
+
+- Template names passed to `ctx.HTML()` never include the `.tmpl` suffix, and always use forward slashes (`filepath.ToSlash`) regardless of OS.
+- Layout partials are composed explicitly with `{{template "name" .}}`. A typical repo page looks like:
+
+```gotemplate
+{{template "base/head" .}}
+<div role="main" aria-label="{{.Title}}" class="page-content repository file list ...">
+	{{template "repo/header" .}}
+	<div class="ui container ...">
+		{{template "base/alert" .}}
+		...
+		<div class="repo-view-container">
+			{{template "repo/view_file_tree" .}}
+			<div class="repo-view-content">
+				{{template "repo/view_content" .}}
+			</div>
+		</div>
+	</div>
+</div>
+{{template "base/footer" .}}
+```
+(from `templates/repo/view.tmpl`)
+
+- `base/head.tmpl` and `base/footer.tmpl` are the top/bottom of virtually every authenticated page. `base/head.tmpl` renders `<html>`/`<head>`, the CSP meta tag (`ctx.HeadMetaContentSecurityPolicy`), OpenGraph tags, page styles/scripts, and — crucially — the `custom/header`, `custom/body_outer_pre`, and `custom/body_inner_pre` extension points. `base/footer.tmpl` closes the body and includes `custom/body_inner_post`, `custom/body_outer_post`, and `custom/footer`.
+- Sub-templates that render a fragment of a page (e.g. AJAX partial updates) are often named `*_content.tmpl`, `*_list.tmpl`, or `*_div.tmpl` and can be rendered standalone via `ctx.HTML` or `ctx.RenderToHTML()`.
+- `Context.JSONTemplate(tmpl)` (in `services/context/context_response.go`) executes a `.tmpl` file but sets `Content-Type: application/json` — used for endpoints whose payload is easier to template than to build with `structs`/`json.Marshal` (still HTML-escaped by `html/template`, so JSON-unsafe characters must be escaped with care, e.g. `JSEscape`).
+
+## The `templates.TplName` Type & `ctx.HTML()`
+
+Router handlers declare template identifiers as typed constants to avoid stringly-typed typos:
+
+```go
+// routers/web/home.go
+var (
+	tplHome templates.TplName = "home"
+)
+...
+ctx.HTML(http.StatusOK, tplHome)
+```
+
+`Context.HTML()` (in `services/context/context_response.go`) is the single entry point used by nearly all web handlers:
+
+```go
+func (ctx *Context) HTML(status int, name templates.TplName) {
+	...
+	err := ctx.Render.HTML(ctx.Resp, status, name, ctx.Data, ctx.TemplateContext)
+	if err == nil || errors.Is(err, syscall.EPIPE) {
+		return
+	}
+	if name != tplStatus500 {
+		err = fmt.Errorf("failed to render template: %s, error: %s", name, templates.HandleTemplateRenderingError(err))
+		ctx.ServerError("Render failed", err) // shows the 500 page
+	} else {
+		ctx.PlainText(http.StatusInternalServerError, "Unable to render status/500 page...")
+	}
+}
+```
+
+`ctx.Data` (a `reqctx.ContextData`, effectively `map[string]any`) is the "view model" passed as the template's dot (`.`); `ctx.TemplateContext` (see next section) is passed separately and is what backs the `ctx` function inside templates.
+
+`Context.RenderToHTML(name, data)` renders a template to a `template.HTML` string in memory (e.g. to embed one rendered fragment inside another value, or return via JSON), and `Context.RenderWithErrDeprecated(...)` is a **deprecated** legacy path for showing validation errors that new code should avoid (replaced by JSON responses + client-side form handling).
+
+## `ctx` — the Template Request Context
+
+Nearly every non-trivial template calls functions on `ctx`, e.g. `ctx.Locale.Tr "..."`, `ctx.RenderUtils.MarkdownToHtml`, `ctx.CurrentWebTheme.InternalName`. This `ctx` is not Go's `context.Context` interface directly exposed — it's `services/context.TemplateContext` (`type TemplateContext map[string]any`, defined in `services/context/context_template.go`), which **implements** `context.Context` (so it can still be passed to context-aware functions) while also exposing template-friendly methods:
+
+```go
+func NewTemplateContextForWeb(ctx reqctx.RequestContext, req *http.Request, locale translation.Locale) TemplateContext {
+	tmplCtx := NewTemplateContext(ctx, req)
+	tmplCtx["Locale"] = locale
+	tmplCtx["AvatarUtils"] = templates.NewAvatarUtils(ctx)
+	tmplCtx["RenderUtils"] = templates.NewRenderUtils(ctx)
+	tmplCtx["MiscUtils"] = templates.NewMiscUtils(ctx)
+	tmplCtx["ActionsUtils"] = templates.NewActionsUtils(ctx)
+	tmplCtx["RootData"] = ctx.GetData()
+	tmplCtx["Consts"] = map[string]any{ /* unit.Type* constants for use in templates */ }
+	return tmplCtx
+}
+```
+
+Methods defined directly on `TemplateContext` (in `context_template.go`) include:
+
+| Method | Purpose |
+|---|---|
+| `CurrentWebTheme()` | Resolves the active theme (`Doer.Theme` or theme cookie) via `webtheme.GuaranteeGetThemeMetaInfo` |
+| `CurrentWebBanner()` | Returns the site-wide banner if it should be shown and hasn't been dismissed |
+| `AppFullLink(link...)` | Builds an absolute URL including `AppSubURL` |
+| `ScriptImport(path, typ...)` | Emits a `<script nonce="...">` tag, optionally `type="module"` |
+| `CspScriptNonce()` | Per-request CSP nonce, cached in the map itself (`_cspScriptNonce`) |
+| `HeadMetaContentSecurityPolicy()` | Renders the `<meta http-equiv="Content-Security-Policy">` tag |
+
+`Locale`, `AvatarUtils`, `RenderUtils`, `MiscUtils`, `ActionsUtils`, `RootData`, and `Consts` are plain map entries injected at request setup — Go templates can call methods/fields on map values transparently (e.g. `ctx.RenderUtils.MarkdownToHtml $comment`), which is why they don't need to be dedicated Go methods.
+
+`pageRenderer.funcMap(ctx)` (in `modules/templates/page.go`) is what actually wires the `"ctx"` **function** (not the map — a zero-arg function returning `any`) into the template `FuncMap` for a given request:
+
+```go
+func (r *pageRenderer) funcMap(ctx context.Context) template.FuncMap {
+	pageFuncMap := newFuncMapWebPage()
+	pageFuncMap["ctx"] = func() any { return ctx }
+	return pageFuncMap
+}
+```
+
+That's why templates call `{{ctx.Locale.Tr "..."}}` — `ctx` is invoked as a function (`{{ctx}}` → the `TemplateContext` value), and `.Locale.Tr` is a normal Go template field/method chain on that value.
+
+## FuncMap: Template Helper Functions
+
+### `newFuncMapWebPage()` — `modules/templates/helper.go`
+
+This is the master function map for **page** templates (a related-but-distinct map, `mailBodyFuncMap()`, is used for e-mail templates — see below). Selected entries:
+
+| Function | Implementation | Purpose |
+|---|---|---|
+| `dict` | `util_dict.go: dict()` | Build a `map[string]any` from key/value pairs for passing multiple values into `{{template}}` includes; supports `"."` as a special "merge current dot" key |
+| `Iif` | `iif()` | Inline ternary: `{{Iif cond trueVal falseVal}}` |
+| `Eval` | `eval.Expr` (`modules/templates/eval`) | Evaluates simple numeric expressions token-by-token, e.g. `{{Eval $x "+" 1}}` |
+| `HTMLFormat` | `htmlFormat()` → `htmlutil.HTMLFormat` | `Sprintf`-style formatting that auto-escapes each `%s`-style argument and returns pre-escaped `template.HTML`; panics if called with zero args (anti-XSS guard) |
+| `QueryEscape` / `PathEscape` / `PathEscapeSegments` | wraps `net/url`, `util.PathEscapeSegments` | URL-safe escaping helpers |
+| `QueryBuild` | `QueryBuild()` | Builds/merges query strings while dropping "empty" default values (`nil`, `false`, `0`, `""`) so pagination/filter links stay clean |
+| `StringUtils`, `SliceUtils`, `JsonUtils`, `DateUtils` | `NewStringUtils()` etc. | Return small stateless helper-object constructors (see below) |
+| `svg` | `svg.RenderHTML` | Inlines an SVG icon by name |
+| `ShortSha`, `FileSize`, `CountFmt`, `Sec2Hour` | `modules/base`, `util` | Formatting helpers for commit SHAs, byte sizes, large counts, durations |
+| `AssetURI`, `AssetCSSLinks`, `AssetUrlPrefix` | `modules/public` | Static asset URL helpers (cache-busted asset paths) |
+| `AppName`, `AppSubUrl`, `AppVer`, `AppDomain`, `MetaAuthor`, `MetaDescription`, `MetaKeywords`, `EnableTimetracking`, `DisableWebhooks`, `AllowedReactions`, `CustomEmojis`, `NotificationSettings`, `MermaidMaxSourceCharacters` | thin wrappers over `modules/setting` | Expose selected server configuration to templates |
+| `RenderCodeBlock`, `ReactionToEmoji` | `util_render.go` | Markdown/code-block and emoji-reaction rendering |
+| `ActionContent2Commits`, `CommentMustAsDiff`, `MirrorRemoteAddress`, `FilenameIsImage`, `TabSizeClass` | misc feature-specific helpers | Grab-bag utilities used by specific pages |
+| `DumpVar` | `util_dict.go: dumpVar()` | Dev-only pretty-printer for arbitrary Go values (disabled — returns a placeholder — in production) |
+
+`QueryBuild` is worth calling out because of its non-trivial semantics, documented directly above its implementation:
+
+```go
+// QueryBuild builds a query string from a list of key-value pairs.
+// It omits the nil, false, zero int/int64 and empty string values...
+// Build rules:
+// * Even parameters: always build as query string: a=b&c=d
+// * Odd parameters:
+// * * {"/anything", param-pairs...} => "/?param-paris"
+// * * {"anything?old-params", new-param-pairs...} => "anything?old-params&new-param-paris"
+```
+
+### Stateless "Utils" helper objects
+
+Rather than exposing dozens of loose functions, several helpers are grouped as zero-value struct pointers with methods, constructed via a `NewXxxUtils()` factory registered in the `FuncMap` (so templates call e.g. `{{(StringUtils).HasPrefix $s "foo"}}` or, more commonly, `{{StringUtils.HasPrefix $s "foo"}}` since Go templates auto-call zero-arg functions):
+
+```go
+// modules/templates/util_string.go
+type StringUtils struct{}
+func NewStringUtils() *StringUtils { return &stringUtils }
+func (su *StringUtils) HasPrefix(s, prefix string) bool { return strings.HasPrefix(s, prefix) }
+func (su *StringUtils) Contains(s, substr string) bool { return strings.Contains(s, substr) }
+func (su *StringUtils) Split(s, sep string) []string { return strings.Split(s, sep) }
+func (su *StringUtils) EllipsisString(s string, maxLength int) string { return util.EllipsisDisplayString(s, maxLength) }
+```
+
+| Helper object | File | Notable methods |
+|---|---|---|
+| `StringUtils` | `util_string.go` | `HasPrefix`, `Contains`, `Split`, `Join`, `Cut`, `EllipsisString`, `ToUpper`, `TrimPrefix`, `ToString` |
+| `SliceUtils` | `util_slice.go` | Slice manipulation helpers for templates (e.g. membership checks) |
+| `JsonUtils` | `util_json.go` | JSON marshal helpers for embedding data as JS-safe JSON in templates |
+| `DateUtils` | `util_date.go` | `AbsoluteShort`/`AbsoluteLong`/`FullTime` (renders `<relative-time>` web-component tags), `TimeSince`, `ParseLegacy` |
+| `AvatarUtils` | `util_avatar.go` | `Avatar(item, size, class)` (polymorphic over `*user.User`, `*repo.Collaborator`, `*organization.Organization`), `AvatarByAction`, `AvatarByEmail` — injected per-request as `ctx.AvatarUtils`, not a bare FuncMap entry |
+| `RenderUtils` | `util_render.go` | `MarkdownToHtml`, `RenderCommitMessage`, `RenderIssueTitle`/`RenderIssueSimpleTitle`, `RenderLabel`/`RenderLabels`, `RenderEmoji`, `AvatarStack`/`AvatarStackWithNames`/`AvatarStackPushCommit`, `RenderFlashMessage`, `RenderUnicodeEscapeToggleButton` — also injected as `ctx.RenderUtils` (needs the per-request context for DB lookups like link resolution) |
+| `MiscUtils` | `util_misc.go` | Grab-bag of per-request helpers, injected as `ctx.MiscUtils` |
+| `ActionsUtils` | `util_actions.go` | Actions/CI-specific helpers, injected as `ctx.ActionsUtils` |
+
+`DateUtils` is notable for being usable both as a bare `FuncMap` entry (`DateUtils.AbsoluteLong ...`) since it's stateless (`NewDateUtils` returns a typed nil pointer — "the util is stateless, and we do not need to create an instance").
+
+### `modules/htmlutil` — low-level HTML-safety primitives
+
+`modules/htmlutil/html.go` provides the building blocks that the template FuncMap and Go code (outside of templates) both rely on to safely construct `template.HTML` values without introducing XSS:
+
+```go
+func HTMLFormat(s template.HTML, rawArgs ...any) template.HTML {
+	return template.HTML(fmt.Sprintf(string(s), htmlFormatArgs(s, rawArgs)...))
+}
+```
+
+`htmlFormatArgs` escapes every argument passed to a format string unless it is already a "safe" type (`template.HTML`, numeric, bool) — strings, `template.URL`, and `fmt.Stringer` values are all passed through `template.HTMLEscapeString`. This is the mechanism behind the `HTMLFormat` FuncMap entry.
+
+Other utilities in this package:
+
+- `ParseSizeAndClass(defaultSize, defaultClass, others...)` — the shared convention used by `AvatarUtils.Avatar(item, others...)` and similar variadic helpers to accept optional `(size int, class string)` overrides.
+- `HTMLWriter` / `HTMLBuilder` — streaming/builder wrappers (`WriteString` escapes, `WriteHTML` does not, `WriteFormat` calls `HTMLPrintf`) used when constructing HTML fragments from Go code (e.g. inside `RenderUtils` methods) rather than from `.tmpl` files.
+- `EscapeString(s) template.HTML` — one-shot HTML-escape returning a safe `template.HTML`.
+
+> **Security note:** Because `html/template` auto-escapes by default, most `.tmpl` files never need to call these functions directly — they exist for the (comparatively few) Go-code paths that build `template.HTML` values programmatically, and for the `HTMLFormat`/`SanitizeHTML` FuncMap entries used when a template needs to interpolate already-safe-but-dynamic markup (e.g. inserting an `<a>` link into a translated string). `HTMLFormat` panics if invoked without arguments specifically to prevent a common mistake — passing raw, unescaped user input directly as the format string.
+
+## Mail Templates
+
+`modules/templates/mail.go` defines a **separate** `MailRender` pipeline for transactional e-mail. It reuses the same `tmplRender`/`recompileTemplates` machinery from `htmlrenderer.go` but:
+
+- Uses a distinct FuncMap, `mailBodyFuncMap()`, which intentionally exposes a *smaller* surface than the page FuncMap (no `ctx`, no DB-backed `RenderUtils`/`AvatarUtils` — mail is rendered outside of an HTTP request) plus mail-only helpers like `DotEscape` (wraps dots in `ZWJ` characters to defeat auto-linkers).
+- Supports an optional **subject** template embedded in the same `.tmpl` file, separated from the body by a line of three or more dashes, parsed via `mailSubjectSplit = regexp.MustCompile(`(?m)^-{3,}\s*$`)`. The subject half is parsed as a `text/template` (not `html/template`, since it's plain text) with `mailSubjectTextFuncMap()`.
+- Template files live under `templates/mail/<user|repo|org>/...`, e.g. `templates/mail/user/auth/activate.tmpl`, `templates/mail/repo/issue/default.tmpl`. Each `.tmpl` typically has a sibling `*.devtest.yml` fixture used by the `templates/devtest` preview tooling to render sample e-mails during development.
+- `ReloadAllTemplates()` calls both `PageRendererReload()` and `MailRendererReload()`.
+
+Example (`templates/mail/user/auth/activate.tmpl`):
+
+```gotemplate
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{.locale.Tr "mail.activate_account.title" (.DisplayName|DotEscape)}}</title>
+</head>
+{{$activate_url := printf "%suser/activate?code=%s" AppUrl (QueryEscape .Code)}}
+<body>
+	<p>{{.locale.Tr "mail.activate_account.text_1" (.DisplayName|DotEscape) AppName}}</p><br>
+	<p><a href="{{$activate_url}}">{{$activate_url}}</a></p><br>
+</body>
+</html>
+```
+
+## Custom Template Overrides
+
+Gitea ships two distinct mechanisms for site-specific template customization, both rooted at the `custom/` directory (`setting.CustomPath`, default `<work-path>/custom`, overridable via the `CustomPath` build-time `-X` flag or `GITEA_CUSTOM` env var — see `docs/build-source.md`):
+
+### 1. Full template override (any file)
+
+Any file under `custom/templates/<same-relative-path>.tmpl` completely replaces the corresponding built-in file, because `CustomAssets()` is layered **above** `BuiltinAssets()` in `AssetFS()`. For example, to customize the repository home page, an administrator creates `custom/templates/repo/home.tmpl` with the full desired markup — Gitea will use that file instead of the built-in `templates/repo/home.tmpl` for every request, without needing to touch the built-in copy or recompile Gitea.
+
+```mermaid
+flowchart LR
+    Req["Template lookup: repo/home"] --> L1{"custom/templates/repo/home.tmpl<br/>exists?"}
+    L1 -->|yes| Use1["Use custom override"]
+    L1 -->|no| L2["templates/repo/home.tmpl<br/>(builtin, dynamic or bindata)"]
+```
+
+This is a "replace the whole file" strategy — the override completely supersedes the original, so it must be kept in sync with upstream changes to avoid losing new functionality after a Gitea upgrade.
+
+### 2. Extension-point hooks (`templates/custom/*.tmpl`)
+
+Because full overrides are heavy-handed for small tweaks (custom analytics scripts, a footer link, extra `<head>` tags), Gitea additionally defines a set of **intentionally empty** built-in templates under `templates/custom/` that are `{{template}}`-included at fixed, well-known points in the base layout:
+
+| Included template | Included from | Typical use |
+|---|---|---|
+| `custom/header` | `templates/base/head.tmpl`, just before `</head>` | Extra `<meta>`/`<link>`/`<script>` tags, analytics snippets |
+| `custom/body_outer_pre` | `templates/base/head.tmpl`, right after `<body>` | Content before the outer wrapper div |
+| `custom/body_inner_pre` | `templates/base/head.tmpl`, inside `.full.height` before the navbar | Custom banners |
+| `custom/body_inner_post` | `templates/base/footer.tmpl`, before closing the inner wrapper | Extra footer content |
+| `custom/body_outer_post` | `templates/base/footer.tmpl`, after the inner wrapper closes | Content near the very end of `<body>` |
+| `custom/footer` | `templates/base/footer.tmpl`, after `footer_content` and the main JS module import | Additional scripts loaded last |
+| `custom/extra_links`, `custom/extra_links_footer`, `custom/extra_tabs` | Various navbar/footer/tab partials | Injecting extra navigation links or tabs without editing the navbar template itself |
+
+All of these files exist as **zero-byte** placeholders in `templates/custom/` (see `templates/custom/header.tmpl`, `templates/custom/footer.tmpl`, etc.) — they render nothing by default. To use one, an administrator creates the **same relative path** under `custom/templates/custom/<name>.tmpl` (e.g. `custom/templates/custom/header.tmpl`), and the layered filesystem serves that instead of the empty built-in stub. This is the recommended, upgrade-safe way to inject small custom markup, since it doesn't require replacing an entire (potentially large, frequently-changing) built-in template file.
+
+> **Tip:** Because the dev-mode file watcher (`AssetFS().WatchLocalChanges`) watches all layers, custom overrides placed under `custom/templates/` are hot-reloaded just like built-in templates when running with `RUN_MODE = dev`. In production, a full server restart (or the admin "Reload Templates" action, which calls `templates.ReloadAllTemplates()`) is required to pick up changes.
+
+## Related Pages
+
+- [Frontend & UI Overview](README.md)
+- [Web Routers](../06-web-routers/README.md) — how `templates.TplName` constants are declared alongside route handlers
+- [Configuration](../04-configuration/README.md) — `CustomPath`/`CustomConf` and other `setting` values consumed by template helper functions

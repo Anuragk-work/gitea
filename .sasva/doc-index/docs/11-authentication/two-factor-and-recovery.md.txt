@@ -1,0 +1,322 @@
+=== FILE: docs/11-authentication/two-factor-and-recovery.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Two-Factor Authentication & Account Recovery Gitea supports two independent second-factor mechanisms — TOTP (via `github.com/pquerna/otp`) and WebAuthn/Passkeys (via `github.com/go-webauthn/webauthn`) — plus scratch/recovery tokens and an email-based password-reset flow that itself must satisfy 2FA before completing. This page walks through each flow end to end, re-verified against [`models/auth/twofactor.go`](../../models/auth/twofactor.
+
+# Two-Factor Authentication & Account Recovery
+
+Gitea supports two independent second-factor mechanisms — TOTP (via `github.com/pquerna/otp`)
+and WebAuthn/Passkeys (via `github.com/go-webauthn/webauthn`) — plus scratch/recovery tokens and
+an email-based password-reset flow that itself must satisfy 2FA before completing. This page
+walks through each flow end to end, re-verified against
+[`models/auth/twofactor.go`](../../models/auth/twofactor.go),
+[`models/auth/webauthn.go`](../../models/auth/webauthn.go),
+[`modules/auth/webauthn/webauthn.go`](../../modules/auth/webauthn/webauthn.go), and the route
+handlers in [`routers/web/auth/2fa.go`](../../routers/web/auth/2fa.go),
+[`routers/web/auth/webauthn.go`](../../routers/web/auth/webauthn.go), and
+[`routers/web/auth/password.go`](../../routers/web/auth/password.go).
+
+## TOTP (Time-Based One-Time Password)
+
+Modeled by `TwoFactor` in [`models/auth/twofactor.go`](../../models/auth/twofactor.go):
+
+```go
+type TwoFactor struct {
+    ID               int64 `xorm:"pk autoincr"`
+    UID              int64 `xorm:"UNIQUE"`
+    Secret           string             // AES-encrypted, base64-encoded shared secret
+    ScratchSalt      string
+    ScratchHash      string             // salted hash of the current scratch/recovery token
+    LastUsedPasscode string             `xorm:"VARCHAR(10)"`
+    CreatedUnix      timeutil.TimeStamp `xorm:"INDEX created"`
+    UpdatedUnix      timeutil.TimeStamp `xorm:"INDEX updated"`
+}
+```
+
+### Secret Storage
+
+`SetSecret(secretString)` encrypts the raw shared secret with AES
+(`secret.AesEncrypt`) using a key derived from `setting.SecretKey` via MD5
+(`getEncryptionKey`), then base64-encodes the ciphertext into the `Secret` column. There is
+exactly one `TwoFactor` row per user (`UID` is `UNIQUE`), enrolled once during setup in account
+security settings (outside this page's scope, but it calls `NewTwoFactor` after generating and
+displaying the secret/QR code to the user).
+
+### Validation — Single-Use Enforcement
+
+`validateTOTP(passcode)` decrypts the stored secret and delegates to
+`github.com/pquerna/otp/totp`'s `totp.Validate(passcode, secretStr)`, which checks the passcode
+against the current 30-second time window (with the library's default clock-skew tolerance).
+Critically, **no caller should use `validateTOTP` directly** — every code path goes through:
+
+```go
+func (t *TwoFactor) ValidateAndConsumeTOTP(ctx context.Context, passcode string) (bool, error) {
+    ok, err := t.validateTOTP(passcode)
+    if err != nil || !ok {
+        return false, err
+    }
+    // Conditional update: only a row whose stored passcode differs from this one is updated, so a
+    // replay (or a concurrent duplicate) matches zero rows and is rejected. The row lock taken by
+    // the UPDATE serializes racing requests, closing the read-validate-write TOCTOU window.
+    t.LastUsedPasscode = passcode
+    n, err := db.GetEngine(ctx).ID(t.ID).
+        Where(builder.Or(builder.IsNull{"last_used_passcode"}, builder.Neq{"last_used_passcode": passcode})).
+        Cols("last_used_passcode").Update(t)
+    if err != nil {
+        return false, err
+    }
+    return n == 1, nil
+}
+```
+
+This closes a real replay window: TOTP codes are valid for an entire 30-second window (plus
+skew), so without single-use enforcement an attacker who captures a code (e.g. via a compromised
+proxy log) could replay it within that window. The conditional `UPDATE` doubles as concurrency
+control — if two requests race with the *same* passcode, the database's row lock serializes them
+so only one `UPDATE` actually changes a row (`n == 1`); the loser sees `n == 0` and is correctly
+rejected as a replay, even though its `validateTOTP` check alone would have said "valid".
+
+Every TOTP consumption site in the codebase — 2FA login step-up (`TwoFactorPost`), password
+reset (`ResetPasswdPost`), and the Basic-auth `X-Gitea-OTP` header path
+(`services/auth/basic.go`) — calls `ValidateAndConsumeTOTP`, never `validateTOTP` directly.
+
+### Login Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant G as Gitea
+
+    U->>G: POST /user/login (username, password)
+    G->>G: UserSignIn() validates credentials against active auth.Source
+    G->>G: HasTwoFactorOrWebAuthn(user)?
+    alt WebAuthn credentials exist
+        G->>U: Redirect to /user/webauthn (passkey/security-key challenge)
+    else TOTP enrolled (no WebAuthn)
+        G->>U: Redirect to /user/two_factor\n(session: twofaUid, twofaRemember)
+        U->>G: POST /user/two_factor (passcode)
+        G->>G: GetTwoFactorByUID -> ValidateAndConsumeTOTP(passcode)
+        alt valid
+            G->>G: handleSignIn (regenerate session, set KeyUserHasTwoFactorAuth)
+            G->>U: 302 to intended destination
+        else invalid
+            G->>U: Re-render form with auth.twofa_passcode_incorrect
+        end
+    end
+```
+
+`TwoFactorPost` (`routers/web/auth/2fa.go`) requires an active `twofaUid` session key (set by
+the initial password-verification step) — a direct POST to `/user/two_factor` without first
+passing username/password verification is rejected with `"not in 2FA session"`. On success, it
+sets `session.KeyUserHasTwoFactorAuth = true` (consulted elsewhere to require re-authentication
+for particularly sensitive actions) and calls `handleSignIn`, which regenerates the session ID
+(defeating session fixation) before establishing the authenticated session.
+
+## Scratch (Recovery) Tokens
+
+Because a lost/inaccessible TOTP device would otherwise permanently lock a user out, each
+`TwoFactor` enrollment also carries a **scratch token** — a single, admin-invisible backup code:
+
+```go
+func (t *TwoFactor) GenerateScratchToken() (string, error) {
+    tokenBytes := util.CryptoRandomBytes(6)
+    // these chars are specially chosen, avoid ambiguous chars like `0`, `O`, `1`, `I`.
+    const base32Chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    token := base32.NewEncoding(base32Chars).WithPadding(base32.NoPadding).EncodeToString(tokenBytes)
+    t.ScratchSalt = util.CryptoRandomString(10)
+    t.ScratchHash = HashToken(token, t.ScratchSalt)
+    return token, nil
+}
+```
+
+The custom Base32 alphabet deliberately excludes visually ambiguous characters (`0`/`O`,
+`1`/`I`) since scratch tokens are meant to be hand-transcribed and stored offline. Like PATs, the
+token is hashed (PBKDF2-SHA256 via the shared `HashToken` helper) and only the hash is persisted
+— `VerifyScratchToken(token)` recomputes the hash and compares it with
+`crypto/subtle.ConstantTimeCompare`.
+
+**Scratch tokens are single-use by regeneration, not by a consumed-flag**: both
+`TwoFactorScratchPost` (2FA login step-up) and `ResetPasswdPost` (password reset), on a
+successful scratch-token verification, immediately call `GenerateScratchToken()` again and
+persist the new hash via `UpdateTwoFactor` — the token that was just used is thereby invalidated
+as a side effect of generating its replacement, and the user must retrieve the *new* scratch
+token from... nowhere automatically surfaced by these flows, so in practice the UI directs users
+to their account security settings to view/regenerate scratch tokens proactively, and using the
+one from a reset flow effectively "spends" recovery capability until a new one is generated
+through settings.
+
+## WebAuthn / Passkeys
+
+Modeled by `WebAuthnCredential` in [`models/auth/webauthn.go`](../../models/auth/webauthn.go),
+wired up through [`modules/auth/webauthn/webauthn.go`](../../modules/auth/webauthn/webauthn.go),
+which initializes one global `webauthn.WebAuthn` instance at startup:
+
+```go
+WebAuthn = &webauthn.WebAuthn{
+    Config: &webauthn.Config{
+        RPDisplayName: setting.AppName,
+        RPID:          setting.Domain,
+        RPOrigins:     []string{appURL},
+        AuthenticatorSelection: protocol.AuthenticatorSelection{
+            UserVerification: protocol.VerificationDiscouraged,
+        },
+        AttestationPreference: protocol.PreferDirectAttestation,
+    },
+}
+```
+
+`NewWebAuthnUser(ctx, user, ...flags)` adapts a Gitea `*user_model.User` to the library's
+`webauthn.User` interface (`WebAuthnID` returns a binary-varint-encoded user ID used as the
+credential's `userHandle`, `WebAuthnCredentials` loads the user's stored credentials from the
+DB). A user may register multiple credentials (security keys, platform authenticators, etc.),
+each tracked with its own `SignCount` for clone detection.
+
+### 2FA Assertion Flow (user already identified by password)
+
+`WebAuthnLoginAssertion` (`routers/web/auth/webauthn.go`) requires an active `twofaUid` session
+(same precondition as TOTP), loads the user's registered credentials, and calls
+`wa.WebAuthn.BeginLogin(webAuthnUser)` to produce a challenge, stashing the library's
+`webauthn.SessionData` in the session (via `gob` encoding) under `webauthnAssertion`.
+
+`WebAuthnLoginAssertionPost` then:
+
+1. Parses the browser's signed assertion response (`protocol.ParseCredentialRequestResponse`).
+2. Calls `wa.WebAuthn.ValidateLogin(webAuthnUser, sessionData, parsedResponse)` — this verifies
+   the signature against the stored public key and checks the authenticator's flags.
+3. **Clone detection**: if `cred.Authenticator.CloneWarning` is set (the authenticator's sign
+   counter did not strictly increase versus the last stored value, suggesting the private key
+   material may have been duplicated/extracted), the login is rejected outright and logged.
+4. On success, persists the new `SignCount` (`dbCred.UpdateSignCount`) and calls
+   `handleSignInFull` with the `twofaRemember` flag carried over from the initial password step.
+
+### Passkey (Primary, Passwordless) Flow
+
+When `setting.Service.EnablePasskeyAuth` is set, users can skip the username/password step
+entirely using a **discoverable credential**:
+
+- `WebAuthnPasskeyAssertion` calls `wa.WebAuthn.BeginDiscoverableLogin()` — no `user` is known
+  yet, so no server-side credential list is sent to the browser; the platform authenticator
+  itself surfaces matching credentials to the user.
+- `WebAuthnPasskeyLogin` receives the signed response and resolves the user **from the
+  credential's `userHandle`** inside the library's discoverable-login callback:
+  ```go
+  cred, err := wa.WebAuthn.ValidateDiscoverableLogin(func(rawID, userHandle []byte) (webauthn.User, error) {
+      userID, n := binary.Varint(userHandle)
+      ...
+      user, err = user_model.GetUserByID(ctx, userID)
+      ...
+      return wa.NewWebAuthnUser(ctx, user, parsedResponse.Response.AuthenticatorData.Flags), nil
+  }, *sessionData, parsedResponse)
+  ```
+- An additional check (`cred.Flags.UserPresent`) confirms the authenticator asserted user
+  presence — a passkey login without this flag is rejected with `400 Bad Request`.
+- The same clone-detection and `SignCount` update logic as the 2FA flow applies before
+  `handleSignInFull` completes the login.
+
+### Interaction with HTTP Basic Auth
+
+`Basic.Verify` (`services/auth/basic.go`) **categorically rejects** Basic authentication for any
+user with WebAuthn credentials registered — a header-only credential cannot satisfy a WebAuthn
+challenge, so such users are forced onto session login, OAuth2, or a Personal Access Token
+instead. Users enrolled in **only** TOTP (no WebAuthn) can still authenticate via Basic auth by
+supplying a valid one-time code in the `X-Gitea-OTP` header, verified through the same
+`ValidateAndConsumeTOTP` used by the web login flow.
+
+### Disabling 2FA
+
+`HasTwoFactorOrWebAuthn(ctx, id)` and `DisableTwoFactor(ctx, uid)` (both in
+`models/auth/twofactor.go`) provide unified check/disable-all helpers:
+
+```go
+func DisableTwoFactor(ctx context.Context, uid int64) (totp, webAuthn int64, err error) {
+    err = db.WithTx(ctx, func(ctx context.Context) error {
+        var e error
+        if totp, e = db.GetEngine(ctx).Where("uid = ?", uid).Delete(&TwoFactor{}); e != nil {
+            return e
+        }
+        webAuthn, e = db.GetEngine(ctx).Where("user_id = ?", uid).Delete(&WebAuthnCredential{})
+        return e
+    })
+    return totp, webAuthn, err
+}
+```
+
+Both deletions run inside a single transaction (`db.WithTx`) so a partial disable (e.g. TOTP
+removed but WebAuthn credentials left behind due to a mid-operation failure) cannot occur; the
+returned counts let the caller report exactly what was removed, and it is a safe no-op if the
+user has no 2FA enrolled at all.
+
+## Account Recovery — Password Reset Flow
+
+[`routers/web/auth/password.go`](../../routers/web/auth/password.go) implements the
+email-based recovery path, which itself must satisfy 2FA before it can change the password —
+otherwise 2FA would provide no protection against a compromised mailbox alone bypassing it.
+
+```mermaid
+flowchart TD
+    A["POST /user/forgot_password (email)"] --> B{MailService configured?}
+    B -->|no| C[404 — feature disabled]
+    B -->|yes| D["GetUserByEmail; if not found,\nstill show 'IsResetSent' (avoid account enumeration)"]
+    D --> E{User is Local or OAuth2 account?}
+    E -->|no, e.g. LDAP/PAM/SMTP-only| F["Show auth.non_local_account error\n(password reset doesn't apply to externally-authenticated accounts)"]
+    E -->|yes| G{Resend rate-limited?\ncache key MailResendLimit_username, 180s}
+    G -->|yes| H[Show 'resend limited', no new email]
+    G -->|no| I["mailer.SendResetPasswordMail(u)\nlink contains a signed time-limited code"]
+    I --> J["User clicks link: GET /user/recover_account?code=..."]
+    J --> K["VerifyUserTimeLimitCode(code, Purpose=ResetPassword)"]
+    K -->|invalid/expired| L[Show 'auth.invalid_code_forgot_password']
+    K -->|valid| M{User has TwoFactor enrolled?}
+    M -->|yes| N["Render form requiring passcode OR scratch_code\nbefore accepting a new password"]
+    M -->|no| O[Render new-password form directly]
+    N --> P["POST: ValidateAndConsumeTOTP or VerifyScratchToken"]
+    P -->|fail| Q[Re-render with auth.twofa_*_incorrect error]
+    P -->|success, scratch| R[Regenerate scratch token immediately]
+    O --> S
+    P -->|success| S["user_service.UpdateAuth:\nnew password + MustChangePassword=false"]
+    S --> T{Password policy violated?\nErrMinLength / ErrComplexity / ErrIsPwned}
+    T -->|yes| U[Re-render with specific password error]
+    T -->|no| V[handleSignIn — log the user in with the new password]
+```
+
+Key recovery-flow safeguards, verified in code:
+
+- **No account-enumeration leak**: whether or not the email matches a user, the response is the
+  same ("check your email") — `ForgotPasswdPost` returns the identical `IsResetSent` UI for a
+  nonexistent email as for a real one.
+- **Non-local accounts are explicitly rejected**: `!u.IsLocal() && !u.IsOAuth2()` blocks password
+  reset for LDAP/PAM/SMTP-backed accounts, since Gitea does not own their credential — the error
+  message `auth.non_local_account` directs the user to their actual identity provider instead.
+  OAuth2-backed accounts *are* allowed through, since Gitea still stores (and users may still
+  optionally set) a local password as a fallback.
+  See `commonResetPassword` and `ForgotPasswdPost` in `routers/web/auth/password.go`.
+- **Time-limited, purpose-scoped reset codes**: `VerifyUserTimeLimitCode` with
+  `Purpose: TimeLimitCodeResetPassword` ensures a code minted for password reset cannot be
+  replayed for some other time-limited purpose (e.g. email activation), and expires per
+  `setting.Service.ResetPwdCodeLives`.
+- **2FA is enforced on reset, not bypassed**: if the account has a `TwoFactor` record,
+  `ResetPasswdPost` requires a valid TOTP passcode (`ValidateAndConsumeTOTP`, so a captured code
+  cannot be replayed even here) or scratch token before `UpdateAuth` is ever called — an attacker
+  with only mailbox access to a 2FA-enrolled account cannot reset the password through email
+  alone.
+- **Password policy is still enforced on this path**: the new password goes through the same
+  `modules/auth/password` checks (`ErrMinLength`, `ErrComplexity`, `ErrIsPwned` against the
+  Have I Been Pwned breach corpus) as normal password-change, each surfaced with a specific,
+  actionable error message.
+- **Self-consistency check for already-signed-in users**: if the requester is already
+  authenticated as a *different* user than the one the code was issued for, `commonResetPassword`
+  refuses with `auth.reset_password_wrong_user` rather than silently resetting the wrong account.
+
+`MustChangePassword`/`MustChangePasswordPost` implement a related but distinct flow: an
+admin-forced password change (`user.MustChangePassword` flag) for an already-authenticated
+session, reusing the same password-policy validation but without the email/time-limited-code
+step since the user is already proven to control the account via an active session.
+
+## Related Pages
+
+- [Authentication Sources](auth-sources.md) — how `Basic`/`Session` interact with 2FA-enrolled
+  accounts before this page's flows even begin
+- [Authorization Model](authorization-model.md) — what a successfully 2FA-verified `ctx.Doer`
+  can subsequently do
+- [Access Tokens & OAuth2 Applications](tokens-and-oauth-apps.md) — PATs and OAuth2 tokens as
+  2FA-exempt (but otherwise fully scope-gated) alternative credentials
+- [Authentication & Authorization (deep-dive)](../08-services/auth-providers.md) — services-layer
+  context for how 2FA state feeds into the broader auth chain

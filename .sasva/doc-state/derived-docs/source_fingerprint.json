@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "type": "source_fingerprint",
+  "created_at": "2026-07-14T23:44:26.005480",
+  "workspace_root": "/Users/anuragk/Work/sasva-desktop-testing/gitea",
+  "output_dir": "derived-docs",
+  "source_dirs": [
+    "security-issues"
+  ],
+  "file_count": 0,
+  "files": {}
+}

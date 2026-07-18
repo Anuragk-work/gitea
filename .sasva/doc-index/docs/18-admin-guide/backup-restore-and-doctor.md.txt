@@ -1,0 +1,302 @@
+=== FILE: docs/18-admin-guide/backup-restore-and-doctor.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Backup, Restore & Doctor Gitea ships two CLI subcommand families dedicated to instance maintenance: `gitea dump` (backup) and `gitea doctor` (diagnose/fix/ recreate/convert). Both are plain `github.com/urfave/cli/v3` commands defined in `cmd/dump.go` and `cmd/doctor.go`, and both operate directly against the configured database and storage backends — they must be run on a host that can reach the same `app.
+
+# Backup, Restore & Doctor
+
+Gitea ships two CLI subcommand families dedicated to instance
+maintenance: `gitea dump` (backup) and `gitea doctor` (diagnose/fix/
+recreate/convert). Both are plain `github.com/urfave/cli/v3` commands
+defined in `cmd/dump.go` and `cmd/doctor.go`, and both operate directly
+against the configured database and storage backends — they must be run
+on a host that can reach the same `app.ini`, database, and repository
+storage as the running server (or against a copy of them).
+
+## `gitea dump` — Creating a Backup
+
+### Command Shape
+
+```go
+func newDumpCommand() *cli.Command {
+    return &cli.Command{
+        Name:   "dump",
+        Usage:  "Dump Gitea files and database",
+        Action: runDump,
+        Flags: []cli.Flag{ /* --file, --verbose, --quiet, --tempdir, --database, ... */ },
+    }
+}
+```
+
+Full flag reference (`cmd/dump.go`):
+
+| Flag | Alias | Effect |
+|---|---|---|
+| `--file <path>` | `-f` | Output file name; default `gitea-dump-{unix-timestamp}.zip`. `-` streams to stdout. |
+| `--type <fmt>` | | Archive format; overrides the extension-derived default. |
+| `--verbose` | `-V` | Log every file added to the archive. |
+| `--quiet` | `-q` | Only log warnings/errors (mutually exclusive with `--verbose`). |
+| `--tempdir <path>` | `-t` | Directory for the temporary DB dump file; defaults to `os.TempDir()`. |
+| `--database <type>` | `-d` | Cross-dump target SQL dialect (`sqlite3`/`mysql`/`mssql`/`postgres`), for migrating between database engines. |
+| `--skip-repository` | `-R` | Omit `RepoRootPath` (and LFS data) entirely. |
+| `--skip-log` | `-L` | Omit `Log.RootPath`. |
+| `--skip-custom-dir` | | Omit the `custom/` directory. |
+| `--skip-lfs-data` | | Omit LFS object blobs (repository Git data is still included). |
+| `--skip-attachment-data` | | Omit issue/PR/release attachment blobs. |
+| `--skip-package-data` | | Omit package registry blobs. |
+| `--skip-index` | | Omit the Bleve full-text search index directories. |
+| `--skip-db` | | Omit the database dump entirely. |
+
+### Supported Archive Formats
+
+`modules/dump/dumper.go` defines:
+
+```go
+var SupportedOutputTypes = []string{"zip", "tar", "tar.sz", "tar.gz", "tar.xz", "tar.bz2", "tar.br", "tar.lz4", "tar.zst"}
+```
+
+`PrepareFileNameAndType(argFile, argType)` resolves the final output name
+and type from whatever combination of `--file`/`--type` was given: if
+neither is set, it defaults to `zip` with a timestamped name; if only
+`--file` is given and its extension matches one of the supported suffixes,
+that suffix determines the type; an unrecognized combination returns an
+empty type, which `runDump` treats as fatal. `NewDumper` maps each type to
+a `mholt/archives` `ArchiverAsync` implementation (`archives.Zip`,
+`archives.Tar`, or a `CompressedArchive` wrapping `Tar` with the
+appropriate `Compression` codec) and runs the archive writer
+asynchronously against a channel of `ArchiveAsyncJob`s (`Dumper.jobs`), so
+files are compressed and written as they're discovered rather than being
+buffered entirely in memory first.
+
+### What Gets Dumped, in Order
+
+`runDump` (`cmd/dump.go`) assembles the archive in a fixed sequence:
+
+1. **`setting.MustInstalled()`** — refuses to run against an
+   uninitialized instance (no completed `/install` flow).
+2. **Repositories** (`repos/`) — the entire `setting.RepoRootPath` tree via
+   `dumper.AddRecursiveExclude`, unless `--skip-repository`.
+3. **LFS objects** (`data/lfs/`) — iterated object-by-object from
+   `storage.LFS` via `IterateObjects`, skipped automatically if
+   `setting.LFS.StartServer` is false, and independently skippable with
+   `--skip-lfs-data` even when LFS is enabled.
+4. **Database** (`gitea-db.sql`) — dumped to a temporary file with
+   `db.DumpDatabase(path, targetDBType)`, then added to the archive and
+   the temp file removed; `--database` lets you dump into a *different*
+   SQL dialect than the one currently configured, which is the supported
+   path for **migrating between database engines** (e.g. SQLite → MySQL):
+   restore the resulting SQL into the target engine, point a fresh
+   `app.ini` at it, then run `gitea doctor check` before going live. If
+   `--skip-db` is set, the dumper additionally calls
+   `GlobalExcludeAbsPath(setting.Database.Path)` so an on-disk SQLite file
+   living under `AppDataPath` isn't accidentally captured by the later
+   data-directory pass.
+5. **`app.ini`** (`app.ini`) — always included via `AddFileByPath`,
+   copied from `setting.CustomConf` (the actual config file that was
+   loaded, respecting `--config`/`GITEA_CUSTOM` overrides).
+6. **Custom directory** (`custom/`) — the whole `setting.CustomPath` tree
+   (templates overrides, custom locales, `public/` assets), unless
+   `--skip-custom-dir`; skipped automatically (with a log message, not an
+   error) if `CustomPath` happens to live *inside* `AppDataPath`, since
+   step 7 would otherwise duplicate it.
+7. **Application data directory** (`data/`) — `setting.AppDataPath`,
+   excluding whatever is dumped by more specific steps: the session
+   provider's file-store path (parsed out of
+   `setting.SessionConfig.ProviderConfig` when using the `file` session
+   provider), the search-index directories (if `--skip-index`),
+   `RepoRootPath`, LFS/Attachment/Packages/RepoArchive storage paths, and
+   `Log.RootPath` — each excluded here specifically so it isn't
+   double-counted against the dedicated steps above/below.
+8. **Attachments** (`data/attachments/`) — iterated from
+   `storage.Attachments`, unless `--skip-attachment-data`.
+9. **Packages** (`data/packages/`) — iterated from `storage.Packages`,
+   unless `--skip-package-data` or `setting.Packages.Enabled` is false.
+10. **Logs** (`log/`) — `setting.Log.RootPath`, unless `--skip-log`; this
+    step deliberately does not pre-check whether the directory exists so
+    that a genuinely-skipped dump is unambiguous in the log output either
+    way.
+
+Finally, unless the output was streamed to stdout (`--file -`), the
+archive file's permissions are tightened to `0600` — dumps routinely
+contain secrets (`app.ini`'s `SECRET_KEY`/`INTERNAL_TOKEN`, the database
+dump, LFS/attachment contents) and must not be left world-readable.
+
+> **External storage caveat**: if LFS/Attachments/Packages are configured
+> to use MinIO/S3 rather than local disk (see
+> [Getting Started & Configuration](../03-getting-started/README.md)),
+> `dump` still iterates and embeds every object's bytes through
+> `storage.Object.Stat()`/`AddFileByReader` — the dump remains
+> self-contained, but can become very large and slow for buckets with a
+> lot of data. Use the granular `--skip-*-data` flags to produce a
+> "config + database only" dump when object storage is backed up
+> separately (e.g. via the storage provider's own snapshot/replication
+> tooling).
+
+### Restoring from a Dump
+
+There is no single `gitea restore` command — restoration is the dump
+process run in reverse, manually:
+
+1. Stop the Gitea service.
+2. Unpack the archive to a scratch location.
+3. Restore `repos/` to the (new) `RepoRootPath`.
+4. Restore `data/lfs`, `data/attachments`, `data/packages` to their
+   respective storage backends (local paths or object storage, matching
+   whatever `app.ini` will point at).
+5. Import `gitea-db.sql` into a fresh, empty database of the target
+   engine (`mysql`/`psql`/`sqlite3 < gitea-db.sql`, per the dialect it was
+   dumped with).
+6. Restore `custom/` and the remainder of `data/` (minus the pieces
+   already restored in steps 3–4) to `CustomPath`/`AppDataPath`.
+7. Restore (or hand-merge) `app.ini` to the config path, updating any
+   paths/credentials that differ in the new environment (data directory
+   location, DB host, storage endpoint, `ROOT_URL`, etc.).
+8. Run `gitea doctor check --all` before starting the service, to catch
+   anything the manual restore missed.
+9. Start Gitea and confirm via `/-/admin` → *Self Check* and, ideally, the
+   [Monitoring & Observability](monitoring-and-observability.md) `/metrics`
+   endpoint.
+
+## `gitea doctor` — Diagnose, Fix, Recreate, Convert
+
+`cmd/doctor.go`'s `newDoctorCommand()` is a parent command with three
+children:
+
+```go
+Commands: []*cli.Command{
+    newDoctorCheckCommand(),   // "check": the diagnostics engine
+    newRecreateTableCommand(), // "recreate-table"
+    newDoctorConvertCommand(), // "convert"
+}
+```
+
+### `gitea doctor check` — the Checks Engine
+
+The check registry lives in `services/doctor` (package `doctor`), not
+`cmd`. Each check is a `*doctor.Check`:
+
+```go
+type Check struct {
+    Title                      string
+    Name                       string
+    IsDefault                  bool
+    Run                        func(ctx context.Context, logger log.Logger, autofix bool) error
+    AbortIfFailed              bool
+    SkipDatabaseInitialization bool
+    Priority                   int
+    InitStorage                bool
+}
+```
+
+Checks self-register at package-init time via `doctor.Register(&Check{...})`
+in `init()` functions spread across several files, and `doctor.Checks` is
+the resulting global slice. `runDoctorCheck` (`cmd/doctor.go`) resolves
+which checks to actually run from three flags:
+
+| Flag | Behavior |
+|---|---|
+| `--list` | Print a table of every registered check (name, title, whether it's a default) and exit — no checks are run. |
+| *(no flag)* | Run only checks with `IsDefault: true`. |
+| `--all` | Run every registered check, default or not. |
+| `--run <name>[,<name>...]` | Run exactly the named checks; combine with `--default` to also include the defaults. |
+| `--fix` | Pass `autofix: true` into every selected check's `Run`, letting checks that support remediation actually modify data/storage instead of only reporting. |
+| `--log-file <path>` / `-` / *(unset)* | Redirect verbose per-check logging to a file, stdout, or nowhere (default), independent of the summary output which always goes to stdout. |
+| `--color` / `-H` | Force-enable/disable ANSI color in the summary output. |
+
+`RunChecks` (`services/doctor/doctor.go`) sorts the selected checks by
+`Priority` (lower runs first; zero-priority checks sort last, after all
+explicitly-prioritized ones) via `SortChecks`, then runs them in order,
+lazily calling `db.InitEngine` before the first check that doesn't set
+`SkipDatabaseInitialization` and `storage.Init()` before the first check
+that sets `InitStorage` — so a purely filesystem-oriented check never pays
+the cost of opening a DB connection it doesn't need. If a check sets
+`AbortIfFailed` and returns an error, the whole run stops immediately
+instead of continuing to the next check.
+
+### The Full Check Catalog
+
+| Name | Title | Default | Fixable | Priority | Notes |
+|---|---|---|---|---|---|
+| `check-db-consistency` | Check consistency of database | No | Yes | 3 | Umbrella check running ~25 orphan-record sub-checks (below) |
+| `gc-lfs` | Garbage collect LFS | No | Yes | 1 | Fails fast with an error if LFS isn't enabled |
+| `storages` | Check if there are orphaned storage files | No | Yes | 1 | Runs all five storage sub-checks below via `All: true` |
+| `storage-attachments` | orphaned attachments in storage | No | Yes | 1 | |
+| `storage-lfs` | orphaned lfs files in storage | No | Yes | 1 | |
+| `storage-avatars` | orphaned avatars in storage | No | Yes | 1 | Covers both user avatars and repo avatars |
+| `storage-archives` | orphaned archives in storage | No | Yes | 1 | Repo `.zip`/`.tar.gz` download-archive cache |
+| `storage-packages` | orphaned package blobs in storage | No | Yes | 1 | |
+| `delete-orphaned-repos` | Repos with no existing owner | No | Yes | 4 | Deletes on-disk repo data too, via `repo_service.DeleteRepositoryDirectly` |
+| `hooks` | Check if hook files are up-to-date and executable | No | Yes | 6 | Regenerates Gitea's delegate hook scripts (see [Git Operations & Hooks](../10-git-integration/git-operations-and-hooks.md)) |
+| `recalculate-stars-number` | Recalculate Stars number for all user | No | Yes (fix-only) | 6 | No-op without `--fix`; always logs "no check available" otherwise |
+| `check-git-daemon-export-ok` | Check `git-daemon-export-ok` files | No | Yes | 8 | Keeps the anonymous `git://` export marker file in sync with repo visibility |
+| `check-commit-graphs` | Check commit-graphs | No | Yes | 9 | Writes missing `objects/info/commit-graph` files to speed up git operations |
+
+`check-db-consistency` (`services/doctor/dbconsistency.go`) is itself a
+list of ~25 `consistencyCheck` entries — each a `{Name, Counter, Fixer}`
+triple that counts orphaned rows with a `db.CountOrphanedObjects(subject,
+refObject, joinCond)` LEFT JOIN query and, when `--fix` is set, deletes
+them with `db.DeleteOrphanedObjects`. Covered relationships include
+labels/issue-labels without a repo, issues without a repo, pull requests
+without an issue or base repo, tracked time without an issue, attachments
+without an issue/release, `is_archived IS NULL` repositories, label
+comments referencing deleted/foreign labels, Actions runners/variables/
+secrets with an inconsistent `owner_id`, protected branches/branches/LFS
+locks/collaborations/access rows without a repo or user, OAuth2 grants/
+applications/authorization codes without an owning user/grant, stopwatches
+without a user or issue, and user redirects pointing at a deleted user.
+On PostgreSQL specifically, an extra `db.CountBadSequences` check detects
+sequence values that have drifted behind the actual max row ID (a known
+failure mode after certain restore/migration paths) and
+`db.FixBadSequences` realigns them.
+
+Note that many of the most fundamental checks — is the app installed, is
+the configured Git binary version supported, are required directories
+writable — are performed automatically by `setting.LoadSettings()`/
+`git.InitFull()` during normal startup and surfaced as
+`setting.StartupProblems`, which is why they show up on the *Admin Panel*
+dashboard and self-check page (see
+[Admin Panel & Operations](admin-panel-and-operations.md#self-check-selfcheck--selfcheckpost))
+rather than as separate named `doctor` checks.
+
+### `gitea doctor recreate-table`
+
+```
+gitea doctor recreate-table [TABLE]...
+```
+
+Forces Xorm to drop and recreate the named table(s) (or every table, if
+none are named) from their current Go struct definitions, copying
+existing data across in the process. This repairs schema drift caused by
+manual database edits or interrupted migrations — column defaults,
+types, and indexes end up exactly matching what the running Gitea version
+expects. `runRecreateTable` first runs `migrations.EnsureUpToDate` to
+guarantee the migration version table itself is current before touching
+any table structure, and accepts a `--debug` flag to echo every SQL
+statement it issues. **Always back up the database with `gitea dump`
+first** — this is a structural, in-place operation with no automatic undo.
+
+### `gitea doctor convert`
+
+Converts the database's charset/collation in place (implemented in
+`cmd/doctor_convert.go`) — primarily used for MySQL installations created
+with an incorrect or legacy charset that need to move to
+`utf8mb4`/`utf8mb4_general_ci` (or another target collation) without a
+full dump/restore cycle. As with `recreate-table`, take a backup first.
+
+## Recommended Operational Cadence
+
+| Task | Suggested frequency | Command |
+|---|---|---|
+| Full backup | Daily (or per your RPO) before any maintenance window | `gitea dump --tempdir /fast/local/disk` |
+| Default doctor checks | After every upgrade, before returning to production | `gitea doctor check` |
+| Storage orphan checks | Periodically (they can be slow on large object stores) | `gitea doctor check --run storages` |
+| DB consistency check | After any manual DB edit, restore, or suspected data corruption | `gitea doctor check --run check-db-consistency --fix` |
+| Hook regeneration | After any Gitea binary upgrade that changes hook script templates | `gitea doctor check --run hooks --fix` |
+
+## Where to Go Next
+
+| If you want to... | Go to |
+|---|---|
+| Trigger the same sync/cron tasks from a browser instead of the CLI | [Admin Panel & Operations](admin-panel-and-operations.md) |
+| Watch instance health continuously rather than one-shot checking it | [Monitoring & Observability](monitoring-and-observability.md) |
+| See the full CLI subcommand tree (`admin`, `web`, `serv`, etc.) | [CLI & Admin Operations](../16-cli-admin/cli-commands.md) |
+| Understand storage backend configuration (local vs. S3/MinIO) | [Settings Catalog](../04-configuration/settings-catalog.md) |

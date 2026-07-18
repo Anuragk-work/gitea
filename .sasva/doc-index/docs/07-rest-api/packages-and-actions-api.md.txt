@@ -1,0 +1,410 @@
+=== FILE: docs/07-rest-api/packages-and-actions-api.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Packages & Actions API Gitea exposes two large families of HTTP endpoints that live **outside** the versioned `/api/v1` tree described in [API v1 Overview](api-v1-overview.md): - **`routers/api/packages/*`** — ecosystem-specific package-registry protocol endpoints (npm, Maven, Docker/OCI, NuGet, Cargo, PyPI, Debian, RPM, Conan, Helm, Go proxy, Terraform state, etc.), mounted at `/api/packages/{owner}/...` and, for the OCI container registry, at the site root `/v2`.
+
+# Packages & Actions API
+
+Gitea exposes two large families of HTTP endpoints that live **outside** the versioned `/api/v1` tree described in [API v1 Overview](api-v1-overview.md):
+
+- **`routers/api/packages/*`** — ecosystem-specific package-registry protocol endpoints (npm, Maven, Docker/OCI, NuGet, Cargo, PyPI, Debian, RPM, Conan, Helm, Go proxy, Terraform state, etc.), mounted at `/api/packages/{owner}/...` and, for the OCI container registry, at the site root `/v2`.
+- **`routers/api/actions/*`** — the machine-to-machine API used by Actions **runners** (registration, task polling, log streaming) and by workflow steps/jobs to upload **artifacts** and **job summaries**, mounted at `/api/actions*`.
+
+Both families sit alongside (not inside) `routers/api/v1`, are mounted directly by [`routers/init.go`](../../routers/init.go), and use their own authentication schemes rather than the standard API token/OAuth2 chain used by `/api/v1` — because their clients are package-manager CLIs (`npm`, `cargo`, `docker`, `dotnet nuget`, ...) and Actions runner binaries, not typical REST API consumers.
+
+> This page complements [API v1 Overview](api-v1-overview.md), which documents the Gitea-native package **management** API at `/api/v1/packages/{username}/...` (list/inspect/delete packages — used by the web UI and `tea` CLI). This page documents the **registry protocol** implementations that the package-manager clients themselves talk to.
+
+## Mounting in `routers/init.go`
+
+```go
+func NormalRoutes() *web.Router {
+    r := web.NewRouter()
+    ...
+    r.Mount("/", web_routers.Routes())
+    r.Mount("/api/v1", apiv1.Routes())
+    r.Mount("/api/internal", private.Routes())
+
+    if setting.Packages.Enabled {
+        // This implements package support for most package managers
+        r.Mount("/api/packages", packages_router.CommonRoutes())
+        // This implements the OCI API; this container registry "/v2" endpoint must be
+        // in the root of the site (reverse proxies must map https://host/v2 to Gitea).
+        r.Mount("/v2", packages_router.ContainerRoutes())
+    }
+
+    if setting.Actions.Enabled {
+        prefix := "/api/actions"
+        r.Mount(prefix, actions_router.Routes(prefix))
+
+        prefix = "/api/actions_pipeline"
+        r.Mount(prefix, actions_router.ArtifactsRoutes(prefix))
+        prefix = actions_router.ArtifactV4RouteBase // "/twirp/github.actions.results.api.v1.ArtifactService"
+        r.Mount(prefix, actions_router.ArtifactsV4Routes(prefix))
+    }
+    ...
+}
+```
+
+Both the packages routes and the Actions routes are **feature-flagged**: they are only mounted when `[packages].ENABLED` / `[actions].ENABLED` are true in `app.ini` (`setting.Packages.Enabled`, `setting.Actions.Enabled`). When disabled, the corresponding paths 404 via the global `NotFound` handler at the bottom of `NormalRoutes()`.
+
+## Packages Registry API (`routers/api/packages`)
+
+### Code Layout
+
+Per [`routers/api/packages/README.md`](../../routers/api/packages/README.md), each package ecosystem's implementation is split across four layers so that logic can be reused:
+
+| Layer | Package | Responsibility |
+|---|---|---|
+| Models | `models/packages`, `models/packages/<type>` | `Package` / `PackageVersion` / `PackageFile` / `PackageBlob` / `PackageProperty` and type-specific query helpers |
+| Modules | `modules/packages`, `modules/packages/<type>` | Metadata extraction from uploaded package files (e.g. parsing a `.nupkg`, a `package.json`, a Debian control file) |
+| Routers | `routers/api/packages`, `routers/api/packages/<type>` | HTTP route registration + request/response handling — the layer this page documents |
+| Services | `services/packages`, `services/packages/<type>` | Shared upload/download/delete helpers called by routers (`CreatePackageAndAddFile`, `CreatePackageOrAddFileToExisting`, `AddFileToExistingPackage`, blob download, version removal) |
+
+The underlying model relationship is:
+
+```
+Package <1---*> PackageVersion <1---*> PackageFile <*---1> PackageBlob
+```
+
+`PackageBlob` is content-addressed and can be shared by multiple `PackageFile`s (e.g. identical files across versions), which is how Gitea deduplicates package storage.
+
+### `CommonRoutes()` — Non-Container Ecosystems
+
+`packages_router.CommonRoutes()` (in `routers/api/packages/api.go`) returns a `*web.Router` mounted at `/api/packages` and shared by every ecosystem **except** the OCI container registry. Its top-level shape is:
+
+```go
+func CommonRoutes() *web.Router {
+    r := web.NewRouter()
+    r.AfterRouting(context.PackageContexter())
+
+    verifyAuth(r, []auth.Method{
+        &auth.OAuth2{},
+        &auth.Basic{},
+        &nuget.Auth{},
+        &Auth{},      // routers/api/packages/auth.go — Bearer-token auth used by conan/container
+        &chef.Auth{},
+    }, verifyAuthOptions{})
+
+    r.Group("/{username}", func() {
+        r.Group("/alpine", ...)     // reqPackageAccess(read) at group level, write-gated per mutating route
+        r.Group("/arch", ...)
+        r.Group("/cargo", ...)
+        r.Group("/chef", ...)
+        r.Group("/composer", ...)
+        r.Group("/conan", ...)
+        r.Group("/cran", ...)
+        r.Group("/debian", ...)
+        r.Group("/go", ...)         // Go module proxy (goproxy)
+        r.Group("/generic", ...)
+        r.Group("/helm", ...)
+        r.Group("/maven", ...)
+        r.Group("/nuget", ...)
+        r.Group("/npm", ...)
+        r.Group("/pub", ...)
+        r.Group("/pypi", ...)
+        r.Group("/rubygems", ...)
+        r.Group("/swift", ...)
+        r.Group("/terraform/state/{name}", ...)
+        r.Group("/vagrant", ...)
+    }, context.UserAssignmentWeb(), context.PackageAssignment())
+
+    return r
+}
+```
+
+Every `/{username}/<ecosystem>` sub-tree is protected by:
+
+1. **`context.UserAssignmentWeb()`** — resolves `{username}` into `ctx.ContextUser` (the package owner — a user or organization), 404-ing if it doesn't exist.
+2. **`context.PackageAssignment()`** — computes `ctx.Package` (`*context.Package{Owner, AccessMode, Descriptor}`) by determining the caller's access mode against that owner (public/private/limited visibility rules, collaborator/team permissions for orgs) — implemented in `services/context/package.go`.
+3. **`reqPackageAccess(perm.AccessMode)`** — a router-local middleware (`routers/api/packages/api.go`) applied per-group (read) and per-mutating-route (write) that:
+   - if the caller authenticated with a **personal access token**, requires the token to carry `read:package` / `write:package` scope (`AccessTokenScopeReadPackage` / `AccessTokenScopeWritePackage`);
+   - additionally rejects **public-only** scoped tokens against non-public package owners;
+   - otherwise falls back to `ctx.Package.AccessMode`, allowing site admins through regardless.
+
+```mermaid
+graph TD
+    A["/api/packages/{username}/<ecosystem>/..."] --> B["context.PackageContexter() (AfterRouting)"]
+    B --> C["verifyAuth: OAuth2 / Basic / nuget.Auth / packages.Auth / chef.Auth"]
+    C --> D["context.UserAssignmentWeb() -> ctx.ContextUser"]
+    D --> E["context.PackageAssignment() -> ctx.Package{Owner, AccessMode}"]
+    E --> F["reqPackageAccess(Read|Write)"]
+    F --> G["ecosystem handler (e.g. npm.UploadPackage)"]
+    G --> H["services/packages: CreatePackageAndAddFile / AddFileToExistingPackage / ..."]
+    H --> I["models/packages: Package / PackageVersion / PackageFile / PackageBlob"]
+```
+
+### Ecosystem Route Reference
+
+| Ecosystem | Path prefix (under `/{username}/`) | Notable endpoints | Go package |
+|---|---|---|---|
+| Alpine (`apk`) | `/alpine/{branch}/{repository}/{architecture}` | `GET /key`, `PUT` upload, `GET /APKINDEX.tar.gz`, `GET`/`DELETE /{filename}` | `alpine` |
+| Arch (`pacman`) | `/arch` | `GET,HEAD /repository.key`, `PUT` upload, `GET,HEAD /{repository}/{architecture}/{filename}`, `DELETE /{repository}/{name}/{version}/{architecture}` (path-group routing via `r.PathGroup`) | `arch` |
+| Cargo (Rust crates) | `/cargo` | `GET /api/v1/crates` search, `PUT /api/v1/crates/new` upload, `GET .../{version}/download`, `DELETE .../yank` / `PUT .../unyank`, `GET .../owners`, `GET /config.json`, `GET /1..3/{package}` sparse index | `cargo` |
+| Chef | `/chef/api/v1` | `GET /universe`, `GET /search`, `GET,POST /cookbooks`, `GET /cookbooks/{name}`, `GET,DELETE /cookbooks/{name}/versions/{version}`, `GET .../download` | `chef` |
+| Composer (PHP) | `/composer` | `GET /packages.json`, `/search.json`, `/list.json`, `/p2/{vendor}/{project}(~dev).json`, `GET /files/{package}/{version}/{filename}`, `PUT` upload | `composer` |
+| Conan (C/C++) | `/conan/v1`, `/conan/v2` | Recipe/package snapshot, upload/download URLs, `POST users/authenticate`, revisions (v2 only), delete recipe/package | `conan` |
+| CRAN (R) | `/cran/src/contrib`, `/cran/bin` | Source/binary package listing and download | `cran` |
+| Debian (`apt`) | `/debian` | Release/`Packages`/pool file serving, `PUT` upload, `DELETE` | `debian` |
+| Go proxy (`GOPROXY`) | `/go` | `GET /{name}/@v/list`, `/@v/{version}.info`, `.mod`, `.zip` | `goproxy` |
+| Generic | `/generic/{packagename}/{packageversion}/{filename}` | `HEAD,GET` download, `PUT` upload, `DELETE` file/package — the simplest, catch-all binary-asset registry | `generic` |
+| Helm | `/helm` | `GET /index.yaml`, `GET /{filename}`, `POST /api/charts` upload | `helm` |
+| Maven | `/maven/*` | `PUT`/`GET`/`HEAD` on the full Maven repository layout path (`groupId/artifactId/version/...`) | `maven` |
+| npm | `/npm/@{scope}/{id}`, `/npm/{id}` | `GET,PUT` package metadata (`npm publish`), `GET,PUT,DELETE` tarball, dist-tags, `npm unpublish` | `npm` |
+| NuGet | `/nuget` | V2 OData feed (`Packages()`, `FindPackagesById()`, `Search()`) **and** V3 JSON feed (`index.json`, `query`, `registration/{id}`, `package/{id}`), symbol package upload/download | `nuget` |
+| Pub (Dart) | `/pub` | Package version listing/upload/download per the `pub.dev` API shape | `pub` |
+| PyPI | `/pypi` | `GET /simple/{package}/`, `POST` upload (`twine upload`) | `pypi` |
+| RPM (`yum`/`dnf`) | `/rpm` | Repo metadata + package file serving, upload/delete | `rpm` |
+| RubyGems | `/rubygems` | `GET /api/v1/dependencies`, gem download, `POST /api/v1/gems` upload, `DELETE /api/v1/gems/yank` | `rubygems` |
+| Swift | `/swift` | Swift Package Manager registry API (manifests, source archives, `/lock` for identity resolution) | `swift` |
+| Terraform (remote state) | `/terraform/state/{name}` | `GET`/`POST`/`DELETE` state, `GET,DELETE /versions/{serial}`, `POST,DELETE /lock` — matches GitLab's Terraform-state protocol | `terraform` |
+| Vagrant | `/vagrant` | Box metadata + `PUT` upload | `vagrant` |
+| Conda | `/conda` (registered but not shown above — same pattern) | Channel/`repodata.json` + package file serving | `conda` |
+
+> Route implementations frequently use `r.PathGroup(...)` with `g.MatchPath` / `g.PatternRegexp` instead of chi-style named parameters when a segment of the URL is itself a slash-delimited path (e.g. Arch's `{repository:*}`, Maven's `/*`, Docker image names) — this is why Arch, Maven, and the container registry look structurally different from the rest of the table.
+
+### Authentication for the Non-Container Registries
+
+`verifyAuth()` (`routers/api/packages/api.go`) builds an `auth.Group` and calls `.Verify()` in an `AfterRouting` hook, mirroring — but independent from — the `/api/v1` auth chain:
+
+| Method | Source | Applies to |
+|---|---|---|
+| `auth.OAuth2{}` | `Authorization: Bearer <oauth2-token>` | All ecosystems |
+| `auth.Basic{}` | `Authorization: Basic <user:token>` | All ecosystems (most CLIs default to this, e.g. `.npmrc`, `~/.cargo/credentials`) |
+| `nuget.Auth{}` | NuGet-specific header/query convention | NuGet only |
+| `packages.Auth{}` (`routers/api/packages/auth.go`) | Bearer token minted by `services/packages.ParseAuthorizationRequest` | Conan, container (see below) |
+| `chef.Auth{}` | Chef's signed-header scheme | Chef only |
+| `auth.ReverseProxy{}` (conditional) | Reverse-proxy identity header | All, only if `[service].ENABLE_REVERSE_PROXY_AUTH` |
+
+`packages.Auth.Verify()` special-cases two synthetic identities:
+
+- **Ghost user** (`user_model.GhostUserID`) — only honored when `AllowGhostUser: true` (used by the container registry to allow anonymous/public pulls with a short-lived scoped token).
+- **Actions user** (`user_model.ActionsUserID`) — lets an Actions job authenticate as the special Actions bot identity when publishing packages from CI (`ACTIONS_RUNTIME_TOKEN`-style flow), carrying an `ActionsUserTaskID` for auditing.
+
+If the parsed token carries a `Scope`, `Auth.Verify()` stashes `IsApiToken=true` / `ApiTokenScope` into the auth `DataStore`, which is exactly what `reqPackageAccess()` later inspects to enforce `read:package`/`write:package` scope — the same scope-checking logic used by `/api/v1`, reused here without going through the `/api/v1` router at all.
+
+### `ContainerRoutes()` — OCI / Docker Registry
+
+The container (Docker/OCI) registry cannot live under `/api/packages` because the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) hard-codes the path prefix `/v2/`. `packages_router.ContainerRoutes()` therefore returns a router mounted at the **site root** `/v2`:
+
+```go
+func ContainerRoutes() *web.Router {
+    r := web.NewRouter()
+    r.AfterRouting(context.PackageContexter())
+
+    verifyAuth(r, []auth.Method{
+        &auth.Basic{},
+        &Auth{AllowGhostUser: true}, // lets anonymous pulls of public images get a Ghost-user token
+    }, verifyAuthOptions{
+        afterAuthCallback: func(ctx *context.Context, err error) {
+            if err != nil {
+                container.APIUnauthorizedError(ctx) // OCI-shaped 401 + WWW-Authenticate, not a generic redirect
+            }
+        },
+    })
+
+    r.Get("", container.ReqContainerAccess, container.DetermineSupport)      // GET /v2/ — API version probe
+    r.Group("/token", func() {
+        r.Get("", container.Authenticate)                 // docker login token endpoint
+        r.Post("", container.AuthenticateNotImplemented)
+    })
+    r.Get("/_catalog", container.ReqContainerAccess, container.GetRepositoryList)
+    r.Group("/{username}", func() {
+        r.PathGroup("/*", func(g *web.RouterPathGroup) {
+            g.MatchPath("POST",   "/<image:*>/blobs/uploads", reqPackageAccess(perm.AccessModeWrite), container.VerifyImageName, container.PostBlobsUploads)
+            g.MatchPath("GET",    "/<image:*>/tags/list", container.VerifyImageName, container.GetTagsList)
+            // ... blob upload session (GET/PATCH/PUT/DELETE by upload UUID) ...
+            g.MatchPath("HEAD",   "/<image:*>/blobs/<digest>", container.VerifyImageName, container.HeadBlob)
+            g.MatchPath("GET",    "/<image:*>/blobs/<digest>", container.VerifyImageName, container.GetBlob)
+            g.MatchPath("DELETE", "/<image:*>/blobs/<digest>", container.VerifyImageName, reqPackageAccess(perm.AccessModeWrite), container.DeleteBlob)
+            g.MatchPath("HEAD",   "/<image:*>/manifests/<reference>", container.VerifyImageName, container.HeadManifest)
+            g.MatchPath("GET",    "/<image:*>/manifests/<reference>", container.VerifyImageName, container.GetManifest)
+            g.MatchPath("PUT",    "/<image:*>/manifests/<reference>", container.VerifyImageName, reqPackageAccess(perm.AccessModeWrite), container.PutManifest)
+            g.MatchPath("DELETE", "/<image:*>/manifests/<reference>", container.VerifyImageName, reqPackageAccess(perm.AccessModeWrite), container.DeleteManifest)
+        })
+    }, container.ReqContainerAccess, context.UserAssignmentWeb(), context.PackageAssignment(), reqPackageAccess(perm.AccessModeRead))
+
+    return r
+}
+```
+
+Key differences from `CommonRoutes()`:
+
+- **`/{image:*}` path-group matching** — image names are themselves slash-delimited (e.g. `myorg/backend/api`), so the router uses `r.PathGroup` + `g.MatchPath`/`g.MatchPattern` instead of a fixed segment count.
+- **Blob-upload session lifecycle** — `POST .../blobs/uploads` starts a resumable upload and returns a `{uuid}`; subsequent `GET`/`PATCH`/`PUT`/`DELETE` on `.../blobs/uploads/{uuid}` (matched via `g.PatternRegexp`) stream/append/finalize/cancel the upload, per the OCI chunked-upload protocol.
+- **`container.APIUnauthorizedError`** replaces the default `afterAuthCallback` so that failed auth returns the OCI-mandated `401` + `WWW-Authenticate: Bearer realm="…"` header shape that `docker`/`podman` expect, rather than a Gitea-style JSON error.
+- **Content Discovery / Referrers** (OCI 1.1 `GET /v2/.../referrers/{digest}`) is explicitly marked `// TODO: not implemented yet` in the source.
+
+## Actions API (`routers/api/actions`)
+
+The Actions API is not a single router — `routers/api/actions.Routes(prefix)` only wires up the **runner** gRPC/Connect service and the **ping** health-check service. Artifact upload/download and job-summary upload are separate routers mounted at different prefixes, because they use plain REST semantics rather than Connect RPC.
+
+```go
+// routers/api/actions/actions.go
+func Routes(prefix string) *web.Router {
+    m := web.NewRouter()
+
+    path, handler := ping.NewPingServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    path, handler = runner.NewRunnerServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    return m
+}
+```
+
+Mounted (see above) at `/api/actions`, this exposes two [Connect RPC](https://connectrpc.com/) (gRPC/gRPC-Web/JSON-over-HTTP-compatible) services generated from the `actions-proto-go` protobuf definitions:
+
+### `ping.PingService`
+
+A trivial health/handshake check (`Ping(PingRequest{Data}) -> PingResponse{Data}`) used by runners to verify connectivity and protocol compatibility before registering.
+
+### `runner.RunnerService`
+
+The core runner protocol, implemented in `routers/api/actions/runner/runner.go` as `Service` (`var _ runnerv1connect.RunnerServiceClient = (*Service)(nil)`):
+
+| RPC | Purpose |
+|---|---|
+| `Register` | Exchange a one-time **registration token** (`actions_model.GetRunnerToken`) for a persistent runner identity (`UUID` + `Token`). Validates the token is active and, if scoped to an owner/repo, that it still exists. Creates the `ActionRunner` row and marks the registration token used. |
+| `Declare` | Runner announces its capabilities/labels/version after (re)connecting. |
+| `FetchTask` | Long-poll style: runner asks for the next queued job matching its labels; server assigns and returns a `Task`. |
+| `UpdateTask` | Runner reports task state transitions (running/success/failure/cancelled) and step outcomes. |
+| `UpdateLog` | Runner streams log lines for the currently executing task, in chunks. |
+
+Every RPC **except `Register`** is authenticated by a Connect **unary interceptor** (`withRunner` in `interceptor.go`) rather than the standard Gitea auth middleware chain, because Connect RPC doesn't route through `services/context`:
+
+```go
+var withRunner = connect.WithInterceptors(connect.UnaryInterceptorFunc(func(unaryFunc connect.UnaryFunc) connect.UnaryFunc {
+    return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+        if getMethodName(request) == "Register" {
+            return unaryFunc(ctx, request) // no runner identity to check yet
+        }
+        uuid := request.Header().Get("x-runner-uuid")
+        token := request.Header().Get("x-runner-token")
+
+        runner, err := actions_model.GetRunnerByUUID(ctx, uuid)
+        // ... constant-time token-hash comparison, else Unauthenticated ...
+
+        // Debounced LastActive/LastOnline heartbeats to bound DB write volume
+        // from high-frequency UpdateTask/UpdateLog calls.
+        ctx = context.WithValue(ctx, runnerCtxKey{}, runner)
+        return unaryFunc(ctx, request)
+    }
+}))
+```
+
+The runner identifies itself on every call via the `x-runner-uuid` / `x-runner-token` headers; the interceptor validates the token hash with `crypto/subtle.ConstantTimeCompare` (timing-attack resistant) and injects the resolved `*actions_model.ActionRunner` into the request context via `runner.GetRunner(ctx)` for handlers to use. `LastActive`/`LastOnline` timestamps are updated but **debounced** (`ShouldPersistLastActive`/`ShouldPersistLastOnline`) since `UpdateTask`/`UpdateLog` can fire many times per second during log streaming — writing on every call would be a major source of database load.
+
+```mermaid
+graph TD
+    A["Runner binary"] -->|"Register(token, name, labels)"| B["RunnerService.Register"]
+    B --> C["ActionRunner row created + UUID/Token issued"]
+    A -->|"x-runner-uuid / x-runner-token headers"| D["withRunner interceptor"]
+    D -->|"GetRunnerByUUID + constant-time hash check"| E["Unauthenticated if mismatch"]
+    D --> F["Declare / FetchTask / UpdateTask / UpdateLog"]
+    F --> G["actions_model.ActionRunner / ActionTask / ActionTaskStep"]
+```
+
+### Artifacts & Job Summaries (`ArtifactsRoutes`, `ArtifactsV4Routes`)
+
+Unlike the runner protocol, artifact upload/download reimplements (a subset of) the **GitHub Actions Artifacts REST API**, because `actions/upload-artifact`/`actions/download-artifact` and the `actions/toolkit` runtime speak plain HTTP/JSON, not Connect RPC.
+
+**v1/legacy protocol** — `ArtifactsRoutes(prefix)`, mounted at `/api/actions_pipeline`:
+
+```go
+const artifactRouteBase = "/_apis/pipelines/workflows/{run_id}/artifacts"
+
+func ArtifactsRoutes(prefix string) *web.Router {
+    m := web.NewRouter()
+    m.AfterRouting(ArtifactContexter())
+
+    r := artifactRoutes{prefix: prefix, fs: storage.ActionsArtifacts}
+
+    m.Group(artifactRouteBase, func() {
+        m.Combo("").Get(r.listArtifacts).Post(r.getUploadArtifactURL).Patch(r.confirmUploadArtifact)
+        m.Put("/{artifact_hash}/upload", r.uploadArtifact)
+        m.Get("/{artifact_hash}/download_url", r.getDownloadArtifactURL)
+        m.Get("/{artifact_id}/download", r.downloadArtifact)
+    })
+
+    m.Put(jobSummaryRouteBase, uploadJobSummary) // GITHUB_STEP_SUMMARY equivalent
+    return m
+}
+```
+
+Flow: `POST .../artifacts` (with `{"Type":"actions_storage","Name":"artifact"}`) returns a `fileContainerResourceUrl`; the client then `PUT`s one or more content-hash-addressed chunks to `.../artifacts/{artifact_hash}/upload` (validated with `x-tfs-filelength`/`content-range`/`x-actions-results-md5` headers) and finally `PATCH`es the collection endpoint to merge chunks and persist the artifact to `storage.ActionsArtifacts`. Downloads reverse the process: `GET .../artifacts` lists available artifacts with a `fileContainerResourceUrl` per artifact, `GET .../artifacts/{artifact_id}/download` streams the file.
+
+**v4 / Twirp protocol** — `ArtifactsV4Routes(prefix)`, mounted at `ArtifactV4RouteBase = "/twirp/github.actions.results.api.v1.ArtifactService"` — implements the newer [Twirp](https://twitchtv.github.io/twirp/)-style JSON-RPC-over-HTTP protocol that current `actions/upload-artifact@v4`/`download-artifact@v4` actions use:
+
+```go
+func ArtifactsV4Routes(prefix string) *web.Router {
+    m := web.NewRouter()
+    r := artifactV4Routes{prefix: prefix, fs: storage.ActionsArtifacts}
+
+    m.Group("", func() {
+        m.Post("CreateArtifact", r.createArtifact)
+        m.Post("FinalizeArtifact", r.finalizeArtifact)
+        m.Post("ListArtifacts", r.listArtifacts)
+        m.Post("GetSignedArtifactURL", r.getSignedArtifactURL)
+        m.Post("DeleteArtifact", r.deleteArtifact)
+    }, ArtifactContexter())
+    m.Group("", func() {
+        m.Put("UploadArtifact", r.uploadArtifact)
+        m.Get("DownloadArtifact", r.downloadArtifact)
+    }, ArtifactV4Contexter())
+
+    return m
+}
+```
+
+`CreateArtifact`/`FinalizeArtifact`/`GetSignedArtifactURL` operate on the standard `*ArtifactContext` (task resolved via the Actions runtime token used by the workflow job), while `UploadArtifact`/`DownloadArtifact` use a separate `ArtifactV4Contexter()` because those two endpoints are reached via a **signed URL** (`buildSignature`/`buildArtifactURL`, HMAC-style signature over `endpoint + expires + artifactName + taskID + artifactID`) rather than the runtime token — the signed URL is what `GetSignedArtifactURL` hands back to the workflow runner so it can `PUT`/`GET` the blob directly without re-authenticating.
+
+**Job summaries** (`job_summary.go`) — `PUT /api/actions_pipeline/_apis/pipelines/workflows/{run_id}/jobs/{job_id}/steps/{step_index}/summary` implements the `GITHUB_STEP_SUMMARY` mechanism: a workflow step writes Markdown to a special file, the runner `PUT`s its content here, and Gitea stores it via `actions_model.UpsertActionRunJobSummary` (capped by `MaxJobSummarySize`, with an aggregate-size limit `ErrJobSummaryAggregateExceeded`); an **empty body clears** the previously stored summary for that step (`DeleteActionRunJobSummary`). Only `Content-Type: text/markdown` (or no/`application/octet-stream` content type, defaulted to markdown) is accepted.
+
+```mermaid
+graph LR
+    A["Workflow job runtime"] -->|"POST artifacts (v1) / CreateArtifact (v4)"| B["ArtifactsRoutes / ArtifactsV4Routes"]
+    B -->|"PUT chunks + PATCH confirm (v1) or signed PUT UploadArtifact (v4)"| C["storage.ActionsArtifacts"]
+    A -->|"PUT .../steps/{i}/summary"| D["uploadJobSummary"]
+    D --> E["actions_model.UpsertActionRunJobSummary"]
+```
+
+## The Three API Surfaces at a Glance
+
+```mermaid
+graph TD
+    ROOT["Gitea HTTP Router (routers/init.go: NormalRoutes)"]
+
+    ROOT --> V1["/api/v1  (routers/api/v1)"]
+    ROOT --> PKG["/api/packages/{owner}/...  +  /v2 (OCI)  (routers/api/packages)"]
+    ROOT --> ACT["/api/actions*  (routers/api/actions)"]
+
+    V1 --> V1a["Repos, Orgs, Users, Admin, Notifications, Token, Settings"]
+    V1 --> V1b["/api/v1/packages/{username}/... — Gitea package MANAGEMENT API<br/>(list/inspect/delete — used by Web UI / tea CLI)"]
+    V1 --> V1c["Auth: BasicAuth, AuthorizationHeaderToken (recommended),<br/>Token/AccessToken (deprecated), OAuth2, HTTPSign, Sudo, TOTP"]
+
+    PKG --> PKGa["/api/packages/{owner}/<ecosystem>/... — npm, Maven, NuGet,<br/>Cargo, PyPI, Debian, RPM, Conan, Helm, Go proxy, Terraform, ..."]
+    PKG --> PKGb["/v2/{owner}/<image>/... — OCI container registry (ContainerRoutes)"]
+    PKG --> PKGc["Auth: OAuth2, Basic, nuget.Auth, packages.Auth (Bearer),<br/>chef.Auth — reuses read:package/write:package token scopes"]
+
+    ACT --> ACTa["/api/actions — RunnerService + PingService (Connect RPC)"]
+    ACT --> ACTb["/api/actions_pipeline — Artifacts v1 (legacy) + job summaries"]
+    ACT --> ACTc["/twirp/....ArtifactService — Artifacts v4 (Twirp)"]
+    ACT --> ACTd["Auth: x-runner-uuid/x-runner-token (runner calls),<br/>Actions runtime token / HMAC-signed URLs (artifact upload/download)"]
+
+    style V1 fill:#cde,stroke:#333
+    style PKG fill:#dfd,stroke:#333
+    style ACT fill:#fdd,stroke:#333
+```
+
+| Surface | Mount point(s) | Router entry point | Feature flag | Primary clients | Auth model |
+|---|---|---|---|---|---|
+| REST API v1 | `/api/v1` | `routers/api/v1.Routes()` | always on | Any HTTP client, `tea` CLI, Web UI (AJAX) | Basic, `Authorization: token`, deprecated query tokens, OAuth2, HTTPSign, Sudo, TOTP |
+| Packages registries | `/api/packages`, `/v2` | `routers/api/packages.CommonRoutes()` / `.ContainerRoutes()` | `[packages].ENABLED` | `npm`, `cargo`, `docker`/`podman`, `dotnet nuget`, `pip`, `helm`, `terraform`, ... | OAuth2, Basic, ecosystem-specific bearer/signed schemes; `read:package`/`write:package` token scope |
+| Actions | `/api/actions`, `/api/actions_pipeline`, `/twirp/...ArtifactService` | `routers/api/actions.Routes()` / `.ArtifactsRoutes()` / `.ArtifactsV4Routes()` | `[actions].ENABLED` | Gitea Actions runner binary, `actions/upload-artifact`/`download-artifact` steps | Runner UUID+token headers (Connect interceptor); Actions runtime token / HMAC-signed URLs (artifacts) |
+
+## Related Pages
+
+- [API v1 Overview](api-v1-overview.md) — the `/api/v1` route tree, including the Gitea-native package **management** endpoints at `/api/v1/packages/{username}/...`.
+- [API Conventions & Swagger](api-conventions-and-swagger.md) — authentication schemes, pagination, error format, and Swagger/OpenAPI generation for `/api/v1` specifically (the packages/actions surfaces documented here are **not** part of the generated Swagger spec).
+- [Webhook Delivery Pipeline](../16-webhooks-integrations/webhook-delivery-pipeline.md) — how Actions task-state changes and package events feed outbound webhooks/notifications.
+- [Packages & Registry section](../15-packages-registry/README.md) — the models, storage, and per-ecosystem protocol-adapter implementation behind the routes documented above; see specifically [Supported Ecosystems](../15-packages-registry/supported-ecosystems.md), [Protocol Adapters](../15-packages-registry/protocol-adapters.md), [Package Upload/Download Flow](../15-packages-registry/package-flow.md), [Shared Infrastructure](../15-packages-registry/shared-infrastructure.md), and [Database Schema](../15-packages-registry/database-schema.md).

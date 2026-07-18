@@ -1,0 +1,757 @@
+# Storage, Queue & Caching
+
+Gitea's backend relies on three cross-cutting infrastructure modules that many higher-level
+services depend on:
+
+- **`modules/storage`** — an abstraction over "blob" storage backends (local disk, MinIO/S3,
+  Azure Blob) used for attachments, Git LFS objects, package files, avatars, archives, and
+  Actions logs/artifacts.
+- **`modules/queue`** — a generic, pluggable async job queue (in-memory channel, LevelDB-backed,
+  or Redis-backed) used to decouple slow or bursty work (indexing, webhooks, mirrors, mail) from
+  the request path.
+- **`modules/cache`** — a thin wrapper around `gitea.com/go-chi/cache` (memory/two-queue LRU,
+  Redis, Memcache) plus a request-scoped "ephemeral cache", used to avoid repeated expensive
+  lookups (e.g. last commit info).
+
+A fourth related module, **`modules/globallock`**, provides distributed mutual exclusion
+(in-memory or Redis via `redsync`) for operations that must not run concurrently across multiple
+Gitea nodes (e.g. repository migration, packages that require read-modify-write semantics).
+
+This page documents all four in detail.
+
+## Storage Backend Abstraction (`modules/storage`)
+
+### The `ObjectStorage` Interface
+
+All storage backends implement a single common interface, defined in
+`modules/storage/storage.go`:
+
+```go
+// ObjectStorage represents an object storage to handle a bucket and files
+type ObjectStorage interface {
+    Open(path string) (Object, error)
+
+    // Save store an object, if size is unknown set -1
+    Save(path string, r io.Reader, size int64) (int64, error)
+
+    Stat(path string) (os.FileInfo, error)
+    Delete(path string) error
+
+    // ServeDirectURL generates a "serve-direct" URL for the specified blob storage file,
+    // end user (browser) will use this URL to access the file directly from the object
+    // storage, bypassing the Gitea server. Usually time-limited and signed.
+    ServeDirectURL(path, name, method string, opt *ServeDirectOptions) (*url.URL, error)
+
+    // IterateObjects calls the iterator function for each object in the storage
+    // with the given path as prefix
+    IterateObjects(basePath string, iterator func(fullPath string, obj Object) error) error
+}
+```
+
+An `Object` returned by `Open` is a combination of `io.ReadCloser`, `io.Seeker`, and `Stat()`.
+
+Helper functions built on top of this interface (in `helper.go` / `storage.go`) provide common
+operations that work with any backend:
+
+| Function | Purpose |
+|----------|---------|
+| `storage.Copy(dst, dstPath, src, srcPath)` | Streams an object from one storage to another (used by `migrate-storage`) |
+| `storage.Clean(storage)` | Iterates and deletes every object — used to reset storage in tests |
+| `storage.SaveFrom(storage, path, callback)` | Pipes writer-style code (`func(w io.Writer) error`) into `Save` using an `io.Pipe` |
+
+### Backend Implementations
+
+Each backend registers itself with `RegisterStorageType` at `init()` time, keyed by
+`setting.StorageType`:
+
+```go
+var storageMap = map[Type]NewStorageFunc{}
+
+func RegisterStorageType(typ Type, fn func(ctx context.Context, cfg *setting.Storage) (ObjectStorage, error)) {
+    storageMap[typ] = fn
+}
+```
+
+| Type constant | File | Backend | Notes |
+|----------------|------|---------|-------|
+| `setting.LocalStorageType` (`"local"`) | `modules/storage/local.go` | Local filesystem | Default. Writes via a temp file + atomic rename; cleans up empty parent directories on delete |
+| `setting.MinioStorageType` (`"minio"`) | `modules/storage/minio.go` | MinIO / any S3-compatible object store | Uses `github.com/minio/minio-go/v7`; supports static credentials or an IAM/env credential chain; presigned URLs for `ServeDirectURL` |
+| `setting.AzureBlobStorageType` (`"azureblob"`) | `modules/storage/azureblob.go` | Azure Blob Storage | Uses `azure-sdk-for-go`; implements `Object` with an internal read offset for `Seek` support; SAS tokens for `ServeDirectURL` |
+
+**LocalStorage** (`modules/storage/local.go`) requires `config.Path` to be an absolute path
+(prepared by `setting/storage.go`). `Save` writes to a temp file under `tmpdir` and then
+`util.Rename`s it into place — this keeps partially-written files from ever being visible under
+their final name.
+
+```go
+func NewLocalStorage(ctx context.Context, config *setting.Storage) (ObjectStorage, error) {
+    storageRoot := util.FilePathJoinAbs(config.Path)
+    storageTmp := config.TemporaryPath
+    if storageTmp == "" {
+        storageTmp = filepath.Join(storageRoot, "tmp")
+    }
+    ...
+    return &LocalStorage{ctx: ctx, dir: storageRoot, tmpdir: storageTmp}, nil
+}
+```
+
+**MinioStorage** (`modules/storage/minio.go`) creates the bucket if it doesn't already exist,
+and normalizes SDK errors (`NoSuchKey` → `os.ErrNotExist`, `AccessDenied` → `os.ErrPermission`)
+via `convertMinioErr`. `ServeDirectURL` calls `PresignedGetObject`/`PresignedHeadObject` with a
+5-minute expiry and can set `response-content-type`/`response-content-disposition` query params.
+
+**AzureBlobStorage** (`modules/storage/azureblob.go`) implements `Object.Read`/`Seek` manually
+over `DownloadBuffer` since the Azure SDK doesn't provide a seekable stream reader out of the box,
+and maps `bloberror.BlobNotFound` to `os.ErrNotExist`.
+
+> Local storage's `ServeDirectURL` always returns `ErrURLNotSupported` — direct-serving only
+> makes sense for network object stores where the browser can bypass the Gitea server entirely.
+
+### Storage Consumers
+
+`modules/storage/storage.go` declares package-level singletons for every kind of blob Gitea
+stores, all pre-initialized to a `discardStorage` (errors on every call) until `storage.Init()`
+runs at startup:
+
+```go
+var (
+    Attachments      ObjectStorage = uninitializedStorage
+    LFS              ObjectStorage = uninitializedStorage
+    Avatars          ObjectStorage = uninitializedStorage
+    RepoAvatars      ObjectStorage = uninitializedStorage
+    RepoArchives     ObjectStorage = uninitializedStorage
+    Packages         ObjectStorage = uninitializedStorage
+    Actions          ObjectStorage = uninitializedStorage
+    ActionsArtifacts ObjectStorage = uninitializedStorage
+)
+
+func Init() error {
+    for _, f := range []func() error{
+        initAttachments, initAvatars, initRepoAvatars, initLFS,
+        initRepoArchives, initPackages, initActions,
+    } {
+        if err := f(); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+```
+
+Each `init*` function reads its own `setting.*` config (e.g. `setting.LFS.Storage`,
+`setting.Packages.Storage`) and calls `storage.NewStorage(typ, cfg)`. Storage for a feature that
+is disabled (Attachments, LFS, Packages, Actions) is replaced with a `discardStorage` sentinel
+that just returns an error — this avoids nil checks throughout the codebase while making
+"feature disabled" failures obvious.
+
+Typical consumers:
+
+| Package/Consumer | Storage used | Example |
+|---|---|---|
+| `models/repo/attachment.go`, `services/attachment/attachment.go`, `routers/web/repo/attachment.go` | `storage.Attachments` | Save/Open/Delete issue & release attachments |
+| `modules/lfs/content_store.go` | `storage.LFS` | `ContentStore` wraps `storage.LFS` to store Git LFS blobs keyed by OID path |
+| `modules/packages/content_store.go` | `storage.Packages` | `ContentStore` wraps `storage.Packages` for uploaded package files (npm, NuGet, Maven, etc.) |
+| `models/user/avatar.go` | `storage.Avatars` | Saves custom user avatars via `storage.SaveFrom` |
+| `services/org/org.go` | `storage.Avatars` | Deletes organization avatar files |
+| `cmd/dump.go` | `Attachments`/`LFS`/`Packages` | Iterates all objects to include them in a `gitea dump` backup |
+| `cmd/migrate_storage.go` | any | `gitea migrate-storage` CLI command copies blobs from the configured backend to a new one via `storage.Copy` |
+| `services/doctor/storage.go` | all | `gitea doctor` storage-consistency checks (orphaned DB rows vs. missing files, and vice versa) |
+| `services/repository/delete.go` | `LFS`/`Attachments` | Cleans up orphaned blobs when a repository/issue/release is deleted |
+
+Example — LFS content store built directly on top of the interface (`modules/lfs/content_store.go`):
+
+```go
+type ContentStore struct {
+    storage.ObjectStorage
+}
+
+func NewContentStore() *ContentStore {
+    return &ContentStore{ObjectStorage: storage.LFS}
+}
+
+func (s *ContentStore) Get(pointer Pointer) (storage.Object, error) {
+    return s.Open(pointer.RelativePath())
+}
+```
+
+### Storage Configuration
+
+Storage configuration (`modules/setting/storage.go`) is layered: a global `[storage]` section
+provides defaults, `[storage.<type>]` sections (e.g. `[storage.minio]`) override per backend
+type, and `[storage.<name>]` sections (e.g. `[storage.lfs]`) override per named consumer. The
+resolution logic (`getStorageTargetSection` / `getStorageOverrideSection`) supports fallbacks so
+admins can either configure one storage for everything, or fine-tune individual consumers (e.g.
+"packages go to MinIO but LFS stays local").
+
+```go
+type Storage struct {
+    Type            StorageType // local, minio, or azureblob
+    Path            string      // for local type
+    TemporaryPath   string
+    MinioConfig     MinioStorageConfig
+    AzureBlobConfig AzureBlobStorageConfig
+}
+```
+
+`Storage.ServeDirect()` returns true only when the backend is MinIO or Azure Blob *and* its
+`ServeDirect`/`SERVE_DIRECT` flag is enabled — local storage never supports direct-serving.
+
+### Storage Selection Diagram
+
+```mermaid
+flowchart TD
+    Cfg["app.ini [storage] / [storage.TYPE] / [storage.NAME]"] --> Resolve["setting.getStorage()"]
+    Resolve --> Init["storage.Init() at startup"]
+
+    Init --> Attach["storage.Attachments"]
+    Init --> LFSStore["storage.LFS"]
+    Init --> Avatar["storage.Avatars"]
+    Init --> RepoAvatar["storage.RepoAvatars"]
+    Init --> Archive["storage.RepoArchives"]
+    Init --> Pkg["storage.Packages"]
+    Init --> Actions["storage.Actions / ActionsArtifacts"]
+
+    subgraph Backends["NewStorage(type, cfg) via storageMap"]
+        Local["LocalStorage<br/>(filesystem, atomic rename)"]
+        Minio["MinioStorage<br/>(minio-go S3 client)"]
+        Azure["AzureBlobStorage<br/>(azure-sdk-for-go)"]
+    end
+
+    Attach --> Backends
+    LFSStore --> Backends
+    Avatar --> Backends
+    RepoAvatar --> Backends
+    Archive --> Backends
+    Pkg --> Backends
+    Actions --> Backends
+
+    Local --> Disk[("Local Disk")]
+    Minio --> S3[("MinIO / S3-compatible bucket")]
+    Azure --> Blob[("Azure Blob Container")]
+
+    Consumer1["routers/web/repo/attachment.go"] -->|Open/Save/ServeDirectURL| Attach
+    Consumer2["modules/lfs.ContentStore"] -->|Get/Put| LFSStore
+    Consumer3["modules/packages.ContentStore"] -->|Get/Put| Pkg
+    Consumer4["cmd/migrate_storage.go"] -->|storage.Copy| Backends
+```
+
+## Queue System (`modules/queue`)
+
+### Terminology
+
+The package doc comment in `modules/queue/queue.go` lays out the vocabulary used throughout the
+module:
+
+- **Item** — a JSON-marshaled unit of work pushed onto a queue.
+- **Batch** — a slice of items delivered together to a worker.
+- **Worker** — a goroutine that calls the `Handler` on a batch.
+- **Handler** (`HandlerFuncT[T]`) — `func(...T) (unhandled []T)`; any items returned as
+  "unhandled" get pushed back onto the base queue after a short backoff, so a temporarily-down
+  dependency (e.g. a search indexer) doesn't lose work.
+- **Base queue** — the underlying storage mechanism: channel (in-memory), LevelDB
+  (`levelqueue`), Redis, or `dummy` (no-op, used in tests / when a handler is nil).
+- **WorkerPoolQueue** — glues a base queue to a pool of workers, exposing `Push`, `Has`,
+  `FlushWithContext`, `ShutdownWait`.
+- **Manager** — a process-wide registry of every `WorkerPoolQueue`, used by the admin "Monitor"
+  page and by `FlushAll` (mainly for tests).
+
+```go
+type HandlerFuncT[T any] func(...T) (unhandled []T)
+```
+
+A queue can additionally be **unique**, meaning duplicate items (by JSON-marshaled byte
+equality) are rejected while already queued — `Has`/`HasItem` lets callers check this, though
+the docs note it's "not 100% reliable" without real transactions.
+
+### Base Queue Implementations
+
+All base queues implement `baseQueue` (`modules/queue/base.go`):
+
+```go
+type baseQueue interface {
+    PushItem(ctx context.Context, data []byte) error
+    PopItem(ctx context.Context) ([]byte, error)
+    HasItem(ctx context.Context, data []byte) (bool, error)
+    Len(ctx context.Context) (int, error)
+    Close() error
+    RemoveAll(ctx context.Context) error
+}
+```
+
+| Type key | File | Mechanism | Persistence |
+|---|---|---|---|
+| `channel` | `base_channel.go` | Go native `chan []byte` + optional `container.Set[string]` for uniqueness | In-memory only; lost on restart |
+| `level` (default; `leveldb`/`levelqueue`/`persistable-channel`) | `base_levelqueue.go`, `base_levelqueue_unique.go`, `base_levelqueue_common.go` | `gitea.com/lunny/levelqueue` over `goleveldb` | On-disk, single instance |
+| `redis` | `base_redis.go` | Redis `LPUSH`/`LPOP` list, `SADD`/`SREM`/`SISMEMBER` set for uniqueness | Shared, cluster-safe |
+| `dummy`/`immediate` | `base_dummy.go` | No-op; `PushItem` succeeds without storing anything | None — items are dropped unless routed by `WorkerPoolQueue.Push`'s "immediate" fallback |
+
+`getNewQueueFn` (`modules/queue/workerqueue.go`) maps a configured `Type` string to the correct
+constructor:
+
+```go
+func getNewQueueFn(t string) (string, func(cfg *BaseConfig, unique bool) (baseQueue, error)) {
+    switch t {
+    case "dummy", "immediate":
+        return t, newBaseDummy
+    case "channel":
+        return t, newBaseChannelGeneric
+    case "redis":
+        return t, newBaseRedisGeneric
+    default: // level(leveldb,levelqueue,persistable-channel)
+        return "level", newBaseLevelQueueGeneric
+    }
+}
+```
+
+Redis-backed queues (`base_redis.go`) use `nosql.GetManager().GetRedisClient(cfg.ConnStr)` to
+share connections with the rest of the app (see [Global Locking](#global-distributed-locking-modulesgloballock)
+below, which uses the same Redis client pool via `redsync`), retrying `Ping` up to 10 times on
+startup so Gitea can start even if Redis isn't ready yet.
+
+Push against a full Redis/local queue uses `backoffErr`/`backoffRetErr` (`modules/queue/backoff.go`)
+to retry with exponential-ish backoff rather than failing immediately or blocking forever.
+
+### WorkerPoolQueue
+
+`modules/queue/workerqueue.go` defines the generic `WorkerPoolQueue[T]`, the type application
+code actually interacts with. Key operations:
+
+```go
+func (q *WorkerPoolQueue[T]) Push(data T) error {
+    ...
+    return q.baseQueue.PushItem(q.ctxRun, q.marshal(data))
+}
+
+func (q *WorkerPoolQueue[T]) Has(data T) (bool, error) {
+    return q.baseQueue.HasItem(q.ctxRun, q.marshal(data))
+}
+
+func (q *WorkerPoolQueue[T]) Run()                              { q.doRun() }
+func (q *WorkerPoolQueue[T]) Cancel()                            { q.ctxRunCancel() }
+func (q *WorkerPoolQueue[T]) ShutdownWait(timeout time.Duration) { ... }
+func (q *WorkerPoolQueue[T]) FlushWithContext(ctx context.Context, timeout time.Duration) error
+```
+
+`NewWorkerPoolQueueWithContext` wires the base queue, wraps the caller's `HandlerFuncT[T]` in a
+`safeHandler` that recovers panics and restores `pprof` goroutine labels, and registers the
+queue's lifetime with `process.GetManager()` (so it shows up in the process manager / `gitea
+manager processes`). If `handler` is `nil`, the queue type is forced to `dummy` — this is used
+when a caller just wants a `Push`-able sink without actually processing items (typically tests).
+
+`workergroup.go` implements the actual dynamic worker pool: `doDispatchBatchToWorker` batches
+popped items (`batchLength`), and spins up new workers (up to `workerMaxNum`) only when the
+batch channel would otherwise block or there are zero active workers — this avoids the cost of
+running `MaxWorkers` goroutines when the queue is idle.
+
+```go
+func (q *WorkerPoolQueue[T]) doWorkerHandle(batch []T) {
+    ...
+    unhandled := q.safeHandler(batch...)
+    if len(unhandled) == len(batch) && unhandledItemRequeueDuration.Load() != 0 {
+        // back off before requeueing, e.g. indexer is temporarily down
+        ...
+    }
+    for _, item := range unhandled {
+        if err := q.Push(item); err != nil {
+            ...
+        }
+    }
+}
+```
+
+On shutdown (`ShutdownWait`), any items still in flight or in the batch buffer are pushed back
+into the base queue via `basePushForShutdown` within a bounded `shutdownTimeout`, so in-memory
+"channel" queues don't silently lose work on restart (persistent backends like LevelDB/Redis
+retain them naturally).
+
+### Manager & Configuration
+
+`modules/queue/manager.go`'s `Manager` tracks every queue created via `CreateSimpleQueue` /
+`CreateUniqueQueue`:
+
+```go
+func CreateSimpleQueue[T any](ctx context.Context, name string, handler HandlerFuncT[T]) *WorkerPoolQueue[T] {
+    return createWorkerPoolQueue(ctx, name, setting.CfgProvider, handler, false)
+}
+
+func CreateUniqueQueue[T any](ctx context.Context, name string, handler HandlerFuncT[T]) *WorkerPoolQueue[T] {
+    return createWorkerPoolQueue(ctx, name, setting.CfgProvider, handler, true)
+}
+```
+
+Each named queue reads its settings from `[queue]` (global defaults) overridden by
+`[queue.<name>]` (`modules/setting/queue.go`):
+
+```go
+type QueueSettings struct {
+    Name string
+
+    Type    string // dummy, channel, level, redis
+    Datadir string
+    ConnStr string // for leveldb or redis
+    Length  int    // max queue length before blocking
+
+    QueueName, SetName string
+    BatchLength int
+    MaxWorkers  int
+}
+```
+
+Defaults: `Type=level`, `Datadir=queues/common`, `Length=100000`, `BatchLength=20`,
+`MaxWorkers=runtime.NumCPU()/2` (clamped to `[1, 10]`).
+
+### Real Queue Consumers
+
+Grepping the codebase for `queue.CreateSimpleQueue`/`queue.CreateUniqueQueue` shows the queue
+system backs most of Gitea's background processing:
+
+| Queue name | File | Purpose |
+|---|---|---|
+| `code_indexer` | `modules/indexer/code/indexer.go` | Updates the code search index (Bleve/Elasticsearch) after pushes |
+| `issue_indexer` | `modules/indexer/issues/indexer.go` | Updates the issue/PR search index |
+| `repo_stats_update` | `modules/indexer/stats/queue.go` | Recomputes repository language statistics |
+| `webhook_sender` | `services/webhook/deliver.go` | Delivers webhook payloads asynchronously with retries |
+| `notification-service` | `services/uinotification/notify.go` | Fan-out of in-app notifications |
+| `branch_sync` | `services/repository/branch.go` | Syncs branch metadata into the DB after Git operations |
+| `repo-archive` | `services/repository/archiver/archiver.go` | Generates repository archive downloads (zip/tar.gz) |
+| `push_update` | `services/repository/push.go` | Post-receive processing after a `git push` |
+| `repo_license_updater` | `services/repository/repository.go` | Detects repository license files |
+| `pr_patch_checker` | `services/pull/check.go` | Tests whether PRs are mergeable / have conflicts |
+| `pr_auto_merge` | `services/automerge/automerge.go` | Executes queued auto-merges once checks pass |
+| `mail` | `services/mailer/mailer.go` | Sends outgoing emails |
+| `tag_sync` | `services/release/tag.go` | Syncs Git tags into the Releases table |
+| `task` | `services/task/task.go` | Generic migration/mirror task runner |
+| `actions_ready_job` | `services/actions/init.go` | Emits Actions jobs once dependencies are satisfied |
+| `mirror` | `services/mirror/queue.go` | Pull/push mirror synchronization |
+
+### Repository Indexing via the Queue: Example Flow
+
+`modules/indexer/issues/indexer.go` is a representative example. It defines a small metadata
+struct sent through the queue (not the whole issue, to keep messages small):
+
+```go
+type IndexerMetadata struct {
+    ID       int64   `json:"id"`
+    IsDelete bool    `json:"is_delete"`
+    IDs      []int64 `json:"ids"`
+}
+
+var issueIndexerQueue *queue.WorkerPoolQueue[*IndexerMetadata]
+
+func InitIssueIndexer(syncReindex bool) {
+    ...
+    issueIndexerQueue = queue.CreateUniqueQueue(ctx, "issue_indexer", getIssueIndexerQueueHandler(ctx))
+    ...
+    // then asynchronously builds/loads the actual Bleve/Elasticsearch/Meilisearch/DB indexer
+}
+```
+
+Whenever an issue changes, calling code pushes an `IndexerMetadata` onto `issueIndexerQueue`.
+Workers pop batches and forward them to `getIssueIndexerQueueHandler`, which resolves each ID
+against the DB and calls the underlying search backend's `Index`/`Delete`. If the backend isn't
+ready (e.g. still initializing), the handler returns the batch as "unhandled" and the queue
+requeues it after a short backoff — the push path never blocks on indexing being available.
+
+```mermaid
+sequenceDiagram
+    participant Git as git push / Web UI
+    participant Model as models/issues
+    participant Queue as WorkerPoolQueue[*IndexerMetadata]
+    participant Base as baseQueue (level/redis/channel)
+    participant Worker as workerGroup
+    participant Indexer as Bleve/ES/Meilisearch/DB Indexer
+
+    Git->>Model: create/update/delete issue
+    Model->>Queue: Push(&IndexerMetadata{ID: issueID})
+    Queue->>Base: PushItem(ctx, jsonBytes)
+    Base-->>Queue: ack (or ErrAlreadyInQueue if unique dup)
+
+    loop worker pool
+        Worker->>Base: PopItem(ctx)
+        Base-->>Worker: item bytes
+        Worker->>Worker: batch until batchLength or debounce timeout
+        Worker->>Indexer: safeHandler(batch...) -> Index/Delete
+        alt handler fails / indexer not ready
+            Indexer-->>Worker: all items unhandled
+            Worker->>Worker: backoff (unhandledItemRequeueDuration)
+            Worker->>Queue: Push(item) again
+        else success
+            Indexer-->>Worker: [] (fully handled)
+        end
+    end
+```
+
+## Caching Layer (`modules/cache`)
+
+### `StringCache` and `gitea.com/go-chi/cache`
+
+Gitea wraps the upstream `gitea.com/go-chi/cache` package (itself supporting `memory`,
+`twoqueue`, `redis`, and `memcache` adapters) behind a typed `StringCache` interface
+(`modules/cache/string_cache.go`):
+
+```go
+type StringCache interface {
+    Ping() error
+
+    Get(key string) (string, bool)
+    Put(key, value string, ttl int64) error
+    Delete(key string) error
+    IsExist(key string) bool
+
+    PutJSON(key string, v any, ttl int64) error
+    GetJSON(key string, ptr any) (exist bool, err *GetJSONError)
+
+    ChiCache() chi_cache.Cache
+}
+```
+
+`PutJSON`/`GetJSON` marshal arbitrary values to/from JSON strings so any struct can be cached
+through the string-only underlying cache, and they also support caching *errors* (prefixed with
+`<CACHED-ERROR>:`) so a failed expensive lookup isn't retried on every request within the TTL.
+
+`NewStringCache` builds the underlying `chi_cache.Cache` from `setting.Cache`:
+
+```go
+func NewStringCache(cacheConfig setting.Cache) (StringCache, error) {
+    adapter := util.IfZero(cacheConfig.Adapter, "memory")
+    interval := util.IfZero(cacheConfig.Interval, 60)
+    cc, err := chi_cache.NewCacher(chi_cache.Options{
+        Adapter:       adapter,
+        AdapterConfig: cacheConfig.Conn,
+        Interval:      interval,
+    })
+    ...
+    return &stringCache{chiCache: cc}, nil
+}
+```
+
+### Adapters
+
+| Adapter | File | Backing store | Notes |
+|---|---|---|---|
+| `memory` | (from `go-chi/cache`, built-in) | In-process map | Default; per-process, not shared across nodes |
+| `twoqueue` | `modules/cache/cache_twoqueue.go` | `github.com/hashicorp/golang-lru/v2` 2Q LRU | Registers itself as `"twoqueue"`; bounded by `Size`/`RecentRatio`/`GhostRatio`; supports `Incr`/`Decr` counters and background GC of expired `MemoryItem`s |
+| `redis` | `modules/cache/cache_redis.go` | Redis via shared `nosql` client pool | Registers itself as `"redis"`; supports an "occupy mode" (uses Redis TTL natively) vs. tracking keys in an `HSET` for bulk `Flush()` |
+| `memcache` | plugin import in `cache.go` (`gitea.com/go-chi/cache/memcache`) | External Memcached | TTLs capped at `MemcacheMaxTTL` (30 days); beyond that Gitea stores a Unix timestamp instead of a duration (memcache protocol quirk) |
+
+`modules/cache/cache.go` initializes the process-wide default cache:
+
+```go
+var defaultCache StringCache
+
+func Init() error {
+    if defaultCache == nil {
+        c, err := NewStringCache(setting.CacheService.Cache)
+        ...
+        defaultCache = c
+    }
+    return nil
+}
+
+func GetString(key string, getFunc func() (string, error)) (string, error) {
+    if defaultCache == nil || setting.CacheService.TTL == 0 {
+        return getFunc()
+    }
+    cached, exist := defaultCache.Get(key)
+    if !exist {
+        value, err := getFunc()
+        ...
+        return value, defaultCache.Put(key, value, setting.CacheService.TTLSeconds())
+    }
+    return cached, nil
+}
+```
+
+`GetString`/`GetInt64` implement the classic "cache-aside" pattern: check the cache, and on miss
+call the provided `getFunc`, store the result, and return it. `setting.CacheService` also
+configures a dedicated `LastCommit` sub-cache (`[cache.last_commit]`, default 1 year TTL,
+tracked per-`CommitsCount`) used to memoize "last commit info" for directory listings, a
+notoriously expensive Git operation on large repositories.
+
+### Ephemeral (Request-Scoped) Cache
+
+`modules/cache/context.go` and `modules/cache/ephemeral.go` implement a short-lived,
+in-memory-only cache attached to a `context.Context`, distinct from the shared `StringCache`:
+
+```go
+func WithCacheContext(ctx context.Context) context.Context {
+    if c := GetContextCache(ctx); c != nil {
+        return ctx
+    }
+    return context.WithValue(ctx, cacheContextKey, NewEphemeralCache(contextCacheLifetime))
+}
+
+func GetWithContextCache[T, K any](ctx context.Context, groupKey string, targetKey K,
+    f func(context.Context, K) (T, error)) (T, error) {
+    if c := GetContextCache(ctx); c != nil {
+        return GetWithEphemeralCache(ctx, c, groupKey, targetKey, f)
+    }
+    return f(ctx, targetKey)
+}
+```
+
+`EphemeralCache` self-limits to a 5-minute (`contextCacheLifetime`) lifetime and logs a warning
+if it's queried past that — it exists purely to deduplicate repeated lookups *within a single
+request* (e.g. resolving the same user or repo multiple times while rendering a page), not as a
+general-purpose cache; using it beyond a request's lifetime is explicitly discouraged in the
+source comments.
+
+### Cache Data Flow
+
+```mermaid
+flowchart LR
+    App["Application code<br/>(routers/services/models)"] -->|GetString/GetInt64| Default["cache.defaultCache<br/>(StringCache)"]
+    App -->|WithCacheContext / GetWithContextCache| Ephemeral["EphemeralCache<br/>(per-request, 5 min TTL)"]
+
+    Default --> Adapter{"setting.CacheService.Adapter"}
+    Adapter -->|memory| Mem[("go-chi/cache memory adapter")]
+    Adapter -->|twoqueue| TwoQ[("hashicorp/golang-lru 2Q")]
+    Adapter -->|redis| Redis[("Redis via modules/nosql")]
+    Adapter -->|memcache| Memcache[("Memcached")]
+```
+
+## Global Distributed Locking (`modules/globallock`)
+
+While the queue and cache systems help with *async work* and *avoiding repeated work*, some
+operations must be serialized across the entire cluster — e.g. mutating a Git repository's
+config file, transferring repository ownership, or pushing to a container image manifest.
+`modules/globallock` provides that guarantee.
+
+### `Locker` Interface
+
+```go
+type Locker interface {
+    // Lock blocks until the lock is acquired or ctx is canceled.
+    Lock(ctx context.Context, key string) (ReleaseFunc, error)
+
+    // TryLock returns immediately; returns (false, release, nil) if already locked
+    // (as opposed to some other error like Redis being down).
+    TryLock(ctx context.Context, key string) (bool, ReleaseFunc, error)
+}
+
+type ReleaseFunc func()
+```
+
+`ReleaseFunc` is always non-nil and idempotent-safe to call, even if lock acquisition failed —
+callers are expected to always `defer release()`.
+
+### Implementations
+
+| Backend | File | Mechanism |
+|---|---|---|
+| `memory` (default) | `modules/globallock/memory_locker.go` | `sync.Map` of held keys; `Lock` polls every 100ms until acquired or `ctx` is done |
+| `redis` | `modules/globallock/redis_locker.go` | `github.com/go-redsync/redsync/v4` (the Redlock algorithm) over the shared `nosql` Redis client |
+
+The Redis locker (`redis_locker.go`) auto-extends held locks in the background so long-running
+critical sections don't lose the lock mid-operation:
+
+```go
+func NewRedisLocker(connection string) Locker {
+    conn := nosql.GetManager().GetRedisClient(connection)
+    l := &redisLocker{conn: conn, rs: redsync.New(goredis.NewPool(conn))}
+    l.extendWg.Add(1)
+    l.startExtend()
+    return l
+}
+```
+
+`redisLockExpiry` defaults to 30 seconds; `startExtend` re-schedules itself every
+`redisLockExpiry/2` and calls `mutex.Extend()` on every mutex still tracked in `mutexM` that
+hasn't already expired. If extension fails, the lock simply expires naturally (fail-safe rather
+than fail-locked).
+
+### Configuration and Default Access
+
+`modules/setting/gloabl_lock.go` reads `[global_lock]`:
+
+```ini
+[global_lock]
+SERVICE_TYPE = memory ; or "redis"
+SERVICE_CONN_STR = addrs=127.0.0.1:6379 db=0 ; required if redis
+```
+
+`modules/globallock/globallock.go` lazily constructs a process-wide default `Locker` (memory or
+Redis, matching `setting.GlobalLock.ServiceType`) and exposes convenience wrappers used
+throughout the codebase:
+
+```go
+func Lock(ctx context.Context, key string) (ReleaseFunc, error) {
+    return DefaultLocker().Lock(ctx, key)
+}
+
+func LockAndDo(ctx context.Context, key string, f func(context.Context) error) error {
+    release, err := Lock(ctx, key)
+    if err != nil {
+        return err
+    }
+    defer release()
+    return f(ctx)
+}
+```
+
+### Real Usages
+
+| Location | Lock key pattern | Why |
+|---|---|---|
+| `modules/gitrepo/config.go`, `modules/gitrepo/remote.go` | `getRepoConfigLockKey(repo.RelativePath())` | Serialize reads/writes of a bare repo's `.git/config` |
+| `modules/gitrepo/fetch.go` | `getRepoWriteLockKey(repo.RelativePath())` | Prevent concurrent fetches into the same repository |
+| `services/repository/transfer.go` | `getRepoWorkingLockKey(repo.ID)` | Prevent concurrent repository ownership transfers |
+| `services/versioned_migration/migration.go` | `"gitea_versioned_migration"` | Ensures only one node runs DB/data migrations at startup in a cluster |
+| `models/actions/task.go` | `"UpdateTaskByState-run-<runID>"` | Serialize state transitions of an Actions run |
+| `routers/api/packages/container/blob.go`, `manifest.go` | `containerGlobalLockKey(ownerID, image, "blob"/"manifest"/"package")` | Container registry blob/manifest uploads must not race |
+| `routers/api/packages/maven/maven.go`, `terraform/terraform.go` | package-name-derived keys | Prevent concurrent metadata (e.g. `maven-metadata.xml`) rewrites for the same package |
+
+```mermaid
+sequenceDiagram
+    participant N1 as Gitea Node A
+    participant N2 as Gitea Node B
+    participant Lock as globallock.DefaultLocker()
+    participant Backend as Redis (redsync) or in-memory map
+
+    N1->>Lock: LockAndDo(ctx, "repo-config:owner/repo", fn)
+    Lock->>Backend: acquire mutex (SET NX EX / sync.Map.LoadOrStore)
+    Backend-->>Lock: acquired
+    Lock->>N1: run fn() -- e.g. rewrite .git/config
+
+    N2->>Lock: LockAndDo(ctx, "repo-config:owner/repo", fn)
+    Lock->>Backend: acquire mutex
+    Backend-->>Lock: already held -- block/retry
+    N1->>Lock: fn() returns, release()
+    Lock->>Backend: unlock
+    Backend-->>Lock: released
+    Lock->>N2: acquired, run fn()
+```
+
+## How the Three Systems Interact
+
+Storage, queue, and cache are largely independent, but they compose in real features. A common
+pattern (e.g. repository archive generation in `services/repository/archiver/archiver.go`) is:
+
+1. A web request enqueues a job onto a `WorkerPoolQueue` (queue system) instead of doing
+   expensive work synchronously.
+2. A worker picks up the job, does the work, and writes the result into an `ObjectStorage`
+   backend (storage system) — e.g. `storage.RepoArchives`.
+3. Subsequent requests for the same result use `cache.GetString`/`GetWithContextCache` (cache
+   system) to avoid re-checking storage or re-querying the DB for status on every poll, and/or
+   use `globallock` to make sure only one worker builds a given archive at a time.
+
+```mermaid
+flowchart TD
+    Req["HTTP Request"] --> Check{"Cached result?"}
+    Check -- yes --> Resp["Return cached response"]
+    Check -- no --> Lock["globallock.TryLock(key)"]
+    Lock -- locked by another node --> Wait["Return 'in progress' status"]
+    Lock -- acquired --> Enqueue["queue.Push(job)"]
+    Enqueue --> Worker["Queue worker executes job"]
+    Worker --> Save["storage.Save(path, data)"]
+    Save --> CacheSet["cache.Put(key, result, ttl)"]
+    CacheSet --> Resp2["Serve result / ServeDirectURL"]
+```
+
+## Related Documentation
+
+- [Core Modules Overview](README.md)
+- [Configuration Reference](../04-configuration/README.md) for `[storage]`, `[queue]`,
+  `[cache]`, and `[global_lock]` app.ini sections
+- [Services Layer](../08-services/README.md) for the higher-level services (webhook, mailer,
+  mirror, archiver) that are built on top of the queue system

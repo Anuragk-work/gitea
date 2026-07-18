@@ -1,0 +1,200 @@
+=== FILE: docs/03-getting-started/configuration-app-ini.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Configuration (`app.ini`) Gitea is configured through a single INI-format file, conventionally located at `custom/conf/app.ini`. This page explains the INI format Gitea uses, how the reference file `custom/conf/app.example.ini` is organized, and walks through the sections most commonly touched by administrators: `[server]`, `[database]`, `[security]`, and `[mailer]`. > [!TIP] > A full, always-up-to-date reference of every option lives in `custom/conf/app.example.
+
+# Configuration (`app.ini`)
+
+Gitea is configured through a single INI-format file, conventionally located at `custom/conf/app.ini`. This page explains the INI format Gitea uses, how the reference file `custom/conf/app.example.ini` is organized, and walks through the sections most commonly touched by administrators: `[server]`, `[database]`, `[security]`, and `[mailer]`.
+
+> [!TIP]
+> A full, always-up-to-date reference of every option lives in `custom/conf/app.example.ini` in the repository root, and is mirrored on the official [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet). Do **not** copy the whole example file verbatim — only copy the sections/keys you actually need to change; the file itself contains a warning that it "contains some invalid sections for illustrative purposes."
+
+## The INI Format
+
+Gitea parses `app.ini` with the [`ini`](https://ini.unknwon.io/) Go library (via `modules/setting/config_provider.go`), which supports standard INI syntax plus a few Gitea-specific conventions:
+
+```ini
+; a semicolon starts a comment
+[section]
+KEY = value
+ANOTHER_KEY = "quoted value, useful for values containing special chars"
+
+; sub-sections are written as [section.subsection]
+[log.console]
+LEVEL = info
+```
+
+Key points about the format:
+
+- **Sections** are written as `[section]`. Keys before the first section header belong to the default (unnamed) section.
+- **Sub-sections** use a dot, e.g. `[log.console]`, `[storage.minio]`, `[cron.gc_lfs]` — these configure a named sub-component that inherits defaults from its parent section.
+- **Comments** start with `;` (the example file uses commented-out lines to show default values without activating them).
+- **Booleans** are `true`/`false`. **Durations** (like `30s`, `3m`) are parsed as Go `time.Duration` strings.
+- **Quoting** (`PASSWD = `your password``) is only needed if a value contains characters INI would otherwise treat specially, such as `;` or leading/trailing spaces.
+
+### Loading Order and Path Resolution
+
+At startup Gitea determines four path values, in this precedence order (highest priority first):
+
+1. **`AppPath`** — the absolute path of the running binary.
+2. **`AppWorkPath`** — the working directory: `WORK_PATH` in `app.ini` → `--work-path` CLI flag → `$GITEA_WORK_DIR` env var → a build-time default (`ldflags`) → directory of `AppPath`.
+3. **`CustomPath`** — base directory for custom templates/options: `--custom-path` flag → `$GITEA_CUSTOM` env var → build-time default → `{AppWorkPath}/custom`.
+4. **`CustomConf`** — the `app.ini` file itself: `--config` flag → build-time default → `{CustomPath}/conf/app.ini`.
+
+Running `gitea help` prints the fully resolved values for your instance.
+
+### Overriding Config with Environment Variables
+
+Any setting can be overridden without editing the file, using environment variables prefixed `GITEA__`:
+
+```
+GITEA__SECTION__KEY=value
+GITEA__SECTION__SUBSECTION_0X2E_NAME__KEY=value   # dot in sub-section name is escaped as _0x2E_
+GITEA__SECTION__KEY__FILE=/path/to/secret         # read the value from a file instead
+```
+
+This is implemented in `modules/setting/config_env.go` (`EnvironmentToConfig`, prefix constant `EnvConfigKeyPrefixGitea = "GITEA__"`), and is what the official Docker image uses to let you configure Gitea purely through container environment variables. Keys collected this way are also surfaced on the install wizard page for visibility (`EnvConfigKeys` in `routers/install/install.go`), and are cleared from the process environment once installation completes.
+
+## File Structure of `app.example.ini`
+
+The example file is organized as a sequence of `[section]` blocks, each documented inline with comments explaining every key and its default. The major sections, in file order, are:
+
+| Section | Purpose |
+|---------|---------|
+| *(default, no header)* | Global values: `APP_NAME`, `RUN_USER`, `RUN_MODE`, `WORK_PATH`. |
+| `[server]` | HTTP/HTTPS/SSH listener configuration, `ROOT_URL`, TLS, LFS server toggle. |
+| `[database]` | Database engine and connection settings. |
+| `[security]` | Secrets, install lock, session/cookie behavior, password policy, security headers. |
+| `[camo]` | Optional image proxy for mixed-content protection. |
+| `[oauth2]` | Built-in OAuth2 provider (JWT signing, token expiry). |
+| `[log]` (+ `[log.console]`, `[log.file]`, `[log.conn]`, ...) | Logging levels and writers. |
+| `[git]` (+ `[git.timeout]`, `[git.config]`) | Git binary behavior, timeouts, and passthrough `git config` values. |
+| `[service]` (+ `[service.explore]`) | Registration, sign-in, captcha, and account policy. |
+| `[repository]` and sub-sections | Repository defaults: editor, upload, pull requests, issues, releases, signing. |
+| `[mailer]` (+ `[mailer.override_header]`) | Outgoing email/SMTP configuration. |
+| `[cache]`, `[session]`, `[queue]`, `[indexer]` | Caching, sessions, background queues, code/issue search indexing. |
+| `[cron]` and many `[cron.*]` sub-sections | Scheduled maintenance tasks (mirror sync, GC, cleanup jobs, etc.). |
+| `[api]`, `[webhook]`, `[oauth2_client]` | API behavior, outgoing webhooks, OAuth2 client settings. |
+| `[picture]`, `[attachment]`, `[storage]` (+ `[storage.*]`) | Avatars, attachments, and object storage backends (local, MinIO, Azure Blob). |
+| `[lfs]`, `[lfs_client]`, `[packages]` | Git LFS storage and the built-in package registry. |
+| `[markup]`, `[markdown]` | Markup rendering, external renderers, sanitization rules. |
+| `[metrics]`, `[federation]`, `[migrations]` | Prometheus metrics, ActivityPub federation, repository migration behavior. |
+| `[proxy]`, `[cors]` | Outbound proxy and CORS policy. |
+
+The complete file is ~3000 lines; use it as a searchable reference rather than reading it top to bottom.
+
+## `[server]`
+
+Controls how the web/SSH server listens and how public URLs are generated.
+
+```ini
+[server]
+PROTOCOL = http           ; http, https, http+unix, fcgi, fcgi+unix
+DOMAIN = localhost
+ROOT_URL =                ; defaults to {PROTOCOL}://{DOMAIN}:{HTTP_PORT}/
+HTTP_ADDR = 0.0.0.0
+HTTP_PORT = 3000
+DISABLE_SSH = false
+START_SSH_SERVER = false  ; use Gitea's built-in SSH server instead of the OS sshd
+SSH_PORT = 22
+SSH_LISTEN_PORT =         ; defaults to SSH_PORT
+```
+
+Notable options:
+
+- `PUBLIC_URL_DETECTION` — `auto` (default), `legacy`, or `never`; controls whether Gitea derives the externally visible URL from the `Host`/`X-Forwarded-Proto` headers or strictly uses `ROOT_URL`.
+- `REDIRECT_OTHER_PORT` / `PORT_TO_REDIRECT` — run an extra HTTP listener that redirects to the HTTPS `ROOT_URL`.
+- `LFS_START_SERVER` and the `[lfs]` section — enable Git LFS storage.
+- `SSH_SERVER_HOST_KEYS`, `SSH_TRUSTED_USER_CA_KEYS` — built-in SSH server key material and certificate-authority based auth.
+- `UNIX_SOCKET_PERMISSION` — file mode when using `http+unix`/`fcgi+unix`.
+
+## `[database]`
+
+Selects and configures the SQL backend. Only one `DB_TYPE` block is active at a time; the example file shows all four side by side.
+
+```ini
+[database]
+DB_TYPE = mysql            ; mysql, postgres, mssql, or sqlite3
+HOST = 127.0.0.1:3306       ; or a unix socket path
+NAME = gitea
+USER = root
+PASSWD = `your password`    ; back-tick quoting handles special characters
+;SSL_MODE = false           ; false | true | skip-verify (mysql), disable | require | verify-full (postgres)
+```
+
+SQLite-specific block:
+
+```ini
+[database]
+DB_TYPE = sqlite3
+PATH =                      ; defaults to data/gitea.db
+SQLITE_TIMEOUT =            ; query timeout in ms, default 20000
+SQLITE_JOURNAL_MODE =       ; e.g. WAL
+```
+
+Other frequently used keys, all with sane defaults: `ITERATE_BUFFER_SIZE` (50), `LOG_SQL` (false — logs generated SQL when true), `DB_RETRIES` (10) / `DB_RETRY_BACKOFF` (3s) for startup connection retries, `MAX_IDLE_CONNS` (2), `MAX_OPEN_CONNS` (0 = unlimited), `CONN_MAX_LIFETIME` (3s), `AUTO_MIGRATION` (true — runs schema migrations automatically on start), and `SLOW_QUERY_THRESHOLD` (5s, for the xorm slow-query logger).
+
+## `[security]`
+
+Secrets and core security policy.
+
+```ini
+[security]
+INSTALL_LOCK = false        ; set true to disable the install wizard entirely
+SECRET_KEY =                ; VERY IMPORTANT: encrypts things like 2FA secrets — losing it means losing that data
+;SECRET_KEY_URI = file:/etc/gitea/secret_key   ; mutually exclusive with SECRET_KEY
+INTERNAL_TOKEN =            ; secret used for internal (loopback) API calls, e.g. from git hooks
+;INTERNAL_TOKEN_URI = file:/etc/gitea/internal_token
+LOGIN_REMEMBER_DAYS = 31
+MIN_PASSWORD_LENGTH = 8
+PASSWORD_HASH_ALGO = pbkdf2 ; argon2, pbkdf2, scrypt, or bcrypt
+PASSWORD_CHECK_PWN = false  ; check against haveibeenpwned.com
+TWO_FACTOR_AUTH =           ; set to "enforced" to require 2FA for all users
+```
+
+Other important keys:
+
+- `DISABLE_GIT_HOOKS` (default `true`) — whether users with hook privileges may install custom Git hooks (a powerful, potentially dangerous capability if disabled=false).
+- `DISABLE_WEBHOOKS`, `IMPORT_LOCAL_PATHS` — feature toggles with security implications.
+- `REVERSE_PROXY_AUTHENTICATION_USER/EMAIL/FULL_NAME`, `REVERSE_PROXY_TRUSTED_PROXIES`, `REVERSE_PROXY_LIMIT` — SSO via a trusted reverse proxy.
+- `X_FRAME_OPTIONS`, `X_CONTENT_TYPE_OPTIONS`, `CONTENT_SECURITY_POLICY_GENERAL` — HTTP security headers.
+- `ALLOWED_HOST_LIST` — restricts which hosts webhook/OAuth2 clients are allowed to call (`loopback`, `private`, `external`, `*`, CIDRs, or wildcard hostnames).
+
+`SECRET_KEY` and `INTERNAL_TOKEN` are auto-generated the first time you run the install wizard (see `modules/generate` and `routers/install/install.go`) — you rarely need to set them by hand, but you must back them up.
+
+## `[mailer]`
+
+Outgoing email (used for notifications, password resets, registration confirmation, etc.).
+
+```ini
+[mailer]
+ENABLED = false
+PROTOCOL =            ; smtp, smtps, smtp+starttls, smtp+unix, sendmail, dummy
+SMTP_ADDR =           ; e.g. smtp.gmail.com (or a unix socket path for smtp+unix)
+SMTP_PORT =           ; 25 (insecure), 465 (SMTPS), 587 (StartTLS) — protocol can often be inferred from the port
+FROM =                ; RFC 5322 address, plain or `"Name" <email@example.com>`
+USER =
+PASSWD =
+```
+
+Notes:
+
+- `PROTOCOL = dummy` logs outgoing mail instead of sending it — useful for testing.
+- `PROTOCOL = sendmail` shells out to the system `sendmail` binary instead of speaking SMTP (`SENDMAIL_PATH`, `SENDMAIL_ARGS`, `SENDMAIL_TIMEOUT`).
+- `FORCE_TRUST_SERVER_CERT` disables TLS certificate validation — only for trusted, non-production setups.
+- `SEND_AS_PLAIN_TEXT` disables the HTML part of notification emails.
+- `EMBED_ATTACHMENT_IMAGES` inlines images from the same Gitea instance into outgoing mail.
+
+The install wizard (see [Running Gitea](running-gitea.md)) writes `mailer.ENABLED` and the basic SMTP fields automatically when you fill in the optional "E-mail Service Settings" during first-run setup.
+
+## Adding New Configuration Options (for contributors)
+
+If you're adding a new setting to Gitea itself, the project convention (documented in `docs/development.md`) is:
+
+1. Read the new option in the appropriate `modules/setting/*.go` file.
+2. Add a commented, documented entry to `custom/conf/app.example.ini`.
+3. Document it in the external [Configuration Cheat Sheet](https://docs.gitea.com/administration/config-cheat-sheet) (maintained in the separate [`gitea/docs`](https://gitea.com/gitea/docs) repository).
+
+## Next Steps
+
+With `app.ini` understood, continue to [Running Gitea](running-gitea.md) to start the server, walk through the install wizard, and complete post-install steps.

@@ -1,0 +1,14 @@
+=== FILE: modules/actions/jobparser/testdata/continue_on_error_expr.in.yaml ===
+=== METADATA: format=yaml ===
+[SUMMARY] name: test jobs: job1: strategy: matrix: experimental: [false, true] runs-on: ubuntu-22.04 continue-on-error: ${{ matrix.experimental }} steps: - run: echo hi
+
+name: test
+jobs:
+  job1:
+    strategy:
+      matrix:
+        experimental: [false, true]
+    runs-on: ubuntu-22.04
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+      - run: echo hi

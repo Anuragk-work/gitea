@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLI & Admin Operations</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../16-cli-admin/README.html">Cli Admin</a> &rsaquo; CLI & Admin Operations</div>
+<h1>CLI & Admin Operations</h1>
+<h1 id="cli-admin-operations">CLI &amp; Admin Operations</h1>
+<p>Gitea ships as a single static binary that acts both as the web application and
+as the command-line administration tool. Every operational task — starting the
+web server, running database migrations, managing users, backing up data,
+regenerating SSH keys, or invoking internal Git hooks — is implemented as a
+subcommand of the same <code>gitea</code> executable, defined under <a href="../../cmd"><code>cmd/</code></a>.</p>
+<p>This page documents the full CLI command tree, the graceful restart/shutdown
+mechanism used by the <code>web</code> command, and the <code>embedded</code> command used to extract
+assets baked into the binary.</p>
+<blockquote>
+<p>All CLI commands are built with <a href="https://github.com/urfave/cli"><code>urfave/cli/v3</code></a>.
+The root <code>*cli.Command</code> is assembled in <code>cmd/main.go</code>'s <code>NewMainApp</code>, and
+<code>cmd/main_test.go</code>/<code>main.go</code> in the repository root call <code>cmd.RunMainApp</code> to
+actually execute it.</p>
+</blockquote>
+<h2 id="entry-point-app-assembly">Entry Point &amp; App Assembly<a href="#entry-point-app-assembly" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The binary's <code>main.go</code> (repo root) constructs an <code>AppVersion</code> and calls
+<code>cmd.NewMainApp(appVer)</code>, then <code>cmd.RunMainApp(app, os.Args...)</code>. Inside
+<code>cmd/main.go</code>:</p>
+<ul>
+<li><code>NewMainApp</code> creates the root <code>cli.Command</code> named <code>gitea</code>, sets global flags
+  (<code>--work-path</code>/<code>-w</code>, <code>--config</code>/<code>-c</code>, <code>--custom-path</code>/<code>-C</code>), and appends two
+  groups of subcommands:</li>
+<li><strong><code>subCmdWithConfig</code></strong> — commands that read <code>app.ini</code> and need work-path/
+    custom-path resolution before running: <code>web</code>, <code>serv</code>, <code>hook</code>, <code>keys</code>,
+    <code>dump</code>, <code>admin</code>, <code>migrate</code>, <code>doctor</code>, <code>manager</code>, <code>embedded</code>,
+    <code>migrate-storage</code>, <code>dump-repo</code>, <code>restore-repo</code>, <code>actions</code>.</li>
+<li><strong><code>subCmdStandalone</code></strong> — commands that do not depend on the Gitea
+    environment: <code>config</code>, <code>cert</code>, <code>generate</code>, <code>docs</code>.</li>
+<li><code>app.DefaultCommand = "web"</code> — running <code>gitea</code> with no arguments starts the
+  web server (<code>isValidDefaultSubCommand</code> in <code>cmd/helper.go</code> guards against
+  accidentally starting the server when an unknown subcommand is typed).</li>
+<li><code>PrepareSubcommandWithGlobalFlags</code> wraps each config-dependent command's
+  <code>Before</code> hook with <code>prepareWorkPathAndCustomConf</code>, which resolves
+  <code>WorkPath</code>/<code>CustomPath</code>/<code>CustomConf</code> from flags, environment variables, or
+  defaults via <code>setting.InitWorkPathAndCommonConfig</code>.</li>
+<li><code>cliHelpPrinterNew</code> intercepts <code>-h</code>/<code>help</code> output to also print the resolved
+  <code>AppPath</code>, <code>WorkPath</code>, <code>CustomPath</code>, and <code>ConfigFile</code> — very useful for
+  debugging "why isn't my config being picked up" issues.</li>
+<li><code>RunMainApp</code> installs OS signal handling (<code>installSignals</code>, SIGINT/SIGTERM)
+  before calling <code>app.Run</code>, and normalizes usage errors so they are printed
+  once instead of dumping full help text.</li>
+</ul>
+<h2 id="full-command-tree">Full Command Tree<a href="#full-command-tree" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="mermaid">graph TD
+  gitea["gitea"]
+
+  gitea --> web["web"]
+  gitea --> serv["serv (internal)"]
+  gitea --> hook["hook (internal)"]
+  gitea --> keys["keys (internal)"]
+  gitea --> dump["dump"]
+  gitea --> dumprepo["dump-repo"]
+  gitea --> restorerepo["restore-repo"]
+  gitea --> admin["admin"]
+  gitea --> migrate["migrate"]
+  gitea --> migratestorage["migrate-storage"]
+  gitea --> doctor["doctor"]
+  gitea --> manager["manager"]
+  gitea --> embedded["embedded"]
+  gitea --> actions["actions"]
+  gitea --> config["config"]
+  gitea --> cert["cert"]
+  gitea --> generate["generate"]
+  gitea --> docs["docs"]
+
+  hook --> hookpre["pre-receive"]
+  hook --> hookupdate["update"]
+  hook --> hookpost["post-receive"]
+  hook --> hookproc["proc-receive"]
+
+  admin --> adminuser["user"]
+  admin --> adminrepo["repo-sync-releases"]
+  admin --> adminregen["regenerate"]
+  admin --> adminauth["auth"]
+  admin --> adminsendmail["sendmail"]
+
+  adminuser --> ucreate["create"]
+  adminuser --> ulist["list"]
+  adminuser --> uchangepw["change-password"]
+  adminuser --> udelete["delete"]
+  adminuser --> utoken["generate-access-token"]
+  adminuser --> umustchange["must-change-password"]
+  adminuser --> udisable2fa["disable-2fa"]
+
+  adminregen --> regenhooks["hooks"]
+  adminregen --> regenkeys["keys"]
+
+  adminauth --> authaddoauth["add-oauth / update-oauth"]
+  adminauth --> authaddldap["add-ldap / update-ldap"]
+  adminauth --> authaddldapsimple["add-ldap-simple / update-ldap-simple"]
+  adminauth --> authaddsmtp["add-smtp / update-smtp"]
+  adminauth --> authlist["list"]
+  adminauth --> authdelete["delete"]
+
+  doctor --> doccheck["check"]
+  doctor --> docrecreate["recreate-table"]
+  doctor --> docconvert["convert"]
+
+  manager --> mgshutdown["shutdown"]
+  manager --> mgrestart["restart"]
+  manager --> mgreload["reload-templates"]
+  manager --> mgflush["flush-queues"]
+  manager --> mglogging["logging"]
+  manager --> mgprocesses["processes"]
+
+  mglogging --> logpause["pause"]
+  mglogging --> logresume["resume"]
+  mglogging --> logreopen["release-and-reopen"]
+  mglogging --> logremove["remove"]
+  mglogging --> logadd["add (file / conn)"]
+  mglogging --> logsql["log-sql"]
+
+  embedded --> emblist["list"]
+  embedded --> embview["view"]
+  embedded --> embextract["extract"]
+
+  actions --> actionstoken["generate-runner-token"]
+
+  generate --> gensecret["secret"]
+  generate --> genssh["ssh"]
+  gensecret --> genintoken["INTERNAL_TOKEN"]
+  gensecret --> genjwt["JWT_SECRET"]
+  gensecret --> genseckey["SECRET_KEY"]
+  genssh --> genkey["key"]
+  genssh --> genhostkeys["host-keys"]
+
+  config --> configeditini["edit-ini"]</pre>
+<h2 id="gitea-web-starting-the-server"><code>gitea web</code> — Starting the Server<a href="#gitea-web-starting-the-server" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/web.go</code> defines the <code>web</code> command (also the default command). Key flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--port</code> / <code>-p</code></td>
+<td><code>3000</code></td>
+<td>Overrides <code>HTTP_PORT</code> for this run</td>
+</tr>
+<tr>
+<td><code>--install-port</code></td>
+<td><code>3000</code></td>
+<td>Port used for the install wizard when Gitea isn't yet installed</td>
+</tr>
+<tr>
+<td><code>--pid</code> / <code>-P</code></td>
+<td><code>/run/gitea.pid</code></td>
+<td>Path to write the PID file</td>
+</tr>
+<tr>
+<td><code>--quiet</code> / <code>-q</code></td>
+<td>off</td>
+<td>Suppress all but fatal logs before logging is configured</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td>off</td>
+<td>TRACE-level logs before logging is configured</td>
+</tr>
+</tbody>
+</table>
+<p><code>runWeb</code> (in <code>cmd/web.go</code>) executes this sequence:</p>
+<ol>
+<li>Validate that no stray positional command was passed (<code>isValidDefaultSubCommand</code>).</li>
+<li>Create a cancellable <code>context.Context</code> and call <code>graceful.InitManager(ctx)</code> —
+   this is the single graceful-lifecycle manager for the process.</li>
+<li>Detect whether this process is a restarted child
+   (<code>os.Getppid() &gt; 1 &amp;&amp; LISTEN_FDS set</code>) purely for logging purposes.</li>
+<li>Optionally write the PID file (<code>createPIDFile</code>).</li>
+<li>Initialize the HTML template renderer (<code>templates.PageRenderer()</code>).</li>
+<li>If Gitea is <strong>not installed</strong> (<code>setting.InstallLock == false</code>), call
+   <code>serveInstall</code> which serves only the install wizard routes
+   (<code>routers.InitWebInstallPage</code> + <code>install.Routes()</code>).</li>
+<li>Otherwise call <code>serveInstalled</code>, which performs legacy-asset warnings,
+   calls <code>routers.InitWebInstalled</code>, checks <code>AppDataPath</code>, cleans up the temp
+   dir, and finally builds the full Chi router via <code>routers.NormalRoutes()</code>
+   and calls <code>listen(webRoutes, true)</code>.</li>
+<li>Optionally starts a debug <code>pprof</code>/<code>fgprof</code> HTTP server on
+   <code>localhost:6060</code> when <code>setting.EnablePprof</code> is true.</li>
+</ol>
+<p><code>listen()</code> dispatches to a protocol-specific runner based on <code>setting.Protocol</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Function</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http</code></td>
+<td><code>runHTTP</code> (network <code>tcp</code>)</td>
+<td>Standard HTTP, optionally proxy-protocol aware</td>
+</tr>
+<tr>
+<td><code>https</code></td>
+<td><code>runHTTPS</code> or <code>runACME</code></td>
+<td>ACME/Let's Encrypt handled by <code>cmd/web_acme.go</code>, manual TLS by <code>cmd/web_https.go</code></td>
+</tr>
+<tr>
+<td><code>fcgi</code></td>
+<td><code>runFCGI</code> (network <code>tcp</code>)</td>
+<td>FastCGI over TCP</td>
+</tr>
+<tr>
+<td><code>http+unix</code></td>
+<td><code>runHTTP</code> (network <code>unix</code>)</td>
+<td>Unix domain socket</td>
+</tr>
+<tr>
+<td><code>fcgi+unix</code></td>
+<td><code>runFCGI</code> (network <code>unix</code>)</td>
+<td>FastCGI over Unix socket</td>
+</tr>
+</tbody>
+</table>
+<p>If HTTPS redirection is configured (<code>RedirectOtherPort</code>), a secondary
+<code>runHTTPRedirector</code> goroutine listens on the plain HTTP port and 307-redirects
+all requests to <code>AppURL</code>.</p>
+<blockquote>
+<p>See <a href="../06-web-routers/web-routes.html">Web Routers &amp; Server-Rendered UI</a> for
+what <code>routers.NormalRoutes()</code> actually builds, and
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a> for day-to-day
+operational guidance.</p>
+</blockquote>
+<h2 id="graceful-restart-shutdown">Graceful Restart &amp; Shutdown<a href="#graceful-restart-shutdown" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea implements a "hot restart" mechanism similar to nginx/<code>endless</code>, allowing
+<code>SIGHUP</code> to spawn a replacement process that inherits open listen sockets
+without dropping in-flight connections. This is implemented in
+<code>modules/graceful/</code> and wired into the CLI via <code>cmd/web_graceful.go</code>.</p>
+<h3 id="runtime-wiring-cmdweb_gracefulgo">Runtime wiring (<code>cmd/web_graceful.go</code>)<a href="#runtime-wiring-cmdweb_gracefulgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li><code>runHTTP</code> simply forwards to <code>graceful.HTTPListenAndServe</code>.</li>
+<li><code>runFCGI</code> builds a <code>graceful.NewServer("tcp"|"unix", addr, name)</code> and calls
+  <code>fcgiServer.ListenAndServe(...)</code>, stripping <code>AppSubURL</code> from incoming paths.</li>
+<li><code>NoHTTPRedirector()</code> / <code>NoInstallListener()</code> call
+  <code>graceful.GetManager().InformCleanup()</code> to tell the manager that an expected
+  listener slot will not be used, so socket-inheritance bookkeeping stays
+  consistent (see <code>numberOfServersToCreate</code> below).</li>
+</ul>
+<h3 id="the-gracefulmanager-modulesgracefulmanagergo">The <code>graceful.Manager</code> (<code>modules/graceful/manager.go</code>)<a href="#the-gracefulmanager-modulesgracefulmanagergo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The manager is a process-wide singleton (<code>graceful.GetManager()</code> /
+<code>graceful.InitManager(ctx)</code>) that tracks a small state machine:</p>
+<pre class="mermaid">stateDiagram-v2
+  [*] --> stateInit
+  stateInit --> stateRunning
+  stateRunning --> stateShuttingDown: doShutdown()
+  stateShuttingDown --> stateTerminate: doTerminate()
+  stateTerminate --> [*]</pre>
+<p>Key mechanics:</p>
+<ul>
+<li><strong><code>numberOfServersToCreate = 4</code></strong> — Gitea expects up to 4 listening
+  services to be created per process (main HTTP/HTTPS listener, install
+  listener, HTTP redirect fallback, built-in SSH listener). Any code path that
+  decides <em>not</em> to create one of these must call <code>InformCleanup()</code> so the
+  manager knows all sockets have been accounted for before closing unused
+  inherited file descriptors.</li>
+<li><strong><code>RunWithShutdownContext(run func(context.Context))</code></strong> — used by long-running
+  components (e.g. the HTTP server, SSH server) to register themselves in the
+  <code>runningServerWaitGroup</code> and receive a context that is canceled at shutdown.</li>
+<li><strong><code>RunAtShutdown</code> / <code>RunAtTerminate</code></strong> — register cleanup callbacks that fire
+  during the shutdown or terminate phases respectively (each wrapped with
+  panic recovery).</li>
+<li><strong><code>doShutdown()</code></strong> transitions <code>stateRunning -&gt; stateShuttingDown</code>, cancels
+  the shutdown context, runs all <code>toRunAtShutdown</code> callbacks, and — if
+  <code>setting.GracefulHammerTime &gt;= 0</code> — schedules <code>doHammerTime</code> after that
+  duration to forcibly cancel the "hammer" context for connections that
+  haven't finished. It also waits on <code>runningServerWaitGroup</code>, then calls
+  <code>doTerminate()</code>.</li>
+<li><strong><code>doHammerTime(d)</code></strong> cancels <code>hammerCtx</code> after <code>d</code>, causing any code
+  watching <code>IsHammer()</code> to abort immediately (used for connections that
+  refuse to close gracefully).</li>
+<li><strong><code>doTerminate()</code></strong> transitions to <code>stateTerminate</code>, cancels
+  <code>terminateCtx</code>, and runs all <code>toRunAtTerminate</code> callbacks — this is the last
+  phase before the process context (<code>managerCtx</code>) itself is canceled and
+  <code>Done()</code> unblocks, letting <code>runWeb</code> return.</li>
+</ul>
+<h3 id="os-signal-handling-modulesgracefulmanager_unixgo">OS signal handling (<code>modules/graceful/manager_unix.go</code>)<a href="#os-signal-handling-modulesgracefulmanager_unixgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>On Unix platforms, <code>Manager.start()</code> spawns <code>handleSignals</code>, which listens for:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIGHUP</code></td>
+<td><code>DoGracefulRestart()</code> — fork a replacement process</td>
+</tr>
+<tr>
+<td><code>SIGUSR1</code></td>
+<td>Release and reopen log files (log rotation)</td>
+</tr>
+<tr>
+<td><code>SIGUSR2</code></td>
+<td><code>DoImmediateHammer()</code> — force-terminate immediately</td>
+</tr>
+<tr>
+<td><code>SIGINT</code> / <code>SIGTERM</code></td>
+<td><code>DoGracefulShutdown()</code> — graceful shutdown, no restart</td>
+</tr>
+<tr>
+<td><code>SIGTSTP</code></td>
+<td>Logged only, no action</td>
+</tr>
+</tbody>
+</table>
+<p>It also participates in the <strong>systemd notify protocol</strong>: it reports
+<code>READY=1</code>, <code>MAINPID=&lt;pid&gt;</code>, <code>STOPPING=1</code>/status messages, and — if
+<code>WATCHDOG_USEC</code> is set — periodically pings the systemd watchdog.</p>
+<h3 id="restart-mechanics-modulesgracefulrestart_unixgo">Restart mechanics (<code>modules/graceful/restart_unix.go</code>)<a href="#restart-mechanics-modulesgracefulrestart_unixgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>DoGracefulRestart()</code>:</p>
+<ol>
+<li>If <code>setting.GracefulRestartable</code> is false, it just performs a normal
+   <code>doShutdown()</code> (this is the "systemd manages restarts" mode, e.g. via
+   <code>systemctl restart</code>).</li>
+<li>Otherwise it calls <code>doFork()</code>, which:</li>
+<li>Sets a <code>forked</code> guard (only one fork attempt per process).</li>
+<li>Rewrites log file paths to include the PID (<code>RestartLogsWithPIDSuffix</code>)
+     so the old and new process don't clobber each other's logs during the
+     handoff window.</li>
+<li>Calls <code>RestartProcess()</code>.</li>
+<li>After forking, the <strong>parent immediately calls <code>doShutdown()</code></strong> — the design
+   deliberately does not keep the old process alive, both processes never run
+   concurrently for long (this avoids issues like leveldb file locks being
+   held by two processes at once).</li>
+</ol>
+<p><code>RestartProcess()</code>:</p>
+<ol>
+<li>Collects all currently active listeners (<code>getActiveListeners()</code>).</li>
+<li>Extracts each listener's <code>*os.File</code> (via a <code>filer</code> interface all Gitea
+   listeners implement) so the fds can be passed to the child.</li>
+<li>For <code>*net.UnixListener</code>, disables "unlink on close" so the socket file
+   isn't removed out from under the new process.</li>
+<li>Resolves the original binary path with <code>exec.LookPath(os.Args[0])</code> — this
+   means a <code>SIGHUP</code> after a binary upgrade-in-place will start the <em>new</em>
+   binary.</li>
+<li>Builds the child's environment: copies <code>os.Environ()</code>, replaces
+   <code>LISTEN_FDS</code> with the new fd count, and forwards <code>NOTIFY_SOCKET</code> and
+   <code>WATCHDOG_USEC</code> if set.</li>
+<li>Calls <code>os.StartProcess</code> with <code>Files: [stdin, stdout, stderr, ...listenerFDs]</code>
+   so the child inherits the sockets starting at fd 3 (<code>startFD</code> in
+   <code>net_unix.go</code>).</li>
+<li>Releases the child process handle immediately (<code>process.Release()</code>) — the
+   parent does not wait for it.</li>
+</ol>
+<p>The child process (started with <code>LISTEN_FDS &gt; 0</code>) detects it is a child in
+<code>Manager.start()</code> (<code>g.isChild = len(os.Getenv("LISTEN_FDS")) &gt; 0 &amp;&amp; os.Getppid() &gt; 1</code>)
+and reuses the inherited sockets instead of binding new ones
+(<code>getProvidedFDs</code>/<code>GetListener</code> in <code>net_unix.go</code>), giving effectively
+zero-downtime restarts.</p>
+<pre class="mermaid">sequenceDiagram
+  participant Old as Old gitea process
+  participant OS as OS
+  participant New as New gitea process
+
+  Note over Old: SIGHUP received
+  Old->>Old: handleSignals -> DoGracefulRestart()
+  Old->>Old: RestartLogsWithPIDSuffix()
+  Old->>OS: os.StartProcess(argv0, env+LISTEN_FDS, files=[stdin,stdout,stderr,...listenerFDs])
+  OS->>New: fork/exec with inherited listener fds
+  New->>New: isChild = true, reuse inherited sockets
+  New->>New: notify(readyMsg) once numberOfServersToCreate sockets accounted for
+  Old->>Old: doShutdown() -> drains connections -> doTerminate()
+  Old->>Old: process exits
+  New->>New: continues serving requests on the same sockets</pre>
+<p>On <strong>Windows</strong> (<code>modules/graceful/manager_windows.go</code> / <code>net_windows.go</code>),
+socket-fd inheritance via <code>exec</code> isn't available, so graceful restart is not
+supported — <code>manager restart</code> explicitly documents this limitation, and
+Windows service managers (e.g. NSSM) are expected to handle process restarts
+instead.</p>
+<h3 id="gitea-manager-controlling-a-running-process"><code>gitea manager</code> — controlling a running process<a href="#gitea-manager-controlling-a-running-process" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Unlike the signal-based mechanism above (which requires OS-level access to
+send signals), <code>cmd/manager.go</code> implements remote-control operations by
+calling <strong>the running instance's internal HTTP API</strong>
+(<code>modules/private/manager.go</code>), authenticated with the shared
+<code>INTERNAL_TOKEN</code>, over <code>setting.LocalURL</code>. This lets an admin run
+<code>gitea manager shutdown</code> (for example, from inside a container or over SSH)
+without needing the numeric PID.</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Internal endpoint</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shutdown</code></td>
+<td><code>POST /api/internal/manager/shutdown</code></td>
+<td>Graceful shutdown, no restart</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td><code>POST /api/internal/manager/restart</code></td>
+<td>Graceful restart (subject to <code>GracefulRestartable</code>)</td>
+</tr>
+<tr>
+<td><code>reload-templates</code></td>
+<td><code>POST /api/internal/manager/reload-templates</code></td>
+<td>Hot-reload Go HTML templates</td>
+</tr>
+<tr>
+<td><code>flush-queues</code></td>
+<td><code>POST /api/internal/manager/flush-queues</code></td>
+<td>Flush all in-process queues (<code>--timeout</code>, <code>--non-blocking</code>)</td>
+</tr>
+<tr>
+<td><code>logging</code></td>
+<td>various <code>/api/internal/manager/...</code></td>
+<td>Manage log writers at runtime — see below</td>
+</tr>
+<tr>
+<td><code>processes</code></td>
+<td><code>/api/internal/manager/processes</code></td>
+<td>Dump/cancel currently tracked processes (<code>--flat</code>, <code>--stacktraces</code>, <code>--json</code>, <code>--cancel &lt;pid&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><code>gitea manager logging</code> (<code>cmd/manager_logging.go</code>) supports:</p>
+<ul>
+<li><code>pause</code> / <code>resume</code> — pause/resume all log writers.</li>
+<li><code>release-and-reopen</code> — close and reopen log file handles (for external log
+  rotation tools like <code>logrotate</code>).</li>
+<li><code>remove --logger &lt;name&gt;</code> — remove a named event writer.</li>
+<li><code>add file|conn ...</code> — dynamically attach a new file or network log writer
+  with level, flags, expression filter, rotation (<code>--rotate</code>, <code>--max-size</code>,
+  <code>--daily</code>, <code>--max-days</code>, <code>--compress</code>), or connection settings
+  (<code>--reconnect</code>, <code>--protocol</code>, <code>--address</code>).</li>
+<li><code>log-sql on|off</code> — toggle SQL statement logging at runtime.</li>
+</ul>
+<p>All <code>manager</code> subcommands share a <code>--debug</code> flag and call <code>setup(ctx, debug)</code>
+(from <code>cmd/serv.go</code>) before issuing the internal request, and
+<code>handleCliResponseExtra</code> to surface any server-side error/user message.</p>
+<h2 id="gitea-admin-administrative-operations"><code>gitea admin</code> — Administrative Operations<a href="#gitea-admin-administrative-operations" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/admin.go</code> defines the <code>admin</code> command with five subcommand groups:</p>
+<pre class="mermaid">graph LR
+  admin --> user
+  admin --> repo-sync-releases
+  admin --> regenerate
+  admin --> auth
+  admin --> sendmail</pre>
+<h3 id="admin-user-cmdadmin_usergo"><code>admin user</code> (<code>cmd/admin_user*.go</code>)<a href="#admin-user-cmdadmin_usergo" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create</code></td>
+<td><code>admin_user_create.go</code></td>
+<td>Create a user; flags include <code>--username</code>/<code>--name</code>, <code>--email</code> (required), <code>--password</code>, <code>--random-password[-length]</code>, <code>--admin</code>, <code>--must-change-password</code>, <code>--access-token[-name/-scopes]</code>, <code>--restricted</code>, <code>--user-type</code> (<code>individual</code>/<code>bot</code>), <code>--fullname</code></td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td><code>admin_user_list.go</code></td>
+<td>List users in a tabular format</td>
+</tr>
+<tr>
+<td><code>change-password</code></td>
+<td><code>admin_user_change_password.go</code></td>
+<td>Set a new password for a user</td>
+</tr>
+<tr>
+<td><code>delete</code></td>
+<td><code>admin_user_delete.go</code></td>
+<td>Delete a user by username/ID/email</td>
+</tr>
+<tr>
+<td><code>generate-access-token</code></td>
+<td><code>admin_user_generate_access_token.go</code></td>
+<td>Create a personal access token for a user</td>
+</tr>
+<tr>
+<td><code>must-change-password</code></td>
+<td><code>admin_user_must_change_password.go</code></td>
+<td>Force/unforce password change at next login</td>
+</tr>
+<tr>
+<td><code>disable-2fa</code></td>
+<td><code>admin_user_disable_2fa.go</code></td>
+<td>Disable two-factor auth for a user</td>
+</tr>
+</tbody>
+</table>
+<p><code>runCreateUser</code> (in <code>admin_user_create.go</code>) calls <code>setting.LoadSettings()</code>
+first (full settings load, needed for org/visibility defaults), validates
+<code>--user-type</code> against <code>individual</code>/<code>bot</code>, and rejects <code>--password</code>/
+<code>--random-password</code> for bot users.</p>
+<h3 id="admin-repo-sync-releases"><code>admin repo-sync-releases</code><a href="#admin-repo-sync-releases" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Iterates every repository page-by-page (<code>repo_model.SearchRepositoryByName</code>),
+opens each git repo, and calls <code>repo_module.SyncReleasesWithTags</code> to
+reconcile the <code>release</code> DB table with actual git tags — useful after manual
+tag manipulation or a bulk import.</p>
+<h3 id="admin-regenerate-cmdadmin_regeneratego"><code>admin regenerate</code> (<code>cmd/admin_regenerate.go</code>)<a href="#admin-regenerate-cmdadmin_regeneratego" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hooks</code></td>
+<td><code>repo_service.SyncRepositoryHooks</code> — rewrites all repositories' <code>.git/hooks/*</code> files to match the currently installed Gitea binary/config</td>
+</tr>
+<tr>
+<td><code>keys</code></td>
+<td><code>asymkey_service.RewriteAllPublicKeys</code> — regenerates the SSH <code>authorized_keys</code> file from the DB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="admin-auth-cmdadmin_authgo"><code>admin auth</code> (<code>cmd/admin_auth*.go</code>)<a href="#admin-auth-cmdadmin_authgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Manage external authentication sources without going through the web UI —
+useful for scripted deployments:</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>add-oauth</code> / <code>update-oauth</code></td>
+<td><code>admin_auth_oauth.go</code></td>
+</tr>
+<tr>
+<td><code>add-ldap</code> / <code>update-ldap</code> (bind-DN mode)</td>
+<td><code>admin_auth_ldap.go</code></td>
+</tr>
+<tr>
+<td><code>add-ldap-simple</code> / <code>update-ldap-simple</code> (simple-auth mode)</td>
+<td><code>admin_auth_ldap.go</code></td>
+</tr>
+<tr>
+<td><code>add-smtp</code> / <code>update-smtp</code></td>
+<td><code>admin_auth_smtp.go</code></td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td><code>admin_auth.go</code> — tabular list of <code>auth_model.Source</code> rows (ID, Name, Type, Enabled), configurable column formatting via <code>--min-width</code>, <code>--tab-width</code>, <code>--padding</code>, <code>--pad-char</code>, <code>--vertical-bars</code></td>
+</tr>
+<tr>
+<td><code>delete --id &lt;id&gt;</code></td>
+<td><code>admin_auth.go</code> — deletes via <code>auth_service.DeleteSource</code></td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../08-services/auth-providers.html">Authentication &amp; Authorization</a> for the
+underlying provider implementations.</p>
+<h3 id="admin-sendmail"><code>admin sendmail</code><a href="#admin-sendmail" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>--title</code> (required), <code>--content</code>, <code>--force</code> to skip the confirmation prompt.
+Calls <code>private.SendEmail</code> over the internal API to broadcast a message to
+every registered user.</p>
+<h2 id="gitea-doctor-diagnostics-maintenance"><code>gitea doctor</code> — Diagnostics &amp; Maintenance<a href="#gitea-doctor-diagnostics-maintenance" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/doctor.go</code> defines three subcommands:</p>
+<h3 id="doctor-check"><code>doctor check</code><a href="#doctor-check" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Runs a registry of diagnostic checks (<code>services/doctor</code>, <code>doctor.Checks</code>).
+Flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--list</code></td>
+<td>Print all available checks (name, title, whether it's a default check)</td>
+</tr>
+<tr>
+<td><code>--default</code></td>
+<td>Run only checks marked <code>IsDefault</code> (this is the behavior with no flags at all)</td>
+</tr>
+<tr>
+<td><code>--run &lt;name&gt;,...</code></td>
+<td>Run specific named checks (repeatable / comma-separated); combine with <code>--default</code> to also run defaults</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td>Run every registered check</td>
+</tr>
+<tr>
+<td><code>--fix</code></td>
+<td>Allow checks to automatically repair problems, not just report them</td>
+</tr>
+<tr>
+<td><code>--log-file &lt;path\|-&gt;</code></td>
+<td>Write verbose diagnostic output to a file or stdout</td>
+</tr>
+<tr>
+<td><code>--color</code> / <code>-H</code></td>
+<td>Force-enable colorized output</td>
+</tr>
+</tbody>
+</table>
+<h3 id="doctor-recreate-table-table"><code>doctor recreate-table [TABLE]...</code><a href="#doctor-recreate-table-table" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Uses Xorm's schema-sync facilities (<code>migrate_base.RecreateTables</code>) to drop and
+recreate one or more tables from their current Go struct definitions, copying
+existing data across — useful when a database's on-disk schema has drifted
+from what current migrations expect (e.g. manually altered columns).
+Requires <code>--debug</code> for verbose SQL logging. Runs <code>migrations.EnsureUpToDate</code>
+first to guarantee the migration ladder has already been applied.</p>
+<h3 id="doctor-convert"><code>doctor convert</code><a href="#doctor-convert" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Defined in <code>cmd/doctor_convert.go</code> — converts the existing database's table
+character set/collation (primarily used for MySQL: converting all tables to
+<code>utf8mb4</code>).</p>
+<p>See <a href="../05-database-models/migrations.html">Data Layer — Migrations</a> for more on
+the migration ladder that <code>doctor</code> interacts with.</p>
+<h2 id="gitea-dump-dump-repo-restore-repo-backup-restore"><code>gitea dump</code> / <code>dump-repo</code> / <code>restore-repo</code> — Backup &amp; Restore<a href="#gitea-dump-dump-repo-restore-repo-backup-restore" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="gitea-dump-cmddumpgo"><code>gitea dump</code> (<code>cmd/dump.go</code>)<a href="#gitea-dump-cmddumpgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Produces a single archive (default <code>gitea-dump-{time}.zip</code>, or <code>-</code> for
+stdout) containing the database, custom config, repositories, LFS data,
+attachments, package data, search index, and logs, using
+<code>gitea.dev/modules/dump.NewDumper</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--file</code> / <code>-f</code></td>
+<td>Output file name, or <code>-</code> for stdout</td>
+</tr>
+<tr>
+<td><code>--type</code></td>
+<td>Output format (see <code>dump.SupportedOutputTypes</code>, e.g. <code>zip</code>)</td>
+</tr>
+<tr>
+<td><code>--verbose</code> / <code>-V</code>, <code>--quiet</code> / <code>-q</code></td>
+<td>Mutually exclusive log verbosity controls</td>
+</tr>
+<tr>
+<td><code>--tempdir</code> / <code>-t</code></td>
+<td>Where to stage temp files during the dump</td>
+</tr>
+<tr>
+<td><code>--database</code> / <code>-d</code></td>
+<td>Force a specific SQL dialect for the DB dump</td>
+</tr>
+<tr>
+<td><code>--skip-repository</code> / <code>-R</code></td>
+<td>Skip repositories</td>
+</tr>
+<tr>
+<td><code>--skip-log</code> / <code>-L</code></td>
+<td>Skip log files</td>
+</tr>
+<tr>
+<td><code>--skip-custom-dir</code></td>
+<td>Skip the <code>custom/</code> directory</td>
+</tr>
+<tr>
+<td><code>--skip-lfs-data</code></td>
+<td>Skip LFS object storage</td>
+</tr>
+<tr>
+<td><code>--skip-attachment-data</code></td>
+<td>Skip issue/PR attachments</td>
+</tr>
+<tr>
+<td><code>--skip-package-data</code></td>
+<td>Skip the package registry storage</td>
+</tr>
+<tr>
+<td><code>--skip-index</code></td>
+<td>Skip the bleve search index</td>
+</tr>
+<tr>
+<td><code>--skip-db</code></td>
+<td>Skip the database dump entirely</td>
+</tr>
+</tbody>
+</table>
+<p><code>runDump</code> requires Gitea to already be installed (<code>setting.MustInstalled()</code>),
+initializes the DB engine and storage subsystem, then streams everything
+through <code>dump.NewDumper</code> into the chosen output.</p>
+<h3 id="gitea-dump-repo-cmddump_repogo"><code>gitea dump-repo</code> (<code>cmd/dump_repo.go</code>)<a href="#gitea-dump-repo-cmddump_repogo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Dumps a <strong>single repository</strong> (optionally from an external <code>git</code>/<code>github</code>/
+<code>gitea</code>/<code>gitlab</code> remote, cloned with <code>--clone_addr</code>, <code>--auth_username</code>/
+<code>--auth_password</code>/<code>--auth_token</code>) to a local directory (<code>--repo_dir</code>), used by
+the standalone migration tooling that powers repository migration ("New
+Migration" in the web UI) without going through the server.</p>
+<h3 id="gitea-restore-repo-cmdrestore_repogo"><code>gitea restore-repo</code> (<code>cmd/restore_repo.go</code>)<a href="#gitea-restore-repo-cmdrestore_repogo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The inverse operation: restores a previously dumped repository directory
+(<code>--repo_dir</code>) back into a live Gitea instance under a given
+<code>--owner_name</code>/<code>--repo_name</code>, with optional <code>--units</code> filtering and
+<code>--validation</code> (sanity-check file contents before loading).</p>
+<h2 id="gitea-migrate-migrate-storage"><code>gitea migrate</code> / <code>migrate-storage</code><a href="#gitea-migrate-migrate-storage" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="gitea-migrate-cmdmigratego"><code>gitea migrate</code> (<code>cmd/migrate.go</code>)<a href="#gitea-migrate-cmdmigratego" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Runs the full <code>versioned_migration.Migrate</code> ladder against the configured
+database via <code>db.InitEngineWithMigration</code>. This is the same migration path
+that runs automatically on <code>web</code> startup, but exposed standalone so scripts
+can migrate the schema (e.g. before running <code>admin user create</code>) without
+starting the HTTP server. See
+<a href="../05-database-models/migrations.html">Data Layer — Migrations</a> for the
+migration implementation.</p>
+<h3 id="gitea-migrate-storage-cmdmigrate_storagego"><code>gitea migrate-storage</code> (<code>cmd/migrate_storage.go</code>)<a href="#gitea-migrate-storage-cmdmigrate_storagego" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Copies stored blobs from whatever storage backend <code>app.ini</code> currently
+configures to a <strong>new</strong> backend specified entirely via CLI flags (it does not
+mutate <code>app.ini</code> — that's a manual follow-up step).</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--type</code> / <code>-t</code></td>
+<td>What kind of data to migrate: <code>attachments</code>, <code>lfs</code>, <code>avatars</code>, <code>repo-avatars</code>, <code>repo-archivers</code>, <code>packages</code>, <code>actions-log</code>, <code>actions-artifacts</code></td>
+</tr>
+<tr>
+<td><code>--storage</code> / <code>-s</code></td>
+<td>Target storage backend: <code>local</code> (default), <code>minio</code>, <code>azureblob</code></td>
+</tr>
+<tr>
+<td><code>--path</code> / <code>-p</code></td>
+<td>Target local path (when <code>--storage local</code>)</td>
+</tr>
+<tr>
+<td><code>--minio-*</code></td>
+<td>Minio endpoint/access key/secret/bucket/location/base-path/SSL/insecure-skip-verify/checksum-algorithm/bucket-lookup-type</td>
+</tr>
+<tr>
+<td><code>--azureblob-*</code></td>
+<td>Azure Blob endpoint/account name/account key/container</td>
+</tr>
+</tbody>
+</table>
+<p>Internally it iterates every relevant DB model (<code>actions_model</code>, <code>git_model</code>,
+<code>packages_model</code>, <code>repo_model</code>, <code>user_model</code>) to enumerate existing blobs, then
+copies each object from the old <code>storage.Storage</code> to the newly-constructed one.
+See <a href="../09-core-modules/storage-queue-cache.html">Storage, Queue &amp; Caching</a> for
+background on the storage abstraction being migrated.</p>
+<h2 id="gitea-keys-ssh-authorized-keys-lookup-internal"><code>gitea keys</code> — SSH Authorized-Keys Lookup (internal)<a href="#gitea-keys-ssh-authorized-keys-lookup-internal" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/keys.go</code>'s <code>NewKeysCommand()</code> is <code>Hidden: true</code> — it is invoked
+automatically by <code>sshd</code>'s <code>AuthorizedKeysCommand</code> directive, <strong>not</strong> by
+administrators directly. Given <code>--username</code>, <code>--type</code>, and <code>--content</code>
+(base64 SSH key material), it calls
+<code>private.AuthorizedPublicKeyByContent</code> over the internal API and prints the
+resulting <code>command="gitea serv ..." ...</code> authorized_keys line that <code>sshd</code>
+should treat as authoritative for that key. If <code>--username</code> doesn't match
+<code>--expected</code> (defaults to <code>git</code>), it silently returns nothing.</p>
+<h2 id="gitea-serv-git-over-ssh-entry-point-internal"><code>gitea serv</code> — Git-Over-SSH Entry Point (internal)<a href="#gitea-serv-git-over-ssh-entry-point-internal" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/serv.go</code>'s <code>serv</code> command is the program that Gitea's generated
+<code>authorized_keys</code> entries point <code>sshd</code> at
+(<code>command="/path/to/gitea serv --config=... key-N"</code>). It is also <code>Hidden: true</code>.</p>
+<p><code>runServ</code>:</p>
+<ol>
+<li>Calls <code>setup(ctx, debug)</code> (shared with <code>hook</code>/<code>keys</code>) which sets up a
+   console logger, verifies <code>setting.RepoRootPath</code> is accessible, and runs
+   <code>git.InitSimple()</code>.</li>
+<li>Bails out early if <code>setting.SSH.Disabled</code>.</li>
+<li>Parses the SSH command line (<code>SSH_ORIGINAL_COMMAND</code>) with
+   <code>shellquote.Split</code>, expecting one of the Git verbs:
+   <code>git-upload-pack</code>, <code>git-receive-pack</code>, <code>git-upload-archive</code>, or an LFS
+   verb (<code>git-lfs-authenticate</code>, <code>git-lfs-transfer</code>).</li>
+<li><code>getAccessMode(verb, lfsVerb)</code> maps the verb to the
+   <code>perm.AccessMode</code> required (<code>Read</code> for upload-pack/upload-archive/LFS
+   download, <code>Write</code> for receive-pack/LFS upload); unrecognized verbs are
+   explicitly rejected rather than silently defaulting to <code>AccessModeNone</code>.</li>
+<li>Calls the internal <code>/api/internal/serv/...</code> endpoint to authorize the
+   request against the DB (deploy keys, user keys, repo permissions), then
+   execs the appropriate <code>git</code> subprocess (or delegates to
+   <code>services/lfs</code>/<code>modules/lfstransfer</code> for LFS SSH transfer) with the
+   environment variables that <code>hook</code> commands later read
+   (<code>GITEA_REPO_USER_NAME</code>, <code>GITEA_PUSHER_ID</code>, <code>GITEA_PR_ID</code>,
+   <code>GITEA_DEPLOY_KEY_ID</code>, <code>GITEA_ACTIONS_TASK_ID</code>, etc. — see
+   <code>repo_module.Env*</code> constants).</li>
+</ol>
+<h2 id="gitea-hook-git-hook-delegation-internal"><code>gitea hook</code> — Git Hook Delegation (internal)<a href="#gitea-hook-git-hook-delegation-internal" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/hook.go</code>'s <code>hook</code> command (also <code>Hidden: true</code>) is what Gitea installs
+as the actual executable behind every repository's
+<code>.git/hooks/{pre-receive,update,post-receive,proc-receive}</code> script (each
+generated hook script simply execs <code>gitea hook &lt;name&gt; --config=...</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Function</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pre-receive</code></td>
+<td><code>runHookPreReceive</code></td>
+<td>Reads <code>&lt;old&gt; &lt;new&gt; &lt;ref&gt;</code> triples from stdin in batches of <code>hookBatchSize=500</code>, builds a <code>private.HookOptions</code> (pusher ID, PR ID, deploy key ID, Actions task ID, quarantine/alt-object-dir env, git push options) from environment variables set by <code>serv</code>, and calls <code>private.HookPreReceive</code> per batch to run protected-branch/permission checks server-side. Supports <code>git.DefaultFeatures().SupportProcReceive</code> for delayed permission checks and <code>setting.Git.VerbosePush[Delay]</code> for progress dots streamed back to the pushing client.</td>
+</tr>
+<tr>
+<td><code>update</code></td>
+<td><code>runHookUpdate</code></td>
+<td>Deliberately lightweight — invoked once <em>per ref</em> by git, so it avoids any heavy DB/network calls that pre/post-receive can batch instead.</td>
+</tr>
+<tr>
+<td><code>post-receive</code></td>
+<td><code>runHookPostReceive</code></td>
+<td>Notifies Gitea of completed ref updates (triggers webhooks, Actions triggers, issue-closing keyword scanning, etc. via the internal API)</td>
+</tr>
+<tr>
+<td><code>proc-receive</code></td>
+<td><code>runHookProcReceive</code></td>
+<td>Implements git's newer (2.29+) <code>proc-receive</code> protocol, used for server-side operations like creating pull requests directly from <code>git push</code> (e.g. <code>git push origin HEAD:refs/for/main</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>All four accept a <code>--debug</code> flag. Because git hook stdout/stderr is piped
+directly back to the pushing client, <code>PrepareConsoleLoggerLevel(log.FATAL)</code> is
+used as the <code>Before</code> hook for the whole <code>hook</code> command tree — any accidental
+non-fatal log line written to stdout would corrupt the git wire protocol and
+hang the client, so only fatal errors are allowed to reach the console logger
+by default.</p>
+<p>See <a href="../09-core-modules/git-module.html">Git Internals &amp; LFS</a> and
+<a href="../09-core-modules/lfs-and-hooks.html">LFS &amp; Git Hooks</a> for the repository-side
+mechanics these hooks trigger.</p>
+<h2 id="gitea-actions-actions-runner-tokens"><code>gitea actions</code> — Actions Runner Tokens<a href="#gitea-actions-actions-runner-tokens" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/actions.go</code> currently exposes one subcommand:</p>
+<ul>
+<li><code>generate-runner-token</code> (alias <code>grt</code>) — <code>--scope {owner}[/{repo}]</code> (empty
+  for a global/instance-wide runner token). Calls
+  <code>private.GenerateActionsRunnerToken</code> and prints the resulting registration
+  token, used with <code>act_runner register --instance ... --token ...</code>.</li>
+</ul>
+<p>See <a href="../14-actions-ci/actions-architecture.html">Actions (CI/CD) Architecture</a>
+for how runners consume this token.</p>
+<h2 id="gitea-cert-self-signed-tls-certificates"><code>gitea cert</code> — Self-Signed TLS Certificates<a href="#gitea-cert-self-signed-tls-certificates" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/cert.go</code>'s <code>cert</code> command is a close port of Go's standard-library
+<code>crypto/tls</code> certificate generator example. Flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--host</code></td>
+<td>required</td>
+<td>Comma-separated hostnames/IPs the cert covers</td>
+</tr>
+<tr>
+<td><code>--ecdsa-curve</code></td>
+<td><code>""</code> (RSA)</td>
+<td><code>P224</code>/<code>P256</code>/<code>P384</code>/<code>P521</code>, or empty for RSA</td>
+</tr>
+<tr>
+<td><code>--rsa-bits</code></td>
+<td><code>3072</code></td>
+<td>RSA key size (ignored if ECDSA curve set)</td>
+</tr>
+<tr>
+<td><code>--start-date</code></td>
+<td>now</td>
+<td><code>Jan 2 15:04:05 2006</code>-formatted validity start</td>
+</tr>
+<tr>
+<td><code>--duration</code></td>
+<td><code>365 * 24h</code></td>
+<td>Certificate validity period</td>
+</tr>
+<tr>
+<td><code>--ca</code></td>
+<td>false</td>
+<td>Mark the certificate as its own CA</td>
+</tr>
+<tr>
+<td><code>--out</code></td>
+<td><code>cert.pem</code></td>
+<td>Output certificate path</td>
+</tr>
+<tr>
+<td><code>--keyout</code></td>
+<td><code>key.pem</code></td>
+<td>Output private key path</td>
+</tr>
+</tbody>
+</table>
+<p>Produces <code>cert.pem</code>/<code>key.pem</code> suitable for <code>CERT_FILE</code>/<code>KEY_FILE</code> in
+<code>app.ini</code> under <code>[server] PROTOCOL = https</code> for local/dev HTTPS testing (not
+intended to replace a real CA-issued certificate in production).</p>
+<h2 id="gitea-generate-secrets-ssh-keys"><code>gitea generate</code> — Secrets &amp; SSH Keys<a href="#gitea-generate-secrets-ssh-keys" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/generate.go</code> groups two subcommand families:</p>
+<ul>
+<li><strong><code>generate secret</code></strong>:</li>
+<li><code>INTERNAL_TOKEN</code> — a fresh <code>INTERNAL_TOKEN</code> (used to authenticate CLI ↔
+    server internal API calls, e.g. <code>manager</code>, <code>keys</code>, <code>serv</code>, <code>hook</code>).</li>
+<li><code>JWT_SECRET</code> (alias <code>LFS_JWT_SECRET</code>) — the LFS SSH-transfer JWT signing
+    secret.</li>
+<li><code>SECRET_KEY</code> — the general app-level <code>SECRET_KEY</code> used for encryption at
+    rest (secrets, 2FA, OAuth client secrets, etc.).</li>
+<li><strong><code>generate ssh</code></strong>:</li>
+<li><code>key --file &lt;path&gt; [--type ed25519|...] [--bits N]</code> — generates a new SSH
+    keypair (used for e.g. the built-in Gitea SSH server's host key, or a
+    deploy key), with an interactive overwrite confirmation via <code>confirm()</code>.</li>
+<li><code>host-keys --dir &lt;path&gt;</code> — generates the full set of default host key
+    types (RSA, ECDSA, Ed25519) if they don't already exist, via
+    <code>ssh.InitDefaultHostKeys</code>.</li>
+</ul>
+<h2 id="gitea-config-edit-ini-config-file-automation"><code>gitea config edit-ini</code> — Config File Automation<a href="#gitea-config-edit-ini-config-file-automation" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/config.go</code> provides a config-management helper mainly aimed at
+containerized/Helm-chart deployments that need to reconstruct <code>app.ini</code> from
+environment variables on every boot:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code> (global)</td>
+<td>Input INI file (required)</td>
+</tr>
+<tr>
+<td><code>--config-keep-keys</code></td>
+<td>A template INI file whose <em>keys</em> (not values) define exactly which keys to retain from the input; everything else is dropped</td>
+</tr>
+<tr>
+<td><code>--apply-env</code></td>
+<td>Apply all <code>GITEA__section_name__KEY_NAME[__FILE]</code> environment variables onto the config</td>
+</tr>
+<tr>
+<td><code>--out</code></td>
+<td>Output file path</td>
+</tr>
+<tr>
+<td><code>--in-place</code></td>
+<td>Overwrite the input file (ignored if <code>--out</code> given)</td>
+</tr>
+</tbody>
+</table>
+<p>This command backs the <code>environment-to-ini</code> helper script referenced in
+Gitea's official Docker images and is described in detail in
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a>.</p>
+<h2 id="gitea-embedded-extracting-baked-in-assets"><code>gitea embedded</code> — Extracting Baked-In Assets<a href="#gitea-embedded-extracting-baked-in-assets" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea's release binaries embed static assets (<code>options/</code>, <code>public/</code>,
+<code>templates/</code>) directly into the executable via Go's <code>embed</code> package (see the
+<code>options</code>, <code>public</code>, and <code>templates</code> modules' <code>BuiltinAssets()</code> functions).
+<code>cmd/embedded.go</code> exposes tooling to inspect and extract these without
+needing the original source tree — useful for customizing templates/locale
+files against an official release binary.</p>
+<h3 id="shared-matching-logic">Shared matching logic<a href="#shared-matching-logic" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>initEmbeddedExtractor</code> compiles the command's positional arguments as glob
+patterns (defaulting to <code>**</code> — everything) via <code>modules/glob</code>, then walks
+three asset layers and records every match into a package-level
+<code>matchedAssetFiles []assetFile</code> slice:</p>
+<pre class="mermaid">graph LR
+  A["options.BuiltinAssets()"] --> D[assetfs.Layered]
+  B["public.BuiltinAssets()"] --> D
+  C["templates.BuiltinAssets()"] --> D
+  D --> E["collectAssetFilesByPattern()"]
+  E -->|"pattern matches path/name"| F["matchedAssetFiles"]</pre>
+<p>Each layer is namespaced by prefix (<code>options/...</code>, <code>public/...</code>,
+<code>templates/...</code>) when matching against user-supplied glob patterns, e.g.
+<code>gitea embedded list 'templates/repo/**'</code>.</p>
+<h3 id="subcommands">Subcommands<a href="#subcommands" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Flags</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list [PATTERN...]</code></td>
+<td><code>--include-vendored</code>/<code>--vendor</code></td>
+<td>Prints the path of every matched embedded file</td>
+</tr>
+<tr>
+<td><code>view [PATTERN]</code></td>
+<td><code>--include-vendored</code></td>
+<td>Requires the pattern to match <strong>exactly one</strong> file; writes its raw bytes to stdout</td>
+</tr>
+<tr>
+<td><code>extract [PATTERN...]</code></td>
+<td><code>--include-vendored</code>, <code>--overwrite</code>, <code>--rename</code>, <code>--custom</code>, <code>--destination</code>/<code>--dest-dir</code></td>
+<td>Writes every matched file to disk under the destination directory, preserving its relative path</td>
+</tr>
+</tbody>
+</table>
+<p><code>--include-vendored</code> is needed to also match files under <code>public/vendor/...</code>
+(third-party frontend libraries), which are excluded by default to avoid
+accidentally extracting megabytes of vendored JS/CSS.</p>
+<p><code>extract</code>'s destination resolution order:</p>
+<ol>
+<li><code>--destination</code>/<code>--dest-dir</code> if set.</li>
+<li><code>setting.CustomPath</code> if <code>--custom</code> is set (i.e. extract straight into the
+   active <code>custom/</code> override directory).</li>
+<li>Otherwise the current working directory (<code>.</code>).</li>
+</ol>
+<p>Conflict handling (<code>extractAsset</code>):</p>
+<ul>
+<li>Default (<code>--overwrite</code>/<code>--rename</code> both false): skip existing files with a
+  message.</li>
+<li><code>--overwrite</code>: replace in place.</li>
+<li><code>--rename</code>: move the existing file to <code>&lt;name&gt;.bak</code> first (preserving its
+  original file mode), then write the new content.</li>
+</ul>
+<p>Typical use: after upgrading Gitea, run
+<code>gitea embedded extract --custom templates/repo/issue/view_content/comments.tmpl</code>
+to pull a specific default template into <code>custom/templates/...</code> for local
+overriding, or <code>gitea embedded list 'public/assets/img/**'</code> to audit which
+image assets ship built-in.</p>
+<h2 id="gitea-docs-self-documenting-cli"><code>gitea docs</code> — Self-Documenting CLI<a href="#gitea-docs-self-documenting-cli" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>cmd/docs.go</code> renders CLI help for the <em>entire</em> command tree using
+<code>github.com/urfave/cli-docs/v3</code>:</p>
+<ul>
+<li><code>--man</code> — output man-page (<code>.1</code>) formatted docs instead of Markdown.</li>
+<li><code>--output</code>/<code>-o &lt;path&gt;</code> — write to a file instead of stdout.</li>
+</ul>
+<p>This is how Gitea's official CLI reference documentation and man pages are
+generated from the same <code>cli.Command</code> definitions documented on this page,
+guaranteeing the reference docs never drift from the actual flags.</p>
+<h2 id="cross-cutting-helpers-cmdhelpergo">Cross-Cutting Helpers (<code>cmd/helper.go</code>)<a href="#cross-cutting-helpers-cmdhelpergo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>A handful of small utilities are shared across nearly every subcommand:</p>
+<ul>
+<li><strong><code>initDB(ctx)</code></strong> — calls <code>setting.MustInstalled()</code>, <code>setting.LoadDBSetting()</code>,
+  <code>setting.InitSQLLoggersForCli(log.INFO)</code>, and <code>db.InitEngine(ctx)</code>. Used by
+  any command that talks directly to the database (<code>admin</code>, <code>doctor</code>, etc.).</li>
+<li><strong><code>setupConsoleLogger(level, colorize, out)</code></strong> — replaces the default
+  logger's writers with a single console writer; <code>out</code> must be <code>os.Stdout</code> or
+  <code>os.Stderr</code>.</li>
+<li><strong><code>PrepareConsoleLoggerLevel(defaultLevel)</code></strong> — the shared <code>Before</code> hook
+  factory: escalates to <code>TRACE</code> on <code>--debug</code>/<code>--verbose</code>, drops to <code>FATAL</code> on
+  <code>--quiet</code>, otherwise uses <code>defaultLevel</code>. Different commands pick different
+  defaults — <code>web</code> defaults to <code>INFO</code>, while <code>serv</code>/<code>hook</code>/<code>keys</code> default to
+  <code>FATAL</code> to avoid corrupting the git/ssh wire protocol.</li>
+<li><strong><code>confirm(stdin, stdout, msg, args...)</code></strong> — simple <code>y</code>/<code>yes</code> interactive
+  confirmation prompt, used by destructive or overwrite-risking commands
+  (<code>sendmail</code>, <code>generate ssh key</code>).</li>
+<li><strong><code>installSignals()</code></strong> — installs a <code>SIGINT</code>/<code>SIGTERM</code> handler that cancels
+  a <code>context.Context</code>, used as the top-level context for <code>RunMainApp</code>.</li>
+<li><strong><code>isValidDefaultSubCommand(cmd)</code></strong> — guards the implicit default <code>web</code>
+  command from accidentally triggering when a user mistypes a subcommand
+  name.</li>
+</ul>
+<h2 id="summary-table-all-top-level-commands">Summary Table — All Top-Level Commands<a href="#summary-table-all-top-level-commands" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th style="text-align: center;">Config required?</th>
+<th style="text-align: center;">Internal only?</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>web</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Start the HTTP(S)/FCGI web server (default command)</td>
+</tr>
+<tr>
+<td><code>serv</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td>Git-over-SSH command dispatcher, invoked by <code>sshd</code></td>
+</tr>
+<tr>
+<td><code>hook</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td>Git hook delegate (<code>pre-receive</code>/<code>update</code>/<code>post-receive</code>/<code>proc-receive</code>)</td>
+</tr>
+<tr>
+<td><code>keys</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td>SSH <code>authorized_keys</code> command lookup, invoked by <code>sshd</code></td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Full backup archive</td>
+</tr>
+<tr>
+<td><code>dump-repo</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Dump a single repository (local or remote)</td>
+</tr>
+<tr>
+<td><code>restore-repo</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Restore a single repository dump</td>
+</tr>
+<tr>
+<td><code>admin</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>User/auth/hooks/keys/release admin operations</td>
+</tr>
+<tr>
+<td><code>migrate</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Run pending DB migrations</td>
+</tr>
+<tr>
+<td><code>migrate-storage</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Move stored blobs between storage backends</td>
+</tr>
+<tr>
+<td><code>doctor</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Diagnostics, table recreation, charset conversion</td>
+</tr>
+<tr>
+<td><code>manager</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Remote-control a running instance via internal API</td>
+</tr>
+<tr>
+<td><code>embedded</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>List/view/extract embedded assets</td>
+</tr>
+<tr>
+<td><code>actions</code></td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No</td>
+<td>Generate Actions runner registration tokens</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td>INI file templating/environment-variable merging</td>
+</tr>
+<tr>
+<td><code>cert</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td>Generate a self-signed TLS certificate</td>
+</tr>
+<tr>
+<td><code>generate</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td>Generate secrets/SSH keys</td>
+</tr>
+<tr>
+<td><code>docs</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td>Render CLI reference documentation</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-pages">Related Pages<a href="#related-pages" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="service-management.html">Running Gitea as a System Service</a> — systemd/SysV
+  init/OpenRC/BSD/SMF/<code>launchd</code>/Supervisor definitions that invoke <code>gitea web</code>,
+  and how OS-level restart policy interacts with <code>graceful.Manager</code></li>
+<li><a href="../03-getting-started/running-gitea.html">Getting Started — Running Gitea</a></li>
+<li><a href="../03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a></li>
+<li><a href="../05-database-models/migrations.html">Data Layer — Migrations</a></li>
+<li><a href="../09-core-modules/storage-queue-cache.html">Storage, Queue &amp; Caching</a></li>
+<li><a href="../09-core-modules/git-module.html">Git Internals &amp; LFS</a></li>
+<li><a href="../14-actions-ci/actions-architecture.html">Actions (CI/CD) Architecture</a></li>
+</ul>
+<div class="page-nav">
+<a href="cli-command-reference-index.html"><div class="nav-label">← Previous</div><div class="nav-title">CLI Command Reference Index</div></a>
+<a href="service-management.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Running Gitea as a System Service</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#entry-point-app-assembly" class="" data-anchor="entry-point-app-assembly">Entry Point &amp; App Assembly</a>
+<a href="#full-command-tree" class="" data-anchor="full-command-tree">Full Command Tree</a>
+<a href="#gitea-web-starting-the-server" class="" data-anchor="gitea-web-starting-the-server">gitea web — Starting the Server</a>
+<a href="#graceful-restart-shutdown" class="" data-anchor="graceful-restart-shutdown">Graceful Restart &amp; Shutdown</a>
+<a href="#runtime-wiring-cmdweb_gracefulgo" class="toc-h3" data-anchor="runtime-wiring-cmdweb_gracefulgo">Runtime wiring (cmd/web_graceful.go)</a>
+<a href="#the-gracefulmanager-modulesgracefulmanagergo" class="toc-h3" data-anchor="the-gracefulmanager-modulesgracefulmanagergo">The graceful.Manager (modules/graceful/manager.go)</a>
+<a href="#os-signal-handling-modulesgracefulmanager_unixgo" class="toc-h3" data-anchor="os-signal-handling-modulesgracefulmanager_unixgo">OS signal handling (modules/graceful/manager_unix.go)</a>
+<a href="#restart-mechanics-modulesgracefulrestart_unixgo" class="toc-h3" data-anchor="restart-mechanics-modulesgracefulrestart_unixgo">Restart mechanics (modules/graceful/restart_unix.go)</a>
+<a href="#gitea-manager-controlling-a-running-process" class="toc-h3" data-anchor="gitea-manager-controlling-a-running-process">gitea manager — controlling a running process</a>
+<a href="#gitea-admin-administrative-operations" class="" data-anchor="gitea-admin-administrative-operations">gitea admin — Administrative Operations</a>
+<a href="#admin-user-cmdadmin_usergo" class="toc-h3" data-anchor="admin-user-cmdadmin_usergo">admin user (cmd/admin_user*.go)</a>
+<a href="#admin-repo-sync-releases" class="toc-h3" data-anchor="admin-repo-sync-releases">admin repo-sync-releases</a>
+<a href="#admin-regenerate-cmdadmin_regeneratego" class="toc-h3" data-anchor="admin-regenerate-cmdadmin_regeneratego">admin regenerate (cmd/admin_regenerate.go)</a>
+<a href="#admin-auth-cmdadmin_authgo" class="toc-h3" data-anchor="admin-auth-cmdadmin_authgo">admin auth (cmd/admin_auth*.go)</a>
+<a href="#admin-sendmail" class="toc-h3" data-anchor="admin-sendmail">admin sendmail</a>
+<a href="#gitea-doctor-diagnostics-maintenance" class="" data-anchor="gitea-doctor-diagnostics-maintenance">gitea doctor — Diagnostics &amp; Maintenance</a>
+<a href="#doctor-check" class="toc-h3" data-anchor="doctor-check">doctor check</a>
+<a href="#doctor-recreate-table-table" class="toc-h3" data-anchor="doctor-recreate-table-table">doctor recreate-table [TABLE]...</a>
+<a href="#doctor-convert" class="toc-h3" data-anchor="doctor-convert">doctor convert</a>
+<a href="#gitea-dump-dump-repo-restore-repo-backup-restore" class="" data-anchor="gitea-dump-dump-repo-restore-repo-backup-restore">gitea dump / dump-repo / restore-repo — Backup &amp; Restore</a>
+<a href="#gitea-dump-cmddumpgo" class="toc-h3" data-anchor="gitea-dump-cmddumpgo">gitea dump (cmd/dump.go)</a>
+<a href="#gitea-dump-repo-cmddump_repogo" class="toc-h3" data-anchor="gitea-dump-repo-cmddump_repogo">gitea dump-repo (cmd/dump_repo.go)</a>
+<a href="#gitea-restore-repo-cmdrestore_repogo" class="toc-h3" data-anchor="gitea-restore-repo-cmdrestore_repogo">gitea restore-repo (cmd/restore_repo.go)</a>
+<a href="#gitea-migrate-migrate-storage" class="" data-anchor="gitea-migrate-migrate-storage">gitea migrate / migrate-storage</a>
+<a href="#gitea-migrate-cmdmigratego" class="toc-h3" data-anchor="gitea-migrate-cmdmigratego">gitea migrate (cmd/migrate.go)</a>
+<a href="#gitea-migrate-storage-cmdmigrate_storagego" class="toc-h3" data-anchor="gitea-migrate-storage-cmdmigrate_storagego">gitea migrate-storage (cmd/migrate_storage.go)</a>
+<a href="#gitea-keys-ssh-authorized-keys-lookup-internal" class="" data-anchor="gitea-keys-ssh-authorized-keys-lookup-internal">gitea keys — SSH Authorized-Keys Lookup (internal)</a>
+<a href="#gitea-serv-git-over-ssh-entry-point-internal" class="" data-anchor="gitea-serv-git-over-ssh-entry-point-internal">gitea serv — Git-Over-SSH Entry Point (internal)</a>
+<a href="#gitea-hook-git-hook-delegation-internal" class="" data-anchor="gitea-hook-git-hook-delegation-internal">gitea hook — Git Hook Delegation (internal)</a>
+<a href="#gitea-actions-actions-runner-tokens" class="" data-anchor="gitea-actions-actions-runner-tokens">gitea actions — Actions Runner Tokens</a>
+<a href="#gitea-cert-self-signed-tls-certificates" class="" data-anchor="gitea-cert-self-signed-tls-certificates">gitea cert — Self-Signed TLS Certificates</a>
+<a href="#gitea-generate-secrets-ssh-keys" class="" data-anchor="gitea-generate-secrets-ssh-keys">gitea generate — Secrets &amp; SSH Keys</a>
+<a href="#gitea-config-edit-ini-config-file-automation" class="" data-anchor="gitea-config-edit-ini-config-file-automation">gitea config edit-ini — Config File Automation</a>
+<a href="#gitea-embedded-extracting-baked-in-assets" class="" data-anchor="gitea-embedded-extracting-baked-in-assets">gitea embedded — Extracting Baked-In Assets</a>
+<a href="#shared-matching-logic" class="toc-h3" data-anchor="shared-matching-logic">Shared matching logic</a>
+<a href="#subcommands" class="toc-h3" data-anchor="subcommands">Subcommands</a>
+<a href="#gitea-docs-self-documenting-cli" class="" data-anchor="gitea-docs-self-documenting-cli">gitea docs — Self-Documenting CLI</a>
+<a href="#cross-cutting-helpers-cmdhelpergo" class="" data-anchor="cross-cutting-helpers-cmdhelpergo">Cross-Cutting Helpers (cmd/helper.go)</a>
+<a href="#summary-table-all-top-level-commands" class="" data-anchor="summary-table-all-top-level-commands">Summary Table — All Top-Level Commands</a>
+<a href="#related-pages" class="" data-anchor="related-pages">Related Pages</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

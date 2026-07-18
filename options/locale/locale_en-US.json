@@ -103,6 +103,7 @@
   "copy_path": "Copy path",
   "copy_success": "Copied!",
   "copy_error": "Copy failed",
+  "code_toggle_wrap": "Toggle line wrap",
   "copy_type_unsupported": "This file type cannot be copied",
   "copy_filename": "Copy filename",
   "copy_output": "Copy output",

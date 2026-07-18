@@ -1,0 +1,228 @@
+=== FILE: docs/15-packages-registry/shared-infrastructure.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Shared Infrastructure All 22+ package ecosystems reuse the same low-level building blocks for hashing, storage, and archive inspection. This page documents the shared code in `modules/packages/` that every ecosystem-specific module builds on top of. ## Content-Addressable Storage (`content_store.go`) `modules/packages/content_store.go` implements a thin, ecosystem-agnostic wrapper around Gitea's generic `storage.
+
+# Shared Infrastructure
+
+All 22+ package ecosystems reuse the same low-level building blocks for hashing, storage, and
+archive inspection. This page documents the shared code in `modules/packages/` that every
+ecosystem-specific module builds on top of.
+
+## Content-Addressable Storage (`content_store.go`)
+
+`modules/packages/content_store.go` implements a thin, ecosystem-agnostic wrapper around
+Gitea's generic `storage.ObjectStorage` abstraction (the same one used for LFS, avatars,
+attachments, etc. — see [Configuration](../04-configuration/README.md) for storage backend
+setup). Blobs are addressed purely by their **SHA-256 hash**, never by package name or
+version, which is what enables deduplication across ecosystems, packages, and even owners.
+
+```go
+// BlobHash256Key is the key to address a blob content
+type BlobHash256Key string
+
+// ContentStore is a wrapper around ObjectStorage
+type ContentStore struct {
+    store storage.ObjectStorage
+}
+
+// NewContentStore creates the default package store
+func NewContentStore() *ContentStore {
+    contentStore := &ContentStore{storage.Packages}
+    return contentStore
+}
+```
+
+### Sharded key layout
+
+To avoid millions of files in one directory (a filesystem performance problem), the SHA-256 key
+is split into a two-level directory shard using its first four hex characters:
+
+```go
+// KeyToRelativePath converts the sha256 key aabb000000... to aa/bb/aabb000000...
+func KeyToRelativePath(key BlobHash256Key) string {
+    return path.Join(string(key)[0:2], string(key)[2:4], string(key))
+}
+```
+
+So a blob with SHA-256 `aabb0000...` is physically stored at `aa/bb/aabb0000...` under the
+configured `storage.Packages` root (local path, Minio/S3 bucket prefix, or Azure Blob
+container). `RelativePathToKey` performs the inverse conversion and validates the shard
+prefix matches the key, returning `util.ErrInvalidArgument` on mismatch — used by
+maintenance/consistency-check tooling that walks the storage tree.
+
+### Core operations
+
+| Method | Purpose |
+|--------|---------|
+| `OpenBlob(key)` | Opens a `storage.Object` (implements `io.ReadSeekCloser`) for reading |
+| `Save(key, reader, size)` | Writes blob content, sized upfront (used right after `GetOrInsertBlob` reports a *new* blob) |
+| `Delete(key)` | Removes the blob from storage (called by the cleanup cron and on rollback) |
+| `Has(key)` | `Stat()`s the blob — marked as a `FIXME` workaround pending removal |
+| `ShouldServeDirect()` | Returns `setting.Packages.Storage.ServeDirect()` — whether the backend supports returning a direct URL instead of proxying bytes |
+| `GetServeDirectURL(key, filename, method, opts)` | Builds a signed/direct URL (e.g. presigned S3 URL) for the given HTTP method |
+
+Because `ContentStore` never knows about `Package`, `PackageVersion`, or ecosystem types, it is
+completely reusable — see [Package Upload/Download Flow](package-flow.md) for how
+`services/packages` calls into it during upload and download.
+
+## Multi-Hash Verification (`multi_hasher.go`)
+
+Different package ecosystems verify integrity with different hash algorithms — npm and PyPI
+commonly use SHA-512/SHA-256, RubyGems and NuGet use SHA-256, Debian repositories publish MD5,
+SHA1, and SHA256 sums side by side. Rather than re-reading a package archive multiple times or
+guessing which algorithm a client will need, Gitea computes **all four** algorithms in a single
+pass using `io.MultiWriter`:
+
+```go
+// MultiHasher calculates multiple checksums
+type MultiHasher struct {
+    md5    hash.Hash
+    sha1   hash.Hash
+    sha256 hash.Hash
+    sha512 hash.Hash
+
+    combinedWriter io.Writer
+}
+
+func NewMultiHasher() *MultiHasher {
+    md5 := md5.New()
+    sha1 := sha1.New()
+    sha256 := sha256.New()
+    sha512 := sha512.New()
+
+    combinedWriter := io.MultiWriter(md5, sha1, sha256, sha512)
+
+    return &MultiHasher{md5, sha1, sha256, sha512, combinedWriter}
+}
+
+// Sums gets the MD5, SHA1, SHA256 and SHA512 checksums of the data
+func (h *MultiHasher) Sums() (hashMD5, hashSHA1, hashSHA256, hashSHA512 []byte) {
+    hashMD5 = h.md5.Sum(nil)
+    hashSHA1 = h.sha1.Sum(nil)
+    hashSHA256 = h.sha256.Sum(nil)
+    hashSHA512 = h.sha512.Sum(nil)
+    return hashMD5, hashSHA1, hashSHA256, hashSHA512
+}
+```
+
+`MultiHasher` implements `io.Writer` (writes fan out to all four hash states) and also
+`encoding.BinaryMarshaler` / `BinaryUnmarshaler`, so its in-progress state can be serialized.
+This is what powers **resumable/chunked uploads** for ecosystems like OCI containers, where a
+blob is uploaded across multiple `PATCH` requests: the partial hash state is persisted in
+`PackageBlobUpload.HashStateBytes` (see `models/packages/package_blob_upload.go`) between
+requests instead of re-hashing from scratch or keeping the whole blob in memory.
+
+The resulting four hashes populate every row of `models/packages/package_blob.go`
+(`HashMD5`, `HashSHA1`, `HashSHA256`, `HashSHA512`), which is also how `GetOrInsertBlob`
+performs deduplication — two uploads are considered "the same blob" only if their size and all
+four hashes are identical.
+
+### HashedBuffer (`hashed_buffer.go`)
+
+`HashedBuffer` combines a `MultiHasher` with `modules/util/filebuffer.FileBackedBuffer` (an
+`io.ReadWriter` that stays in memory up to a configurable size, then spills to a temp file) so
+routers can buffer an entire uploaded body **while simultaneously hashing it**, without needing
+to read the stream twice:
+
+```go
+const DefaultMemorySize = 32 * 1024 * 1024
+
+func NewHashedBufferWithSize(maxMemorySize int) (*HashedBuffer, error) { /* ... */ }
+
+// CreateHashedBufferFromReaderWithSize creates a hashed buffer and copies the provided
+// reader data into it.
+func CreateHashedBufferFromReaderWithSize(r io.Reader, maxMemorySize int) (*HashedBuffer, error) {
+    b, err := NewHashedBufferWithSize(maxMemorySize)
+    if err != nil {
+        return nil, err
+    }
+    _, err = io.Copy(b, r)
+    if err != nil {
+        return nil, err
+    }
+    return b, nil
+}
+```
+
+`HashedBuffer` satisfies the `HashedSizeReader` interface (`io.Reader` + `HashSummer` +
+`Size() int64`), which is exactly the shape `PackageFileCreationInfo.Data` expects in
+`services/packages/packages.go`. This is the type virtually every ecosystem router passes when
+calling `CreatePackageAndAddFile` / `AddFileToExistingPackage`.
+
+## Bounded File Lists (`filelist.go`)
+
+Some package formats (Debian `.deb`, RPM, npm tarballs, ZIP-based formats like NuGet/Conan) are
+themselves archives containing many inner files. Extracting metadata means walking the archive
+and collecting file names — but a maliciously crafted archive could contain an unbounded number
+of entries or extremely long names, leading to a memory-exhaustion denial of service while
+parsing untrusted uploads.
+
+`BoundedFileList` guards against this by capping both the entry count and the cumulative byte
+length of accumulated names:
+
+```go
+// BoundedFileList accumulates file names from a package archive while enforcing caps on the
+// number of entries and their total name length, returning an error once either cap would be
+// exceeded.
+type BoundedFileList struct {
+    files     []string
+    nameBytes int
+    maxFiles  int
+    maxBytes  int
+}
+
+func NewBoundedFileList(maxFiles, maxNameBytes int) *BoundedFileList {
+    return &BoundedFileList{maxFiles: maxFiles, maxBytes: maxNameBytes}
+}
+
+// Add appends name, returning util.ErrInvalidArgument once the entry count or accumulated
+// byte length would exceed the configured cap.
+func (b *BoundedFileList) Add(name string) error {
+    if len(b.files) >= b.maxFiles || b.nameBytes+len(name) > b.maxBytes {
+        return util.NewInvalidArgumentErrorf("package contains too many file entries")
+    }
+    b.nameBytes += len(name)
+    b.files = append(b.files, name)
+    return nil
+}
+
+func (b *BoundedFileList) Files() []string {
+    return b.files
+}
+```
+
+Ecosystem-specific metadata extractors (e.g. `modules/packages/debian`, `modules/packages/rpm`,
+`modules/packages/nuget`) instantiate a `BoundedFileList` while iterating over an archive's
+table of contents, calling `Add()` for each entry and aborting extraction as soon as it
+returns an error — a safe, generic guardrail shared across formats rather than reimplemented
+per parser.
+
+## Putting It Together
+
+```mermaid
+flowchart LR
+    subgraph "Per-request buffering"
+        A["Request body"] --> B["HashedBuffer<br/>(hashed_buffer.go)"]
+        B --> C["MultiHasher<br/>(multi_hasher.go)"]
+    end
+    subgraph "Archive introspection (format-specific module)"
+        B --> D["Ecosystem parser<br/>(modules/packages/&lt;type&gt;)"]
+        D --> E["BoundedFileList<br/>(filelist.go)"]
+    end
+    subgraph "Persistence"
+        C --> F["PackageBlob row<br/>(hash_md5/sha1/sha256/sha512)"]
+        B --> G["ContentStore.Save()<br/>(content_store.go)"]
+        G --> H["Object Storage<br/>(sharded by SHA-256)"]
+    end
+```
+
+## Related Pages
+
+- [Package Upload/Download Flow](package-flow.md)
+- [Protocol Adapters](protocol-adapters.md) — the ecosystem-specific adapters (Debian's
+  multi-encoding index writers, Container's `BlobUploader`, Cargo's sharded index paths) that
+  build directly on the primitives documented above.
+- [Database Schema](database-schema.md)
+- [Supported Ecosystems](supported-ecosystems.md)
+- [Packages & Actions API](../07-rest-api/packages-and-actions-api.md) — the HTTP route layer
+  that ultimately calls into this shared infrastructure.

@@ -1,0 +1,627 @@
+=== FILE: derived-docs/02-ci-security-tooling/existing-security-tooling-in-ci.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Existing Security Tooling in CI</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Existing Security Tooling in CI</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../02-ci-security-tooling/README.html">Ci Security Tooling</a> &rsaquo; Existing Security Tooling in CI</div>
+<h1>Existing Security Tooling in CI</h1>
+<h1 id="existing-security-tooling-in-ci">Existing Security Tooling in CI</h1>
+<p>Before pointing Trivy or opengrep at this repository, it's worth understanding what security-relevant
+tooling Gitea's CI pipeline <strong>already</strong> runs — so new scanning effort is additive rather than duplicated.
+This page inventories every linter, checker, and dependency-management bot that currently touches
+security concerns (vulnerability detection, supply-chain hygiene, CI-config safety, and license
+compliance), based on <a href="../../docs/build-cicd-deployment/makefile-and-build.html"><code>docs/build-cicd-deployment/makefile-and-build.md</code></a>,
+<a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>,
+<a href="../../docs/build-cicd-deployment/docker-and-packaging.html"><code>docs/build-cicd-deployment/docker-and-packaging.md</code></a>,
+<a href="../../docs/02-architecture/module-dependency-map.html"><code>docs/02-architecture/module-dependency-map.md</code></a>, and
+<code>WORKSPACE_ANALYSIS.md</code>.</p>
+<blockquote>
+<p>None of this is Trivy or opengrep themselves — this page is the "what's already covered" baseline
+that the <a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Scanning Playbook</a> builds on top of.</p>
+</blockquote>
+<h2 id="how-ci-is-organized">How CI Is Organized<a href="#how-ci-is-organized" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea's own build/lint/test pipeline is defined once in the root <code>Makefile</code> and then invoked from
+GitHub Actions workflows under <code>.github/workflows/*.yml</code>. The umbrella <code>make lint</code> target fans out into
+every linter category; the umbrella <code>make checks</code> target runs cheaper "is my tree consistent"
+verifications (lockfile drift, generated-file drift, <code>govulncheck</code>), as documented in
+<a href="../../docs/build-cicd-deployment/makefile-and-build.html"><code>docs/build-cicd-deployment/makefile-and-build.md</code></a>.</p>
+<pre class="mermaid">graph TD
+  PR[Pull Request] --> FC[files-changed.yml<br/>path-filter gatekeeper]
+  FC --> LB[lint-backend job<br/>make lint-backend]
+  FC --> LOD[lint-on-demand job<br/>targeted linters]
+  FC --> CB[checks-backend job<br/>make checks-backend]
+  LB --> GL["golangci-lint<br/>(incl. depguard)"]
+  LOD --> LA["lint-actions:<br/>actionlint + zizmor"]
+  LOD --> LMD["lint-md / lint-yaml /<br/>lint-json / lint-shell / lint-spell"]
+  CB --> SC["security-check:<br/>govulncheck (non-fatal)"]
+  CB --> GLIC["go-licenses target<br/>(forced via --always-make)"]
+  CB --> LFC[lockfile-check]</pre>
+<p>The <code>pull-compliance.yml</code> workflow is the entry point for this: it runs <code>lint-backend</code>, a targeted
+<code>lint-on-demand</code> job (only running the linter categories relevant to what changed), and <code>checks-backend</code>
+on every pull request, as described in
+<a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>.</p>
+<h2 id="tool-inventory">Tool Inventory<a href="#tool-inventory" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Invoked via</th>
+<th>What it covers</th>
+<th>Security relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>govulncheck</code></td>
+<td><code>make security-check</code> (part of <code>checks-backend</code>)</td>
+<td>Scans Go module dependency graph for known vulnerabilities reachable from actual call sites</td>
+<td>Direct dependency vulnerability scanning — closest existing analog to Trivy's SCA function, but scoped to Go only</td>
+</tr>
+<tr>
+<td><code>golangci-lint</code> + <code>depguard</code></td>
+<td><code>make lint-go</code> / <code>lint-backend</code></td>
+<td>General Go static analysis; <code>depguard</code> specifically bans certain packages/imports</td>
+<td>Prevents known-risky or superseded packages (<code>encoding/json</code>, <code>io/ioutil</code>, <code>github.com/pkg/errors</code>, etc.) and enforces layering (e.g. migrations can't import live <code>models</code>)</td>
+</tr>
+<tr>
+<td><code>zizmor</code></td>
+<td><code>make lint-actions</code> (via <code>uv run</code>)</td>
+<td>GitHub Actions workflow/action security linter</td>
+<td>Purpose-built CI-config security scanner — flags dangerous trigger patterns (<code>pull_request_target</code> misuse, script injection, unpinned actions)</td>
+</tr>
+<tr>
+<td><code>actionlint</code></td>
+<td><code>make lint-actions</code></td>
+<td>GitHub Actions workflow syntax/semantics linter</td>
+<td>Catches malformed or logically broken workflow YAML that could hide security-relevant misconfiguration</td>
+</tr>
+<tr>
+<td><code>go-licenses</code> (target forced via <code>--always-make</code>)</td>
+<td><code>checks-backend</code> (CI) / <code>cron-licenses.yml</code> (scheduled regen)</td>
+<td>Generates <code>go-licenses.json</code> cataloging Go dependency licenses</td>
+<td>Supply-chain / license compliance — surfaces unexpected license changes in dependencies</td>
+</tr>
+<tr>
+<td><code>rolldown-license-plugin</code></td>
+<td>Frontend production build (<code>vite build</code>)</td>
+<td>Aggregates NPM dependency licenses against an allowlist, merges with <code>go-licenses.json</code>, emits <code>public/assets/licenses.txt</code></td>
+<td>Enforces a known-safe license allowlist (<code>Apache-2.0</code>, <code>0BSD</code>, <code>BSD-2/3-Clause</code>, <code>MIT</code>, <code>ISC</code>, <code>CPAL-1.0</code>, <code>Unlicense</code>, <code>EPL-1.0/2.0</code>, plus an explicit <code>khroma</code> exception) on the frontend dependency tree — see <a href="../../docs/09-core-modules/frontend-build.html"><code>docs/09-core-modules/frontend-build.md</code></a></td>
+</tr>
+<tr>
+<td>Renovate (<code>cron-renovate.yml</code>)</td>
+<td>Hourly self-hosted bot against <code>renovate.json5</code></td>
+<td>Automated dependency version bumps (Go, npm, pinned tool versions in the <code>Makefile</code>)</td>
+<td>Keeps dependencies current, which is a prerequisite for vulnerability scanners to have anything meaningful to fix — restricted to <code>go-gitea/gitea</code>, whitelists post-upgrade commands (<code>make tidy</code>, <code>make svg</code>, <code>make generate-codemirror-languages</code>)</td>
+</tr>
+<tr>
+<td><code>lockfile-check</code></td>
+<td><code>checks-frontend</code></td>
+<td><code>pnpm install --frozen-lockfile</code> + diff</td>
+<td>Prevents silent lockfile drift that could mask a dependency substitution</td>
+</tr>
+<tr>
+<td><code>tidy-check</code></td>
+<td><code>checks-backend</code></td>
+<td>Confirms <code>go.mod</code>/<code>go.sum</code> are tidy</td>
+<td>Prevents stray/unaccounted-for Go dependencies from persisting undetected</td>
+</tr>
+<tr>
+<td><code>misspell</code>, <code>markdownlint</code>, <code>yamllint</code>, <code>djlint</code>, <code>editorconfig-checker</code>, <code>shellcheck</code> (<code>lint-shell</code>), ESLint, Stylelint</td>
+<td><code>make lint</code> sub-targets</td>
+<td>General code/doc/config quality</td>
+<td>Not primarily security tools, but reduce the odds that malformed config or scripts hide unreviewed logic; <code>lint-shell</code>'s <code>shellcheck</code> run is the closest existing check on shell-script injection-style bugs</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>As described in <a href="../../docs/build-cicd-deployment/docker-and-packaging.html"><code>docs/build-cicd-deployment/docker-and-packaging.md</code></a>,
+the <code>deps-py</code> Makefile target provisions a <code>.venv</code> via <code>uv sync</code> specifically to run <code>zizmor</code>,
+<code>djlint</code>, and <code>yamllint</code> — these three tools are Python-ecosystem, not Go-ecosystem, which is why they're
+isolated into their own dependency group.</p>
+</blockquote>
+<h2 id="deep-dive-each-existing-control">Deep Dive: Each Existing Control<a href="#deep-dive-each-existing-control" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="govulncheck-go-dependency-vulnerability-scanning"><code>govulncheck</code> — Go Dependency Vulnerability Scanning<a href="#govulncheck-go-dependency-vulnerability-scanning" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>govulncheck</code> runs as the <code>security-check</code> Makefile target, which is itself one of the sub-checks
+composing <code>checks-backend</code>:</p>
+<pre class="highlight"><code class="language-makefile">checks-backend: tidy-check swagger-check openapi3-check fmt-check swagger-validate security-check</code></pre>
+<p>Per <a href="../../docs/build-cicd-deployment/makefile-and-build.html"><code>docs/build-cicd-deployment/makefile-and-build.md</code></a>:</p>
+<blockquote>
+<p><code>security-check</code> — Runs <code>govulncheck</code> (<strong>non-fatal</strong> — appended with <code>|| true</code>)</p>
+<p><strong>Gap called out explicitly in the source docs:</strong> <code>govulncheck</code> findings currently do <strong>not</strong> fail CI.
+This means a known Go-ecosystem vulnerability could be flagged in output but silently pass the pull
+request gate. This is the single most concrete, named gap in the existing tooling baseline, and a
+natural place for a Trivy dependency scan (or a hardened, fatal <code>govulncheck</code> invocation) to add real
+enforcement rather than duplicate detection.</p>
+</blockquote>
+<p><code>checks-backend</code> runs inside the <code>pull-compliance.yml</code> workflow's <code>checks-backend</code> job on every PR
+that touches backend files, and is additionally forced to always execute (<code>make --always-make
+checks-backend</code>) so the <code>go-licenses</code> sub-target can't be skipped due to stale timestamps — see
+<a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>.</p>
+<h3 id="depguard-enforced-importdependency-denylist"><code>depguard</code> — Enforced Import/Dependency Denylist<a href="#depguard-enforced-importdependency-denylist" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Configured inside <code>.golangci.yml</code> and run as part of <code>golangci-lint</code> (<code>make lint-go</code>), <code>depguard</code> is
+notable because it is <strong>CI-breaking</strong>, not just a review suggestion — as emphasized in
+<code>WORKSPACE_ANALYSIS.md</code>: "Forbidden (enforced via <code>depguard</code> in <code>.golangci.yml</code> — CI-breaking, not just
+review comments)".</p>
+<table>
+<thead>
+<tr>
+<th>Banned import</th>
+<th>Required replacement</th>
+<th>Rationale (from source docs)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>encoding/json</code></td>
+<td><code>gitea.dev/modules/json</code></td>
+<td>Standardizes JSON handling behavior across the codebase</td>
+</tr>
+<tr>
+<td><code>io/ioutil</code></td>
+<td><code>os</code> / <code>io</code></td>
+<td>Superseded stdlib API</td>
+</tr>
+<tr>
+<td><code>golang.org/x/exp</code></td>
+<td>stdlib equivalents</td>
+<td>Avoid depending on experimental APIs</td>
+</tr>
+<tr>
+<td><code>gopkg.in/ini.v1</code></td>
+<td>Gitea's own config system</td>
+<td>Avoid duplicate config-parsing logic</td>
+</tr>
+<tr>
+<td><code>gitea.com/go-chi/cache</code></td>
+<td>Gitea's own cache system</td>
+<td>Avoid duplicate caching logic</td>
+</tr>
+<tr>
+<td><code>github.com/pkg/errors</code></td>
+<td>builtin <code>errors</code> + <code>%w</code> wrapping</td>
+<td>Avoid a superseded error-wrapping pattern</td>
+</tr>
+<tr>
+<td><code>github.com/unknwon/com</code></td>
+<td><code>gitea.dev/modules/util</code></td>
+<td>Consolidate general utility helpers</td>
+</tr>
+<tr>
+<td><code>gitea.dev/modules/git/internal</code></td>
+<td>the module's own <code>AddXxx</code> wrapper facade</td>
+<td>Prevent bypassing an intentional internal abstraction boundary</td>
+</tr>
+</tbody>
+</table>
+<p>There is also a dedicated <code>migrations</code> rule scope (files matching <code>**/models/migrations/**/*.go</code>) that
+forbids importing the live <code>models</code> package or <code>modules/structs</code>, specifically so that historical schema
+migrations can't be silently corrupted by later struct changes — see
+<a href="../../docs/02-architecture/module-dependency-map.html"><code>docs/02-architecture/module-dependency-map.md</code></a>.</p>
+<p><code>depguard</code> is a <strong>denylist of specific packages</strong>, not a general-purpose SAST engine. It won't catch
+injection flaws, insecure crypto usage patterns, secret literals, or CI workflow misconfiguration —
+that's the gap opengrep-class tooling is positioned to fill (see
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Scanning Playbook</a>).</p>
+<h3 id="zizmor-actionlint-github-actions-workflow-security"><code>zizmor</code> + <code>actionlint</code> — GitHub Actions Workflow Security<a href="#zizmor-actionlint-github-actions-workflow-security" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Both run together under the <code>lint-actions</code> Makefile target, invoked from the <code>lint-on-demand</code> job in
+<code>pull-compliance.yml</code> whenever <code>.github</code>-path files change:</p>
+<pre class="highlight"><code class="language-makefile">lint-actions: ## lint GitHub Actions workflow/action YAML</code></pre>
+<blockquote>
+<p><code>lint-actions</code> | <code>actionlint</code> + <code>zizmor</code> (via <code>uv run</code>) | <code>.github</code> workflow/action YAML
+— <a href="../../docs/build-cicd-deployment/makefile-and-build.html"><code>docs/build-cicd-deployment/makefile-and-build.md</code></a></p>
+</blockquote>
+<p><code>zizmor</code> is specifically a <strong>GitHub Actions security linter</strong> (the CI-config analog to what opengrep
+does for application source) — it looks for patterns like script-injection-prone <code>run:</code> blocks,
+dangerous trigger combinations, and unpinned/mutable action references. The repository's own workflows
+demonstrate awareness of <code>zizmor</code>'s ruleset: <code>giteabot.yml</code> carries an explicit suppression comment,
+<code>zizmor: ignore[dangerous-triggers]</code>, justified in the workflow itself because that job "only runs a
+pinned action and never checks out PR HEAD code" — as noted in
+<a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>.</p>
+<blockquote>
+<p>This existing <code>zizmor</code> suppression is a useful reference pattern: if a future opengrep/Trivy CI-config
+rule fires on a workflow that has a <em>deliberate, reviewed</em> reason for its shape, follow the same
+convention — an inline, rule-scoped suppression comment with a one-line justification, not a blanket
+disable.</p>
+</blockquote>
+<p><code>actionlint</code> complements <code>zizmor</code> by validating workflow YAML structure/semantics (e.g. invalid
+<code>needs:</code> references, malformed expressions) rather than security patterns specifically — the two tools
+are run together because they check different classes of problems in the same files.</p>
+<h3 id="license-scanning-go-and-npm-dependency-trees">License Scanning — Go and NPM Dependency Trees<a href="#license-scanning-go-and-npm-dependency-trees" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Two independent license-scanning mechanisms exist, one per ecosystem:</p>
+<ul>
+<li><strong>Go dependencies:</strong> the <code>go-licenses</code> target generates <code>go-licenses.json</code>, and is forced to always
+  run inside <code>checks-backend</code> via <code>make --always-make checks-backend</code>. It's also regenerated on a
+  (currently manual-dispatch-only) schedule by <code>cron-licenses.yml</code>, which commits the result back to
+  <code>main</code> via a dedicated deploy key — see
+  <a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>.</li>
+<li><strong>NPM/frontend dependencies:</strong> <code>rolldown-license-plugin</code>'s <code>licensePlugin()</code> walks every NPM package
+  that ends up in the production bundle, filters against an explicit allowlist (<code>Apache-2.0</code>, <code>0BSD</code>,
+  <code>BSD-2/3-Clause</code>, <code>MIT</code>, <code>ISC</code>, <code>CPAL-1.0</code>, <code>Unlicense</code>, <code>EPL-1.0/2.0</code>, plus a named exception for
+  <code>khroma</code>), merges the result with the Go license data, and emits <code>public/assets/licenses.txt</code> — the
+  file linked from Gitea's "About" page. Per
+  <a href="../../docs/09-core-modules/frontend-build.html"><code>docs/09-core-modules/frontend-build.md</code></a>, this
+  full scan only runs in <strong>production</strong> builds; a stub is used in dev builds because a full scan on
+  every rebuild would be too slow.</li>
+</ul>
+<p>This is supply-chain hygiene (open-source license compliance), not vulnerability scanning — but it's
+worth knowing about before introducing Trivy, since Trivy also has license-scanning modes that could
+either duplicate or usefully cross-check this existing mechanism. See
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a>
+for more supply-chain context.</p>
+<h3 id="renovate-automated-dependency-updates">Renovate — Automated Dependency Updates<a href="#renovate-automated-dependency-updates" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>cron-renovate.yml</code> runs a self-hosted Renovate bot hourly (<code>23 * * * *</code>) against <code>renovate.json5</code>,
+restricted to the <code>go-gitea/gitea</code> repository, with a whitelisted set of post-upgrade commands it's
+allowed to run (<code>make tidy</code>, <code>make svg</code>, <code>make generate-codemirror-languages</code>) — see
+<a href="../../docs/build-cicd-deployment/github-workflows.html"><code>docs/build-cicd-deployment/github-workflows.md</code></a>.
+Tool versions pinned directly in the <code>Makefile</code> (e.g. <code>GOLANGCI_LINT_PACKAGE</code>, <code>SWAGGER_PACKAGE</code>,
+<code>XGO_PACKAGE</code>) carry <code># renovate: datasource=go</code> comments specifically so Renovate can auto-bump them:</p>
+<pre class="highlight"><code class="language-makefile">GOLANGCI_LINT_PACKAGE ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 # renovate: datasource=go
+SWAGGER_PACKAGE       ?= github.com/go-swagger/go-swagger/cmd/swagger@v0.35.0           # renovate: datasource=go
+XGO_PACKAGE           ?= src.techknowlogick.com/xgo@v1.9.0                              # renovate: datasource=go</code></pre>
+<p>Renovate itself doesn't detect vulnerabilities — it just keeps the version surface current, which is a
+prerequisite for any vulnerability scanner (govulncheck, Trivy) to have current data to work against.
+Stale, un-bumped dependencies are exactly what allow known CVEs to linger.</p>
+<h3 id="supporting-linters-indirect-security-value">Supporting Linters (Indirect Security Value)<a href="#supporting-linters-indirect-security-value" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>These are general code-quality tools, but each has a secondary security-adjacent benefit worth noting
+when triaging where a new scanner's findings might overlap:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Target</th>
+<th>Indirect security value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lint-shell</code> (<code>shellcheck</code>, containerized)</td>
+<td>All <code>*.sh</code> files</td>
+<td>Closest existing check to shell-injection-class bugs</td>
+</tr>
+<tr>
+<td><code>lint-yaml</code> (<code>yamllint</code>)</td>
+<td>Whole repo</td>
+<td>Catches malformed YAML that could otherwise hide misconfigured permissions/secrets blocks</td>
+</tr>
+<tr>
+<td><code>lint-json</code> (ESLint w/ JSON config)</td>
+<td>JSON files</td>
+<td>Structural validation of config/data files</td>
+</tr>
+<tr>
+<td><code>lint-editorconfig</code></td>
+<td>Templates, <code>.github/workflows</code>, locale JSON</td>
+<td>Style-only, but keeps diffs minimal/reviewable</td>
+</tr>
+<tr>
+<td><code>fmt-check</code></td>
+<td>Whole Go tree</td>
+<td>Ensures no un-formatted/hidden-diff code slips past review</td>
+</tr>
+</tbody>
+</table>
+<h2 id="whats-covered-vs-what-isnt">What's Covered vs. What Isn't<a href="#whats-covered-vs-what-isnt" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Covered today?</th>
+<th>By what</th>
+<th>Gap for Trivy/opengrep to fill</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Go dependency CVEs</td>
+<td>Partially</td>
+<td><code>govulncheck</code> (<code>security-check</code>)</td>
+<td>Non-fatal today — Trivy SCA scanning could add enforcement or independent cross-check</td>
+</tr>
+<tr>
+<td>NPM dependency CVEs</td>
+<td>Not directly</td>
+<td>—</td>
+<td>No equivalent NPM vulnerability scan is described in source docs — a clear Trivy/<code>pnpm audit</code>-class gap</td>
+</tr>
+<tr>
+<td>Container image CVEs</td>
+<td>Not directly</td>
+<td><code>pull-docker-dryrun.yml</code> validates that images <em>build</em>, not that they're free of known vulnerabilities</td>
+<td>Direct fit for Trivy's container image scanning mode</td>
+</tr>
+<tr>
+<td>Banned/risky Go imports</td>
+<td>Yes</td>
+<td><code>depguard</code> (CI-breaking)</td>
+<td>N/A — already enforced</td>
+</tr>
+<tr>
+<td>GitHub Actions workflow security patterns</td>
+<td>Yes</td>
+<td><code>zizmor</code> + <code>actionlint</code> (<code>lint-actions</code>)</td>
+<td>Opengrep could still add secret-detection or org-specific custom rules layered on top</td>
+</tr>
+<tr>
+<td>Application-layer SAST (injection, insecure crypto, secrets-in-code)</td>
+<td>Not directly</td>
+<td>General linters (<code>golangci-lint</code>, ESLint) check style/quality, not security semantics</td>
+<td>Primary opengrep/Semgrep-class opportunity</td>
+</tr>
+<tr>
+<td>License compliance</td>
+<td>Yes</td>
+<td><code>go-licenses</code> + <code>rolldown-license-plugin</code> allowlist</td>
+<td>N/A — already enforced, two independent mechanisms</td>
+</tr>
+<tr>
+<td>Dependency freshness</td>
+<td>Yes</td>
+<td>Renovate</td>
+<td>N/A — already automated</td>
+</tr>
+<tr>
+<td>Lockfile integrity</td>
+<td>Yes</td>
+<td><code>lockfile-check</code> / <code>tidy-check</code></td>
+<td>N/A — already enforced</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Where the source documentation doesn't describe a control, this table says so explicitly rather than
+assuming one exists. In particular, no NPM-ecosystem vulnerability scanner and no application-layer
+SAST tool are mentioned anywhere in <code>docs/build-cicd-deployment/*.md</code> or <code>WORKSPACE_ANALYSIS.md</code> — these
+are the two most clearly open gaps a Trivy + opengrep rollout would close.</p>
+</blockquote>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../01-overview/security-posture-overview.html">Security Posture Overview</a> — executive framing and
+  threat-model summary this tooling baseline supports.</li>
+<li><a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Scanning Playbook: Running Trivy and Opengrep</a> —
+  concrete guidance for slotting new scans into the <code>pull-compliance.yml</code>/<code>make lint</code> pipeline described
+  above without duplicating existing coverage.</li>
+<li><a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release &amp; Container Posture</a> —
+  release signing, Docker posture, and the license-scanning mechanisms detailed above in more supply-chain depth.</li>
+<li><a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Settings</a> — configuration-level
+  hardening that complements this CI-level tooling.</li>
+</ul>
+
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#how-ci-is-organized" class="" data-anchor="how-ci-is-organized">How CI Is Organized</a>
+<a href="#tool-inventory" class="" data-anchor="tool-inventory">Tool Inventory</a>
+<a href="#deep-dive-each-existing-control" class="" data-anchor="deep-dive-each-existing-control">Deep Dive: Each Existing Control</a>
+<a href="#govulncheck-go-dependency-vulnerability-scanning" class="toc-h3" data-anchor="govulncheck-go-dependency-vulnerability-scanning">govulncheck — Go Dependency Vulnerability Scanning</a>
+<a href="#depguard-enforced-importdependency-denylist" class="toc-h3" data-anchor="depguard-enforced-importdependency-denylist">depguard — Enforced Import/Dependency Denylist</a>
+<a href="#zizmor-actionlint-github-actions-workflow-security" class="toc-h3" data-anchor="zizmor-actionlint-github-actions-workflow-security">zizmor + actionlint — GitHub Actions Workflow Security</a>
+<a href="#license-scanning-go-and-npm-dependency-trees" class="toc-h3" data-anchor="license-scanning-go-and-npm-dependency-trees">License Scanning — Go and NPM Dependency Trees</a>
+<a href="#renovate-automated-dependency-updates" class="toc-h3" data-anchor="renovate-automated-dependency-updates">Renovate — Automated Dependency Updates</a>
+<a href="#supporting-linters-indirect-security-value" class="toc-h3" data-anchor="supporting-linters-indirect-security-value">Supporting Linters (Indirect Security Value)</a>
+<a href="#whats-covered-vs-what-isnt" class="" data-anchor="whats-covered-vs-what-isnt">What's Covered vs. What Isn't</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

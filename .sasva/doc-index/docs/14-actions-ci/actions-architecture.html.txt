@@ -1,0 +1,985 @@
+=== FILE: docs/14-actions-ci/actions-architecture.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Actions Architecture</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"> <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Actions Architecture</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../14-actions-ci/README.html">Actions Ci</a> &rsaquo; Actions Architecture</div>
+<h1>Actions Architecture</h1>
+<h1 id="actions-architecture">Actions Architecture</h1>
+<p>Gitea Actions is a built-in CI/CD system compatible with GitHub Actions workflow syntax. It parses workflow YAML from a repository, decides which workflows a webhook event should trigger, persists runs/jobs/tasks in the database, and hands work off to external <strong>runners</strong> (<code>act_runner</code> or compatible clients) over a Connect-RPC protocol. This page documents the full pipeline: workflow parsing, the data model, the runner protocol, artifact storage, commit status reporting, and secret/variable scoping.</p>
+<blockquote>
+<p>Gitea Actions purposefully does not execute workflows itself — the Gitea server only detects, schedules, and tracks runs. All actual step execution happens inside a runner process (typically <code>act_runner</code>), which polls Gitea over gRPC/Connect-RPC.</p>
+</blockquote>
+<h2 id="high-level-execution-flow">High-Level Execution Flow<a href="#high-level-execution-flow" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="mermaid">sequenceDiagram
+    participant User as Git client
+    participant Gitea as Gitea server
+    participant DB as Database
+    participant Runner as act_runner
+
+    User->>Gitea: git push
+    Gitea->>Gitea: notifier.go fires PushEvent
+    Gitea->>Gitea: workflowpattern + workflows.go<br/>DetectWorkflows() matches on: push
+    Gitea->>DB: PrepareRunAndInsert()<br/>creates ActionRun + ActionRunAttempt + ActionRunJob rows
+    Gitea->>DB: CreateCommitStatusForRunJobs()<br/>posts "pending" CommitStatus
+    loop Runner polling
+        Runner->>Gitea: FetchTask (Connect-RPC)
+        Gitea->>DB: PickTask() claims a waiting ActionRunJob
+        Gitea-->>Runner: runnerv1.Task (workflow YAML, secrets, vars, context)
+        Runner->>Runner: executes steps in containers/host
+        Runner->>Gitea: UpdateLog (stream stdout/stderr)
+        Gitea->>DB: WriteLogs() appends to DBFS file
+        Runner->>Gitea: UpdateTask (status transitions)
+        Gitea->>DB: UpdateTaskByState()
+        Gitea->>Gitea: CreateCommitStatusForRunJobs()<br/>updates CommitStatus to success/failure
+    end
+    Gitea->>DB: EmitJobsIfReadyByRun()<br/>schedules jobs whose `needs` are satisfied</pre>
+<h2 id="workflow-detection-and-parsing">Workflow Detection and Parsing<a href="#workflow-detection-and-parsing" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="listing-and-validating-workflow-files">Listing and validating workflow files<a href="#listing-and-validating-workflow-files" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/actions/workflows.go</code> is the entry point for workflow discovery. Workflow files live under configurable directories:</p>
+<pre class="highlight"><code class="language-go">// modules/setting/actions.go
+WorkflowDirs:       []string{".gitea/workflows", ".github/workflows"},
+ScopedWorkflowDirs: []string{".gitea/scoped_workflows"},</code></pre>
+<p>Key functions:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IsWorkflow(path)</code></td>
+<td>True if <code>path</code> is a <code>.yml</code>/<code>.yaml</code> file under a configured <code>WorkflowDirs</code> entry</td>
+</tr>
+<tr>
+<td><code>IsWorkflowOrScopedWorkflow(path)</code></td>
+<td>Same, but also matches <code>ScopedWorkflowDirs</code></td>
+</tr>
+<tr>
+<td><code>ListWorkflows(commit)</code></td>
+<td>Walks the git tree at <code>commit</code> and returns all workflow file entries</td>
+</tr>
+<tr>
+<td><code>GetContentFromEntry(entry)</code></td>
+<td>Reads blob content with a 1 MiB read limit (<code>util.ReadWithLimit</code>)</td>
+</tr>
+<tr>
+<td><code>GetEventsFromContent(content)</code></td>
+<td>Parses the workflow with <code>act</code>'s <code>model.ReadWorkflow</code>, extracts <code>on:</code> triggers via <code>jobparser.ParseRawOn</code>, and calls <code>ValidateWorkflowContent</code></td>
+</tr>
+<tr>
+<td><code>ValidateWorkflowContent(content)</code></td>
+<td>Runs <code>jobparser.Parse</code> purely to surface structural errors (e.g. malformed <code>run: |</code> blocks) that the lenient <code>model.ReadWorkflow</code> doesn't catch</td>
+</tr>
+</tbody>
+</table>
+<p><code>DetectWorkflows</code> is the main entry called by the notifier. It lists all workflow files at a commit, extracts every <code>on:</code> event from each file (a workflow can have multiple triggers), and classifies each into one of three buckets via <code>detectWorkflowMatch</code>:</p>
+<pre class="highlight"><code class="language-go">const (
+    detectMatched       detectResult = iota // event matched; run normally
+    detectNotApplicable                     // event/type doesn't apply; create nothing
+    detectFilteredOut                       // matched but excluded by a branch/paths filter;
+                                             // posts a "skipped" commit status when required
+)</code></pre>
+<p><code>detectWorkflowMatch</code> first checks <code>canGithubEventMatch</code> (see <a href="#github-actions-compatibility-layer">GitHub compatibility layer</a>) and then dispatches to an event-specific matcher:</p>
+<ul>
+<li><code>matchPushEvent</code> — evaluates <code>branches</code>, <code>branches-ignore</code>, <code>tags</code>, <code>tags-ignore</code>, <code>paths</code>, <code>paths-ignore</code> filters against the push payload</li>
+<li><code>matchIssuesEvent</code>, <code>matchIssueCommentEvent</code>, <code>matchPullRequestEvent</code>, <code>matchPullRequestReviewEvent</code>, <code>matchPullRequestReviewCommentEvent</code>, <code>matchReleaseEvent</code>, <code>matchPackageEvent</code>, <code>matchWorkflowRunEvent</code> — check <code>types:</code> activity filters</li>
+<li>Events with no activity types (<code>create</code>, <code>delete</code>, <code>fork</code>, <code>wiki</code>, <code>schedule</code>) always match if the event name matches</li>
+</ul>
+<p>Scheduled workflows (<code>on: schedule</code>) are collected separately via <code>DetectScheduledWorkflows</code> and are handled by <code>services/actions/schedule_tasks.go</code>, not by the push-triggered path.</p>
+<h3 id="branchtagpath-pattern-matching-workflowpattern">Branch/tag/path pattern matching (<code>workflowpattern/</code>)<a href="#branchtagpath-pattern-matching-workflowpattern" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>modules/actions/workflowpattern/workflow_pattern.go</code> implements the glob-based filter semantics GitHub Actions uses for <code>branches</code>, <code>branches-ignore</code>, <code>paths</code>, <code>paths-ignore</code>:</p>
+<pre class="highlight"><code class="language-go">func CompilePatterns(patterns ...string) ([]*WorkflowPattern, error)
+func Skip(sequence []*WorkflowPattern, input []string) bool    // for "positive" filters: branches, paths, tags
+func Filter(sequence []*WorkflowPattern, input []string) bool  // for "-ignore" filters: branches-ignore, paths-ignore</code></pre>
+<p><code>Skip</code> returns true (meaning "don't run") only if <strong>every</strong> input string fails to match a positive (non-<code>!</code>) pattern, honoring negation (<code>!file.md</code>) semantics identical to GitHub's. <code>Filter</code> returns true (meaning "matched, exclude") only if <strong>every</strong> input matches at least one ignore pattern. Patterns are compiled with <code>glob.CompileWorkflow</code>, Gitea's glob dialect tuned for GitHub-Actions-style globbing (double-star, character classes, etc.).</p>
+<h3 id="job-parsing-jobparser">Job parsing (<code>jobparser/</code>)<a href="#job-parsing-jobparser" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>While <code>workflows.go</code> deals with whole-workflow <em>triggers</em>, <code>modules/actions/jobparser/</code> (rewritten from <code>nektos/act</code>'s parser) turns one workflow YAML document into per-job <strong><code>SingleWorkflow</code></strong> documents ready to hand to a runner.</p>
+<p><code>jobparser.Parse(content, options...)</code> (in <code>jobparser.go</code>):</p>
+<ol>
+<li>Decodes the raw YAML with <code>act</code>'s <code>model.ReadWorkflow</code> to get canonical job graph info (<code>Needs()</code>, matrices).</li>
+<li>Re-decodes into the package's own <code>SingleWorkflow</code>/<code>Job</code>/<code>Step</code> structs (<code>model.go</code>), which keep most fields as raw <code>yaml.Node</code> so they can be selectively re-evaluated.</li>
+<li>Expression-evaluates the workflow's <code>run-name</code>.</li>
+<li>For every job, computes its <code>matrix</code> combinations (<code>getMatrixes</code>), interpolates <code>runs-on</code>, evaluates <code>continue-on-error</code>, and <strong>clones</strong> the job once per matrix cell — this is why a matrix job becomes multiple <code>SingleWorkflow</code> results, each with a single fully-resolved job.</li>
+<li>Returns a <code>[]*SingleWorkflow</code> — normally one entry per (job × matrix-cell) pair — which becomes the <code>WorkflowPayload</code> stored on each <code>ActionRunJob</code> row and sent to runners.</li>
+</ol>
+<p>Supporting files:</p>
+<ul>
+<li><code>model.go</code> — <code>SingleWorkflow</code>, <code>Job</code>, <code>Step</code>, <code>Strategy</code>, <code>Defaults</code>, <code>ContainerSpec</code> types; note fields like <code>RawNeeds</code>, <code>RawRunsOn</code>, <code>RawContinueOnError</code> stay as <code>yaml.Node</code> until explicitly decoded/evaluated, since they may contain unresolved <code>${{ }}</code> expressions.</li>
+<li><code>evaluator.go</code> / <code>interpeter.go</code> — wraps <code>act</code>'s <code>exprparser</code> to interpolate <code>${{ github.* }}</code>, <code>${{ vars.* }}</code>, <code>${{ inputs.* }}</code>, <code>${{ needs.*.outputs.* }}</code> expressions inside strings and YAML nodes.</li>
+<li><code>uses.go</code> — parses <code>uses: owner/repo/path@ref</code> action references (including local <code>./</code> and Docker <code>docker://</code> forms).</li>
+<li><code>workflow_call.go</code> — implements <strong>reusable workflows</strong> (<code>on: workflow_call</code>, job-level <code>uses: ./.github/workflows/x.yml</code>), including input/secret/output propagation contracts consumed by <code>services/actions/reusable_workflow.go</code>.</li>
+</ul>
+<pre class="mermaid">flowchart LR
+    A[Workflow YAML] --> B["model.ReadWorkflow<br/>(act canonical parse)"]
+    A --> C["yaml.Unmarshal into<br/>jobparser.SingleWorkflow"]
+    C --> D["getMatrixes()<br/>per-job matrix expansion"]
+    D --> E["NewExpressionEvaluator<br/>interpolate runs-on, name, continue-on-error"]
+    E --> F["Clone per matrix cell"]
+    F --> G["[]*SingleWorkflow<br/>one per job×matrix"]
+    G --> H["ActionRunJob.WorkflowPayload<br/>(stored in DB)"]</pre>
+<h2 id="github-actions-compatibility-layer">GitHub Actions Compatibility Layer<a href="#github-actions-compatibility-layer" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>modules/actions/github.go</code> maps Gitea's internal webhook event taxonomy (<code>webhook_module.HookEventType</code>) onto the GitHub Actions event vocabulary used inside <code>on:</code> blocks.</p>
+<pre class="highlight"><code class="language-go">const (
+    GithubEventPullRequest              = "pull_request"
+    GithubEventPullRequestTarget        = "pull_request_target"
+    GithubEventPullRequestReviewComment = "pull_request_review_comment"
+    GithubEventPullRequestReview        = "pull_request_review"
+    GithubEventRegistryPackage          = "registry_package"
+    GithubEventCreate                   = "create"
+    GithubEventDelete                   = "delete"
+    GithubEventFork                     = "fork"
+    GithubEventPush                     = "push"
+    GithubEventIssues                   = "issues"
+    GithubEventIssueComment             = "issue_comment"
+    GithubEventRelease                  = "release"
+    GithubEventPullRequestComment       = "pull_request_comment"
+    GithubEventGollum                   = "gollum" // Gitea's wiki event
+    GithubEventSchedule                 = "schedule"
+)</code></pre>
+<p>Two functions do the actual translation work:</p>
+<ul>
+<li><strong><code>IsDefaultBranchWorkflow(triggedEvent)</code></strong> — reports whether an event type only ever triggers workflows on the <em>default</em> branch (GitHub's documented behavior for <code>delete</code>, <code>fork</code>, <code>issue_comment</code>, <code>pull_request_comment</code>, <code>gollum</code>/wiki, <code>schedule</code>, <code>issues</code>, and <code>workflow_run</code>). The notifier (<code>services/actions/notifier_helper.go</code>) uses this to fall back to the default branch ref when computing which workflow file version to evaluate.</li>
+<li><strong><code>canGithubEventMatch(eventName, triggedEvent)</code></strong> — the reverse mapping: given the <code>on:</code> event name written in YAML, decide whether it should fire for the concrete Gitea <code>HookEventType</code> that occurred. This absorbs GitHub's many-to-one relationships, e.g. <code>issues:</code> in YAML matches Gitea's <code>HookEventIssues</code>, <code>HookEventIssueAssign</code>, <code>HookEventIssueLabel</code>, and <code>HookEventIssueMilestone</code>; <code>pull_request_review:</code> matches both approved/rejected/commented review sub-events; <code>gollum:</code> (GitHub's wiki-edit event name) maps to Gitea's <code>HookEventWiki</code>; <code>issue_comment:</code> matches both true issue comments and PR comments (GitHub treats PR comments as <code>issue_comment</code> too).</li>
+</ul>
+<p>This layer keeps the rest of the codebase — commit status naming, workflow trigger evaluation — speaking GitHub's public vocabulary while Gitea's internal event bus keeps its own richer, more granular event types.</p>
+<blockquote>
+<p><code>ShouldEventCreateCommitStatus</code> (in <code>workflows.go</code>) is a related allowlist that decides which trigger events are allowed to become <strong>required status checks</strong> (<code>push</code>, <code>pull_request</code>, <code>pull_request_target</code>, <code>pull_request_review</code>, <code>pull_request_review_comment</code>, <code>release</code>). Its author's own comment flags that this list must be kept in sync by hand with <code>services/actions.getCommitStatusEventNameAndCommitID</code>, which is the authoritative source for which events actually post a status.</p>
+</blockquote>
+<h2 id="data-model-modelsactions">Data Model (<code>models/actions/</code>)<a href="#data-model-modelsactions" class="heading-anchor" aria-label="Link">#</a></h2>
+<pre class="mermaid">erDiagram
+    ActionRun ||--o{ ActionRunAttempt : "has attempts (reruns)"
+    ActionRunAttempt ||--o{ ActionRunJob : "attempt-scoped jobs"
+    ActionRunJob ||--o| ActionTask : "assigned to a runner"
+    ActionTask ||--o{ ActionTaskStep : "step-level status"
+    ActionRunner ||--o{ ActionTask : "executes"
+    ActionRun ||--o{ ActionArtifact : "produces"
+    ActionRunJob }o--o{ ActionRunJob : "Needs / ParentJobID (reusable workflows)"
+
+    ActionRun {
+        int64 ID
+        int64 RepoID
+        string WorkflowID
+        int64 Index
+        string Ref
+        string CommitSHA
+        HookEventType Event
+        string TriggerEvent
+        Status Status
+        int64 LatestAttemptID
+        bool IsScopedRun
+        int64 WorkflowRepoID
+        string WorkflowCommitSHA
+    }
+    ActionRunAttempt {
+        int64 ID
+        int64 RunID
+        int64 Attempt
+        string ConcurrencyGroup
+        bool ConcurrencyCancel
+        Status Status
+    }
+    ActionRunJob {
+        int64 ID
+        int64 RunID
+        int64 RunAttemptID
+        string JobID
+        string[] Needs
+        string[] RunsOn
+        Status Status
+        int64 TaskID
+        bool IsReusableCaller
+        int64 ParentJobID
+        bytes WorkflowPayload
+    }
+    ActionTask {
+        int64 ID
+        int64 JobID
+        int64 RunnerID
+        Status Status
+        string LogFilename
+        bool LogInStorage
+    }
+    ActionRunner {
+        int64 ID
+        string UUID
+        int64 OwnerID
+        int64 RepoID
+        string[] AgentLabels
+        bool Ephemeral
+        bool IsDisabled
+    }
+    ActionArtifact {
+        int64 ID
+        int64 RunID
+        int64 RunAttemptID
+        string ArtifactName
+        string StoragePath
+        int64 FileSize
+        ArtifactStatus Status
+    }</pre>
+<h3 id="actionrun-modelsactionsrungo">ActionRun (<code>models/actions/run.go</code>)<a href="#actionrun-modelsactionsrungo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>An <code>ActionRun</code> represents one triggered run of a workflow file. Notable fields:</p>
+<ul>
+<li><code>RepoID</code> + <code>Index</code> — unique per-repo, human-visible run number (<code>xorm:"unique(repo_index)"</code>)</li>
+<li><code>Event</code> / <code>TriggerEvent</code> — the Gitea webhook event type and the literal <code>on:</code> trigger string that matched</li>
+<li><code>IsForkPullRequest</code> / <code>NeedApproval</code> / <code>ApprovedBy</code> — the fork-PR approval gate; untrusted fork PRs are held until a maintainer approves them (see <code>services/actions/approve.go</code>)</li>
+<li><code>WorkflowRepoID</code> / <code>WorkflowCommitSHA</code> — always populated; for a normal run these equal <code>(RepoID, CommitSHA)</code>, but for a <strong>scoped run</strong> (see below) they point to the <em>source</em> repo/commit that owns the workflow file</li>
+<li><code>IsScopedRun</code> — explicit flag distinguishing scoped runs from ordinary repo-level runs</li>
+<li><code>LatestAttemptID</code> — points at the current <code>ActionRunAttempt</code>; <code>Status</code>/<code>Started</code>/<code>Stopped</code> on the run always mirror the latest attempt</li>
+<li><code>RawConcurrency</code> — the raw, unevaluated <code>concurrency:</code> YAML block at workflow level</li>
+</ul>
+<h3 id="actionrunattempt-modelsactionsrun_attemptgo">ActionRunAttempt (<code>models/actions/run_attempt.go</code>)<a href="#actionrunattempt-modelsactionsrun_attemptgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Introduced to properly support <strong>reruns</strong>: rather than mutating the original run's timing/status in place, each rerun creates a new <code>ActionRunAttempt</code> row (unique on <code>(RunID, Attempt)</code>), and <code>ActionRun.LatestAttemptID</code> is repointed at it. <code>UpdateRunAttempt</code> propagates <code>status</code>/<code>started</code>/<code>stopped</code> column changes back up to the parent <code>ActionRun</code> — but only if the attempt being updated is still the run's <code>LatestAttemptID</code>, guarding against a stale older attempt overwriting a newer rerun's status. Attempts also carry <code>ConcurrencyGroup</code>/<code>ConcurrencyCancel</code>, the evaluated workflow-level <code>concurrency:</code> settings (see <code>services/actions/concurrency.go</code>).</p>
+<h3 id="actionrunjob-modelsactionsrun_jobgo">ActionRunJob (<code>models/actions/run_job.go</code>)<a href="#actionrunjob-modelsactionsrun_jobgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>One row per job × matrix-cell (up to <code>MaxJobNumPerRun = 256</code>, mirroring GitHub's own limit). Highlights:</p>
+<ul>
+<li><code>WorkflowPayload</code> — the serialized single-job <code>jobparser.SingleWorkflow</code> YAML that gets sent verbatim to the runner</li>
+<li><code>RunAttemptID</code> / <code>AttemptJobID</code> — <code>AttemptJobID</code> is stable across reruns for "the same logical job", <code>RunAttemptID</code> scopes it to one attempt; a value of <code>0</code> in either marks a legacy pre-attempt job</li>
+<li><code>TaskID</code> / <code>SourceTaskID</code> — <code>TaskID</code> is the task created in <em>this</em> attempt; <code>SourceTaskID</code> points at a historical task from an earlier attempt when a rerun chooses to <strong>reuse</strong> that job's prior result instead of re-executing it</li>
+<li><code>TokenPermissions</code> — explicit <code>permissions:</code> from the workflow/job YAML, JSON-encoded (<code>repo_model.ActionsTokenPermissions</code>); org/repo-level clamps are applied at token-mint time, not stored here</li>
+<li>Reusable-workflow-caller fields: <code>IsReusableCaller</code>, <code>IsExpanded</code>, <code>CallUses</code>, <code>ReusableWorkflowContent</code>, <code>CallSecrets</code> (<code>""</code>, <code>"inherit"</code>, or a JSON alias map), <code>CallPayload</code> — a caller job (<code>uses: ./.github/workflows/x.yml</code>) does not itself run on a runner; when expanded, its children are inserted as separate <code>ActionRunJob</code> rows with <code>ParentJobID</code> pointing back at the caller</li>
+<li><code>ParentJobID</code> — scopes <code>needs:</code> name resolution to siblings sharing the same parent, so reusable-workflow children can't accidentally satisfy <code>needs:</code> against unrelated jobs</li>
+<li><code>ConcurrencyGroup</code> / <code>ConcurrencyCancel</code> / <code>IsConcurrencyEvaluated</code> — job-level <code>concurrency:</code> evaluation results (may depend on other jobs' outputs, hence the "evaluated" flag)</li>
+</ul>
+<h3 id="actiontask-actiontaskstep-modelsactionstaskgo-task_stepgo">ActionTask / ActionTaskStep (<code>models/actions/task.go</code>, <code>task_step.go</code>)<a href="#actiontask-actiontaskstep-modelsactionstaskgo-task_stepgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>An <code>ActionTask</code> is the runner-facing unit of work created when a job is <strong>picked up</strong>. It owns the authentication token the runner uses for the rest of the job's lifetime (<code>TokenHash</code>/<code>TokenSalt</code>, checked with <code>crypto/subtle.ConstantTimeCompare</code>), plus the log-file bookkeeping: <code>LogFilename</code>, <code>LogInStorage</code>, <code>LogLength</code> (line count), <code>LogSize</code> (byte size), <code>LogIndexes</code> (line-number → byte-offset index for fast seeking).</p>
+<h3 id="status-enum-modelsactionsstatusgo">Status enum (<code>models/actions/status.go</code>)<a href="#status-enum-modelsactionsstatusgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>Status</code> is shared by <code>ActionRun</code>, <code>ActionRunAttempt</code>, <code>ActionRunJob</code>, <code>ActionTask</code>, and <code>ActionTaskStep</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>StatusUnknown</code></td>
+<td>matches <code>runnerv1.Result_RESULT_UNSPECIFIED</code></td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>StatusSuccess</code></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>StatusFailure</code></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>StatusCancelled</code></td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>StatusSkipped</code></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>StatusWaiting</code></td>
+<td>not a runner result — server-side only</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>StatusRunning</code></td>
+<td>not a runner result</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>StatusBlocked</code></td>
+<td>waiting on <code>needs:</code>; not a runner result</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>StatusCancelling</code></td>
+<td>transitional state for graceful runner-side cleanup before finalizing</td>
+</tr>
+</tbody>
+</table>
+<p><code>Status.AsResult()</code> / <code>StatusFromResult()</code> convert to/from the wire-level <code>runnerv1.Result</code> enum used in the Connect-RPC protocol — note that <code>StatusWaiting</code>, <code>StatusRunning</code>, <code>StatusBlocked</code>, and <code>StatusCancelling</code> have no <code>runnerv1.Result</code> equivalent since they never appear on the wire as a final result.</p>
+<h3 id="actionrunner-modelsactionsrunnergo">ActionRunner (<code>models/actions/runner.go</code>)<a href="#actionrunner-modelsactionsrunnergo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Runners register at one of three scopes — decided by which registration token was used — and the model comments are explicit that <code>OwnerID</code> and <code>RepoID</code> must never both be non-zero simultaneously (to keep "belongs to owner" queries unambiguous):</p>
+<pre class="highlight"><code class="language-go">// It can be:
+//  1. global runner, OwnerID is 0 and RepoID is 0
+//  2. org/user level runner, OwnerID is org/user ID and RepoID is 0
+//  3. repo level runner, OwnerID is 0 and RepoID is repo ID</code></pre>
+<p>Runner liveness uses debounced timestamps rather than a write on every poll:</p>
+<pre class="highlight"><code class="language-go">RunnerOfflineTime       = time.Minute      // no poll within this window -&gt; OFFLINE
+RunnerIdleTime          = 10 * time.Second
+RunnerHeartbeatInterval = 30 * time.Second // min interval between last_online writes
+RunnerActiveInterval    = 5 * time.Second  // min interval between last_active writes</code></pre>
+<p><code>ShouldPersistLastOnline</code> / <code>ShouldPersistLastActive</code> gate whether a given RPC call actually issues a DB write — this matters because <code>UpdateLog</code> can fire many times per second while a runner streams output, and a naive "write timestamp on every RPC" implementation would be a major source of database load at fleet scale (this exact rationale is called out in <code>routers/api/actions/runner/interceptor.go</code>).</p>
+<h2 id="runner-registration-connect-rpc-protocol">Runner Registration &amp; Connect-RPC Protocol<a href="#runner-registration-connect-rpc-protocol" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea Actions communicates with runners using <strong><a href="https://connectrpc.com/">Connect-RPC</a></strong> (gRPC-Web-compatible, HTTP/1.1-friendly) generated from Protobuf definitions in the external <code>gitea.dev/actions-proto-go</code> module (<code>runner/v1</code>). The router-level wiring lives in <code>routers/api/actions/</code>.</p>
+<h3 id="route-registration">Route registration<a href="#route-registration" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">// routers/api/actions/actions.go
+func Routes(prefix string) *web.Router {
+    m := web.NewRouter()
+
+    path, handler := ping.NewPingServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    path, handler = runner.NewRunnerServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    return m
+}</code></pre>
+<p><code>ping</code> exposes a trivial health-check RPC service; <code>runner</code> (<code>routers/api/actions/runner/runner.go</code>) implements the actual <code>runnerv1connect.RunnerServiceHandler</code> interface with these RPCs:</p>
+<table>
+<thead>
+<tr>
+<th>RPC</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Register</code></td>
+<td>Exchange a registration token for a permanent runner identity + token</td>
+</tr>
+<tr>
+<td><code>Declare</code></td>
+<td>Runner reports/updates its version, labels, and capabilities after startup</td>
+</tr>
+<tr>
+<td><code>FetchTask</code></td>
+<td>Long-poll style: ask the server for a task, or update the runner's <code>tasksVersion</code> cursor</td>
+</tr>
+<tr>
+<td><code>UpdateTask</code></td>
+<td>Report task/step status transitions and step outputs</td>
+</tr>
+<tr>
+<td><code>UpdateLog</code></td>
+<td>Stream log lines for the running task, with ack-based flow control</td>
+</tr>
+</tbody>
+</table>
+<h3 id="authentication-interceptor">Authentication interceptor<a href="#authentication-interceptor" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Every RPC except <code>Register</code> is guarded by a Connect <strong>unary interceptor</strong> (<code>routers/api/actions/runner/interceptor.go</code>) that authenticates the caller via two custom headers:</p>
+<pre class="highlight"><code class="language-go">const (
+    uuidHeaderKey  = "x-runner-uuid"
+    tokenHeaderKey = "x-runner-token"
+)</code></pre>
+<p>The interceptor loads the <code>ActionRunner</code> by UUID, verifies the token hash with a constant-time comparison (<code>subtle.ConstantTimeCompare</code>), then — subject to the debounce rules above — updates <code>last_online</code> (all methods) and <code>last_active</code> (<code>UpdateTask</code>/<code>UpdateLog</code> only) before injecting the authenticated <code>*ActionRunner</code> into the request context via <code>GetRunner(ctx)</code>.</p>
+<h3 id="registration-flow">Registration flow<a href="#registration-flow" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">func (s *Service) Register(ctx, req *connect.Request[runnerv1.RegisterRequest]) (...) {
+    runnerToken, err := actions_model.GetRunnerToken(ctx, req.Msg.Token)
+    // ... validates token is active, owner/repo referenced by the token still exists
+    runner := &amp;actions_model.ActionRunner{
+        UUID:                 gouuid.New().String(),
+        Name:                 name,
+        OwnerID:              runnerToken.OwnerID,
+        RepoID:               runnerToken.RepoID,
+        Version:              req.Msg.Version,
+        AgentLabels:          labels,
+        Ephemeral:            req.Msg.Ephemeral,
+        HasCancellingSupport: hasCancellingSupport,
+    }
+    runner.GenerateAndFillToken()
+    actions_model.CreateRunner(ctx, runner)
+    runnerToken.IsActive = true // registration tokens are one-shot: reused after first registration only if left active by admin
+    actions_model.UpdateRunnerToken(ctx, runnerToken, "is_active")
+    // returns Runner{Id, Uuid, Token, Name, Version, Labels, Ephemeral}
+}</code></pre>
+<p>Runner <strong>capabilities</strong> (currently just <code>"cancelling"</code>, meaning the runner understands the transitional <code>StatusCancelling</code> flow and will run post-step cleanup before finalizing a cancelled task) are advertised as a string list on <code>Register</code>/<code>Declare</code> requests, and echoed back on <code>Declare</code> responses via a header rather than a proto field bump:</p>
+<pre class="highlight"><code class="language-go">resp.Header().Set("X-Gitea-Actions-Capabilities", actions_model.RunnerCapabilities())</code></pre>
+<h3 id="task-pickup-fetchtask">Task pickup (<code>FetchTask</code>)<a href="#task-pickup-fetchtask" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Task assignment uses a monotonically increasing <strong>tasks version</strong> counter per scope <code>(OwnerID, RepoID)</code> to avoid runners busy-polling the database on every request when nothing changed:</p>
+<pre class="mermaid">sequenceDiagram
+    participant R as Runner
+    participant S as RunnerService.FetchTask
+    participant DB as DB
+
+    R->>S: FetchTask{tasksVersion: N}
+    S->>DB: GetTasksVersionByScope(ownerID, repoID)
+    alt tasksVersion == latestVersion
+        S-->>R: FetchTaskResponse{task: nil, tasksVersion: N}
+        note over R: nothing changed, runner sleeps and retries
+    else tasksVersion != latestVersion
+        S->>S: actions_service.TryPickTask(runner)
+        alt throttled (too many concurrent picks)
+            S-->>R: FetchTaskResponse{task: nil, tasksVersion: N}
+            note over R: version NOT advanced, retries immediately
+        else task claimed
+            S->>DB: CreateTaskForRunner + buildRunnerTask
+            S-->>R: FetchTaskResponse{task, tasksVersion: latest}
+        end
+    end</pre>
+<p><code>TryPickTask</code> (<code>services/actions/task.go</code>) bounds concurrent pick transactions with a semaphore sized by <code>setting.Actions.MaxConcurrentTaskPicks</code> (default 16), guarding against a "thundering herd" when many runners poll simultaneously. When throttled, the response deliberately does <strong>not</strong> advance <code>tasksVersion</code>, so the runner retries on its very next poll instead of falling asleep until the next real version bump.</p>
+<p>Inside <code>PickTask</code>:</p>
+<ol>
+<li>Disabled runners (<code>runner.IsDisabled</code>) never get a task.</li>
+<li>Ephemeral runners (single-job, then self-destruct) are checked for an existing unfinished task first; if their one task already finished, the runner row itself is deleted.</li>
+<li><code>actions_model.CreateTaskForRunner</code> atomically claims one waiting <code>ActionRunJob</code> matching the runner's labels/scope and creates the <code>ActionTask</code> row.</li>
+<li><code>buildRunnerTask</code> assembles the wire payload: <code>WorkflowPayload</code> bytes, <code>Secrets</code> (via <code>secret_model.GetSecretsOfTask</code>), <code>Vars</code> (<code>GetVariablesOfRun</code>), <code>Needs</code> outputs from upstream jobs (<code>FindTaskNeeds</code>), and a <code>Context</code> struct built by <code>GenerateGiteaContext</code> plus an ephemeral <code>gitea_runtime_token</code> (<code>CreateAuthorizationToken</code>) scoped to <code>(task, run, job)</code>.</li>
+<li>If the request's context was cancelled before the response could reach the runner, the claim is released (<code>ReleaseTaskForRunner</code>) so another runner can pick it up — never leaving a job silently stuck in "running" with no runner attached.</li>
+<li>Commit status is posted/updated (<code>CreateCommitStatusForRunJobs</code>) and job/run status-update notifications fire immediately.</li>
+</ol>
+<h3 id="status-log-reporting-updatetask-updatelog">Status &amp; log reporting (<code>UpdateTask</code>, <code>UpdateLog</code>)<a href="#status-log-reporting-updatetask-updatelog" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>UpdateTask</code> (see full code in <code>routers/api/actions/runner/runner.go</code>) applies the runner-reported <code>TaskState</code> via <code>actions_model.UpdateTaskByState</code>, persists any new step <strong>outputs</strong> (size-capped: 255-byte keys, 1 MiB values), reloads the job/run, re-posts the commit status, fires job/run status-update notifications when the task is done, and — if the job produced a final result — calls <code>EmitJobsIfReadyByRun</code> to unblock any downstream jobs whose <code>needs:</code> are now satisfied.</p>
+<p><code>UpdateLog</code> implements incremental, idempotent log streaming:</p>
+<ul>
+<li>The server tracks an <strong>ack index</strong> (<code>task.LogLength</code>) — the runner resends unacked rows if a previous <code>UpdateLog</code> call's response was lost.</li>
+<li>Rows the runner previously had acked are trimmed before writing.</li>
+<li>Once a task calls <code>NoMore: true</code>, the log is sealed (<code>LogInStorage = true</code>) and transferred from the temporary DBFS append log into permanent object storage (<code>actions.TransferLogs</code>); any further append attempts return <code>codes.AlreadyExists</code>.</li>
+<li>Actual line storage during the "live" phase goes through <code>modules/actions/log.go</code>'s <code>WriteLogs</code>, which appends to a DBFS-backed file (<code>gitea.dev/models/dbfs</code>) prefixed <code>actions_log/</code> — DBFS is chosen specifically because object storage backends are inefficient to append to, while the underlying database can absorb frequent small appends.</li>
+</ul>
+<h2 id="artifact-storage">Artifact Storage<a href="#artifact-storage" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Two generations of artifact protocol coexist:</p>
+<ul>
+<li><strong>Legacy (v3-ish) chunked upload API</strong> — <code>routers/api/actions/artifacts.go</code> + <code>artifacts_chunks.go</code>, used by older <code>actions/upload-artifact</code>.</li>
+<li><strong>GitHub Actions Results API v4</strong> — <code>routers/api/actions/artifactsv4.go</code>, a Twirp-style JSON RPC surface (<code>/twirp/github.actions.results.api.v1.ArtifactService/...</code>) compatible with modern <code>actions/upload-artifact@v4</code>/<code>download-artifact@v4</code>.</li>
+</ul>
+<p>The v4 flow, documented in the source comments of <code>artifactsv4.go</code>, is:</p>
+<pre class="mermaid">sequenceDiagram
+    participant Runner
+    participant Gitea as Gitea (ArtifactService)
+    participant Blob as Object Storage
+
+    Runner->>Gitea: CreateArtifact{workflow_run_backend_id, name}
+    Gitea-->>Runner: signedUploadUrl (HMAC-signed, expiring)
+    Runner->>Blob: PUT signedUploadUrl (comp=block, repeated)
+    Runner->>Blob: PUT signedUploadUrl (comp=blockList, XML manifest)
+    Runner->>Gitea: FinalizeArtifact{name, size, hash}
+    Gitea-->>Runner: {ok, artifactId}
+
+    Note over Runner,Gitea: Later, download
+    Runner->>Gitea: ListArtifacts / GetSignedArtifactURL
+    Gitea-->>Runner: signedUrl
+    Runner->>Blob: GET signedUrl (DownloadArtifact)</pre>
+<p>The signed URLs embed an HMAC signature and expiry, built by <code>modules/actions/artifacts.go</code>:</p>
+<pre class="highlight"><code class="language-go">// BuildSignature builds a hmac signature for the input values.
+// "tag" is an internal pre-defined static string to distinguish the signatures for different purpose.
+func BuildSignature(tag tagType, vals ...string) []byte {
+    m := hmac.New(sha256.New, setting.GetGeneralTokenSigningSecret())
+    // ... writes tag + length-prefixed vals into the HMAC
+    return m.Sum(nil)
+}</code></pre>
+<p>This lets the "upload zip content" and "download zip" endpoints remain <strong>unauthenticated</strong> (no runner token needed) while still being cryptographically bound to a specific artifact name, task ID, and expiry — anyone who doesn't hold a valid signature can't upload/download arbitrary artifact blobs.</p>
+<p>The <code>ActionArtifact</code> model (<code>models/actions/artifact.go</code>) tracks per-artifact upload/expiry state via <code>ArtifactStatus</code>:</p>
+<pre class="highlight"><code class="language-go">const (
+    ArtifactStatusUploadPending   ArtifactStatus = iota + 1 // upload started, not confirmed
+    ArtifactStatusUploadConfirmed                           // finalized, ready for download
+    ArtifactStatusUploadError                                // upload failed
+    ArtifactStatusExpired                                    // past retention period
+    ArtifactStatusPendingDeletion                            // marked for cleanup
+    ArtifactStatusDeleted                                    // cleanup complete
+)</code></pre>
+<p>Content can additionally carry a <code>ContentEncodingOrType</code> marker (<code>ContentEncodingV3Gzip = "gzip"</code> or <code>ContentTypeZip = "application/zip"</code>) distinguishing legacy per-file gzip streams from full zip archives, which matters when re-serving individual files from within a workflow run versus a full artifact download. <code>services/actions/artifacts.go</code> and <code>services/actions/cleanup.go</code> implement expiry sweeping and storage reclamation.</p>
+<h2 id="commit-status-reporting">Commit Status Reporting<a href="#commit-status-reporting" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Two complementary pieces post and render GitHub-style commit statuses for Actions runs.</p>
+<h3 id="posting-a-status-servicesactionscommit_statusgo">Posting a status (<code>services/actions/commit_status.go</code>)<a href="#posting-a-status-servicesactionscommit_statusgo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>CreateCommitStatusForRunJobs(ctx, run, jobs...)</code> is called at every job-status transition point: run insertion (<code>PrepareRunAndInsert</code>), job pickup (<code>PickTask</code>), and task update (<code>UpdateTask</code>). It:</p>
+<ol>
+<li>Skips scheduled/cron runs (<code>run.ScheduleID != 0</code>) — cron jobs don't map onto a PR/commit check.</li>
+<li>Resolves the <code>(event, commitID)</code> pair via <code>getCommitStatusEventNameAndCommitID</code>, which switches on <code>run.Event</code> to pull the right commit SHA out of the stored event payload (e.g. <code>HookEventPush</code> → <code>HeadCommit.ID</code> from the push payload).</li>
+<li>For a <strong>scoped run</strong> (workflow physically defined in another repository, see below), computes a source-repo prefix (<code>ScopedStatusContextPrefix</code>) so the status context clearly identifies where the workflow came from.</li>
+<li>Builds the context name using <code>WorkflowStatusContextName</code> / <code>ScopedWorkflowStatusContextName</code> from <code>modules/actions/workflows.go</code>:</li>
+</ol>
+<pre class="highlight"><code class="language-go">// "&lt;workflow display name&gt; / &lt;job name&gt; (&lt;event&gt;)"
+func WorkflowStatusContextName(displayName, jobName, event string) string {
+    return strings.TrimSpace(fmt.Sprintf("%s / %s (%s)", displayName, jobName, event))
+}
+// "&lt;source repo prefix&gt;: &lt;display&gt; / &lt;job&gt; (&lt;event&gt;)"
+func ScopedWorkflowStatusContextName(prefix, displayName, jobName, event string) string {
+    return strings.TrimSpace(fmt.Sprintf("%s: %s", prefix, WorkflowStatusContextName(displayName, jobName, event)))
+}</code></pre>
+<p>This context string is exactly what becomes a branch protection "required status check" name in the repo settings UI.</p>
+<h3 id="rendering-a-live-status-modulesactionscommit_status_infogo">Rendering a live status (<code>modules/actions/commit_status_info.go</code>)<a href="#rendering-a-live-status-modulesactionscommit_status_infogo" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Rendering commit-status icons (e.g. on the commits list or PR checks tab) needs the <em>current</em> job status, but the <code>CommitStatus</code> row's own <code>State</code> field is a point-in-time snapshot written when the status was created — it can go stale while the job keeps running. <code>GetCommitActionsStatusMap</code> bridges this gap:</p>
+<pre class="highlight"><code class="language-go">type CommitActionsStatusMap map[int64]actions_model.Status
+
+func GetCommitActionsStatusMap(ctx context.Context, statuses []*git_model.CommitStatus) CommitActionsStatusMap</code></pre>
+<p>For every <code>CommitStatus</code> row whose <code>TargetURL</code> parses as a Gitea-Actions run URL (<code>ParseGiteaActionsTargetURL</code>), it batch-loads the current <code>ActionRunJob.Status</code> and returns a <code>CommitStatus.ID → live Status</code> map. <code>CommitActionsStatusMap.IconStatus(status)</code> is then used purely for icon selection — non-Actions statuses (external CI, API-created statuses) fall through untouched and keep rendering from their stored <code>State</code>.</p>
+<h2 id="secrets-variables-scoping">Secrets &amp; Variables Scoping<a href="#secrets-variables-scoping" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Both secrets and variables follow the same three-tier ownership model used by runners: <strong>global</strong> (<code>OwnerID=0, RepoID=0</code>), <strong>org/user</strong> (<code>OwnerID=owner, RepoID=0</code>), and <strong>repo</strong> (<code>OwnerID=0, RepoID=repo</code>) — with the model comments explicitly forbidding both IDs being non-zero at once to keep "belongs to" lookups unambiguous. Note: unlike variables, Gitea deliberately does <strong>not</strong> support global secrets (<code>models/secret/secret.go</code> requires at least one of <code>OwnerID</code>/<code>RepoID</code> to be non-zero), "for security reasons, admin may not be aware that the secrets could be stolen by any user when setting them as global."</p>
+<blockquote>
+<p>Gitea has <strong>no separate "environment" scope</strong> for Actions secrets/variables (unlike GitHub Environments). The only tiers that exist are org/user and repo (plus global for variables only). A workflow's <code>environment:</code> key is accepted for compatibility but does not currently gate secret visibility in Gitea — secret scoping is driven entirely by <code>OwnerID</code>/<code>RepoID</code>, the fork-PR check, and the reusable-workflow <code>secrets:</code> policy documented below.</p>
+</blockquote>
+<h3 id="write-path-servicessecrets-orguserrepo-secret-management">Write path: <code>services/secrets</code> (org/user/repo secret management)<a href="#write-path-servicessecrets-orguserrepo-secret-management" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>All secret <strong>mutations</strong> — as opposed to the read path used at task-dispatch time (<code>GetSecretsOfTask</code>, covered above) — funnel through the small, scope-agnostic <code>services/secrets</code> package (<code>services/secrets/secrets.go</code>, <code>services/secrets/validation.go</code>). It intentionally has no knowledge of <em>which</em> scope (org, user, or repo) it is operating at; the caller decides that by which <code>(ownerID, repoID)</code> pair it passes in:</p>
+<pre class="highlight"><code class="language-go">// services/secrets/secrets.go
+func CreateOrUpdateSecret(ctx context.Context, ownerID, repoID int64, name, data, description string) (*secret_model.Secret, bool, error)
+func DeleteSecretByID(ctx context.Context, ownerID, repoID, secretID int64) error
+func DeleteSecretByName(ctx context.Context, ownerID, repoID int64, name string) error</code></pre>
+<p><code>CreateOrUpdateSecret</code> first runs <code>ValidateName</code> (<code>services/secrets/validation.go</code>), which enforces the same naming rules GitHub Actions uses: names must match <code>^[A-Z_][A-Z0-9_]*$</code> (case-insensitive), must not start with the reserved <code>GITHUB_</code>/<code>GITEA_</code> prefix (case-insensitive, so <code>github_foo</code> is also rejected), and must not be the literal name <code>CI</code> (always implicitly <code>true</code> in Actions runs). It then looks up any existing secret at that exact <code>(ownerID, repoID, name)</code> via <code>db.Find[secret_model.Secret]</code> — if none exists it calls <code>secret_model.InsertEncryptedSecret</code> (new row, data encrypted at rest), otherwise it calls <code>secret_model.UpdateSecret</code> on the existing row's ID (update in place, preserving the secret's ID and audit history). <code>DeleteSecretByID</code>/<code>DeleteSecretByName</code> both first resolve to exactly one matching row via <code>FindSecretsOptions</code> and return <code>secret_model.ErrSecretNotFound{}</code> if zero or more than one row matches, then delete by primary key.</p>
+<p>This single service package is reused by every scope's controller, which is what keeps org/repo/env-style secrets management consistent across the codebase:</p>
+<table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Scope</th>
+<th><code>(ownerID, repoID)</code> passed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>routers/api/v1/org/action.go</code> (<code>Action.CreateOrUpdateSecret</code>)</td>
+<td>Org-level API (<code>PUT /orgs/{org}/actions/secrets/{secretname}</code>)</td>
+<td><code>(ctx.Org.Organization.ID, 0)</code></td>
+</tr>
+<tr>
+<td><code>routers/api/v1/user/action.go</code></td>
+<td>User-level API (<code>PUT /user/actions/secrets/{secretname}</code>)</td>
+<td><code>(ctx.Doer.ID, 0)</code></td>
+</tr>
+<tr>
+<td><code>routers/api/v1/repo/action.go</code></td>
+<td>Repo-level API (<code>PUT /repos/{owner}/{repo}/actions/secrets/{secretname}</code>)</td>
+<td><code>(0, repo.ID)</code></td>
+</tr>
+<tr>
+<td><code>routers/web/shared/secrets/secrets.go</code> (<code>PerformSecretsPost</code>/<code>PerformSecretsDelete</code>)</td>
+<td>Web UI settings pages (org settings, user settings, repo settings — the same handlers are mounted at all three scopes with a different <code>(ownerID, repoID)</code> closed over by the calling router)</td>
+<td>caller-supplied</td>
+</tr>
+</tbody>
+</table>
+<p>Because <code>FindSecretsOptions.ToConds()</code> (<code>models/secret/secret.go</code>) special-cases <code>RepoID != 0</code> by forcing <code>OwnerID</code> to <code>0</code> in the query, a caller can safely always pass both IDs (one of which is <code>0</code>) without accidentally matching secrets from the wrong scope — this is the same "belongs to" disambiguation guard called out for <code>ActionRunner</code> and <code>ActionRun</code> above. <code>CountWrongRepoLevelSecrets</code>/<code>UpdateWrongRepoLevelSecrets</code> (also in <code>models/secret/secret.go</code>) exist as a one-time repair migration for legacy rows that had <code>OwnerID</code> set on what should have been a pure repo-level secret.</p>
+<h3 id="precedence">Precedence<a href="#precedence" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>GetVariablesOfRun</code> (<code>models/actions/variable.go</code>) resolves variables with <strong>repo &gt; org/user &gt; global</strong> precedence, by simply iterating global, then owner, then repo variables into the same map (later writes win):</p>
+<pre class="highlight"><code class="language-go">for _, v := range append(globalVariables, append(ownerVariables, repoVariables...)...) {
+    variables[v.Name] = v.Data
+}</code></pre>
+<p>Secrets (<code>GetSecretsOfTask</code>, <code>models/secret/secret.go</code>) follow the same idea but only across <strong>owner + repo</strong> (no global tier), and always seed two auto-generated tokens first:</p>
+<pre class="highlight"><code class="language-go">baseSecrets["GITHUB_TOKEN"] = task.Token
+baseSecrets["GITEA_TOKEN"] = task.Token</code></pre>
+<h3 id="fork-pull-request-restriction">Fork pull request restriction<a href="#fork-pull-request-restriction" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>If the run is a fork pull request (<code>task.Job.Run.IsForkPullRequest</code>) and the trigger wasn't <code>pull_request_target</code> (which intentionally runs in base-branch context and is therefore trusted), <strong>only</strong> the two auto-tokens are exposed — all user-defined secrets are withheld to prevent a malicious fork PR from exfiltrating repository secrets.</p>
+<h3 id="reusable-workflow-scoping-getscopedsecretsforjob">Reusable workflow scoping (<code>getScopedSecretsForJob</code>)<a href="#reusable-workflow-scoping-getscopedsecretsforjob" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>For jobs with a non-zero <code>ParentJobID</code> (children of a reusable-workflow caller), secret visibility recurses up the caller chain and applies each caller's declared <code>secrets:</code> policy stored on <code>CallSecrets</code>:</p>
+<pre class="highlight"><code class="language-go">func getScopedSecretsForJob(ctx context.Context, job *actions_model.ActionRunJob, baseSecrets map[string]string) (map[string]string, error) {
+    if job.ParentJobID == 0 {
+        return baseSecrets, nil
+    }
+    caller, _ := actions_model.GetRunJobByRunAndID(ctx, job.RunID, job.ParentJobID)
+    parentScope, _ := getScopedSecretsForJob(ctx, caller, baseSecrets)
+
+    if caller.CallSecrets == jobparser.SecretsInherit {
+        return parentScope, nil // "secrets: inherit" — pass everything through unchanged
+    }
+    // otherwise: only auto-tokens + explicitly aliased secrets are exposed
+    scoped := map[string]string{"GITHUB_TOKEN": baseSecrets["GITHUB_TOKEN"], ...}
+    // ... maps aliases from caller.CallSecrets JSON object
+}</code></pre>
+<p>This means a reusable workflow caller with no <code>secrets:</code> section (or an explicit alias mapping) creates a hard secret boundary: the callee only ever sees the auto-generated tokens plus whatever was explicitly named, never the caller's full secret set — unless the caller wrote <code>secrets: inherit</code>.</p>
+<h3 id="runtime-tokens-vs-stored-secrets">Runtime tokens vs. stored secrets<a href="#runtime-tokens-vs-stored-secrets" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Beyond user secrets, every task gets a short-lived <strong>Gitea runtime token</strong> (<code>gitea_runtime_token</code>, minted per <code>(task, run, job)</code> by <code>CreateAuthorizationToken</code> in <code>services/actions/context.go</code>/<code>auth.go</code>) injected into the task context alongside the classic <code>token</code>/<code>GITHUB_TOKEN</code>. This is the credential the <code>actions/checkout</code>-equivalent and Gitea API calls from within a workflow actually use, distinct from any user-configured secret.</p>
+<h2 id="scoped-workflows">Scoped Workflows<a href="#scoped-workflows" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea Actions supports <strong>scoped workflows</strong>: workflow files that live in a <code>.gitea/scoped_workflows</code> directory of a <em>different</em> ("source") repository but can be triggered by events in a <em>consuming</em> repository, letting an organization centralize CI templates. The relevant pieces:</p>
+<ul>
+<li><code>modules/actions/scoped_workflows.go</code> — <code>ListScopedWorkflows</code>/<code>ParseScopedWorkflows</code> read and parse workflow files from the source repo's <code>SCOPED_WORKFLOW_DIRS</code>; <code>MatchScopedWorkflows</code> evaluates them against a consuming event using the exact same <code>workflowpattern</code> matching logic as ordinary workflows.</li>
+<li><code>models/actions/scoped_workflow.go</code> — the mapping between source and consumer repos, plus <code>ScopedStatusContextPrefix</code> used to disambiguate commit-status context names.</li>
+<li><code>services/actions/scoped_workflow_cache.go</code> — caches parsed scoped-workflow metadata to avoid re-parsing on every event.</li>
+<li>On <code>ActionRun</code>, <code>IsScopedRun</code>, <code>WorkflowRepoID</code>, and <code>WorkflowCommitSHA</code> distinguish a scoped run from a normal one; <code>WorkflowLink()</code> includes <code>scoped_workflow_source_repo_id</code> in the generated URL so the UI can disambiguate two differently-sourced workflows that happen to share a file name.</li>
+</ul>
+<h2 id="job-scheduling-and-dependency-resolution-servicesactionsjob_emittergo">Job Scheduling and Dependency Resolution (<code>services/actions/job_emitter.go</code>)<a href="#job-scheduling-and-dependency-resolution-servicesactionsjob_emittergo" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Jobs with <code>needs:</code> dependencies start life as <code>StatusBlocked</code> and only transition to <code>StatusWaiting</code> (eligible for <code>FetchTask</code> pickup) once their dependencies finish. This is handled by an internal debounced queue:</p>
+<pre class="highlight"><code class="language-go">var jobEmitterQueue *queue.WorkerPoolQueue[*jobUpdate]
+
+func EmitJobsIfReadyByRun(runID int64) error {
+    err := jobEmitterQueue.Push(&amp;jobUpdate{RunID: runID})
+    if errors.Is(err, queue.ErrAlreadyInQueue) {
+        return nil // coalesce: a check is already pending for this run
+    }
+    return err
+}</code></pre>
+<p>The queue handler (<code>jobEmitterQueueHandler</code> → <code>checkJobsByRunID</code>) re-evaluates, inside one DB transaction, which blocked jobs in the run can now proceed (<code>checkJobsOfCurrentRunAttempt</code>) and whether workflow-level concurrency cancellation needs to happen (<code>checkRunConcurrency</code>). Re-emission for any jobs that changed as a side effect (e.g. reusable-workflow expansion producing new child jobs) happens <strong>after</strong> the transaction commits, specifically to avoid a nested-transaction deadlock under immediate-mode queue backends. <code>EmitJobsIfReadyByRun</code> is called from <code>PrepareRunAndInsert</code> (initial job graph), <code>UpdateTask</code> (a job just finished), and <code>PickTask</code> — i.e. every place a job's status can change in a way that might unblock a downstream job.</p>
+<h2 id="related-pages">Related Pages<a href="#related-pages" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../06-web-routers/README.html">Web Routers</a> — for the human-facing Actions UI routes (<code>routers/web/repo/actions/</code>)</li>
+<li><a href="../07-rest-api/README.html">REST API</a> — for the public API surface managing runners, secrets, and variables</li>
+<li><a href="../08-services/README.html">Services Layer</a> — broader service-layer conventions used across <code>services/actions/</code></li>
+<li><a href="../05-database-models/README.html">Database Models</a> — general XORM model conventions shared with <code>models/actions/</code></li>
+</ul>
+<div class="page-nav">
+<a href="README.html"><div class="nav-label">← Previous</div><div class="nav-title">Actions & CI</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#high-level-execution-flow" class="" data-anchor="high-level-execution-flow">High-Level Execution Flow</a>
+<a href="#workflow-detection-and-parsing" class="" data-anchor="workflow-detection-and-parsing">Workflow Detection and Parsing</a>
+<a href="#listing-and-validating-workflow-files" class="toc-h3" data-anchor="listing-and-validating-workflow-files">Listing and validating workflow files</a>
+<a href="#branchtagpath-pattern-matching-workflowpattern" class="toc-h3" data-anchor="branchtagpath-pattern-matching-workflowpattern">Branch/tag/path pattern matching (workflowpattern/)</a>
+<a href="#job-parsing-jobparser" class="toc-h3" data-anchor="job-parsing-jobparser">Job parsing (jobparser/)</a>
+<a href="#github-actions-compatibility-layer" class="" data-anchor="github-actions-compatibility-layer">GitHub Actions Compatibility Layer</a>
+<a href="#data-model-modelsactions" class="" data-anchor="data-model-modelsactions">Data Model (models/actions/)</a>
+<a href="#actionrun-modelsactionsrungo" class="toc-h3" data-anchor="actionrun-modelsactionsrungo">ActionRun (models/actions/run.go)</a>
+<a href="#actionrunattempt-modelsactionsrun_attemptgo" class="toc-h3" data-anchor="actionrunattempt-modelsactionsrun_attemptgo">ActionRunAttempt (models/actions/run_attempt.go)</a>
+<a href="#actionrunjob-modelsactionsrun_jobgo" class="toc-h3" data-anchor="actionrunjob-modelsactionsrun_jobgo">ActionRunJob (models/actions/run_job.go)</a>
+<a href="#actiontask-actiontaskstep-modelsactionstaskgo-task_stepgo" class="toc-h3" data-anchor="actiontask-actiontaskstep-modelsactionstaskgo-task_stepgo">ActionTask / ActionTaskStep (models/actions/task.go, task_step.go)</a>
+<a href="#status-enum-modelsactionsstatusgo" class="toc-h3" data-anchor="status-enum-modelsactionsstatusgo">Status enum (models/actions/status.go)</a>
+<a href="#actionrunner-modelsactionsrunnergo" class="toc-h3" data-anchor="actionrunner-modelsactionsrunnergo">ActionRunner (models/actions/runner.go)</a>
+<a href="#runner-registration-connect-rpc-protocol" class="" data-anchor="runner-registration-connect-rpc-protocol">Runner Registration &amp; Connect-RPC Protocol</a>
+<a href="#route-registration" class="toc-h3" data-anchor="route-registration">Route registration</a>
+<a href="#authentication-interceptor" class="toc-h3" data-anchor="authentication-interceptor">Authentication interceptor</a>
+<a href="#registration-flow" class="toc-h3" data-anchor="registration-flow">Registration flow</a>
+<a href="#task-pickup-fetchtask" class="toc-h3" data-anchor="task-pickup-fetchtask">Task pickup (FetchTask)</a>
+<a href="#status-log-reporting-updatetask-updatelog" class="toc-h3" data-anchor="status-log-reporting-updatetask-updatelog">Status &amp; log reporting (UpdateTask, UpdateLog)</a>
+<a href="#artifact-storage" class="" data-anchor="artifact-storage">Artifact Storage</a>
+<a href="#commit-status-reporting" class="" data-anchor="commit-status-reporting">Commit Status Reporting</a>
+<a href="#posting-a-status-servicesactionscommit_statusgo" class="toc-h3" data-anchor="posting-a-status-servicesactionscommit_statusgo">Posting a status (services/actions/commit_status.go)</a>
+<a href="#rendering-a-live-status-modulesactionscommit_status_infogo" class="toc-h3" data-anchor="rendering-a-live-status-modulesactionscommit_status_infogo">Rendering a live status (modules/actions/commit_status_info.go)</a>
+<a href="#secrets-variables-scoping" class="" data-anchor="secrets-variables-scoping">Secrets &amp; Variables Scoping</a>
+<a href="#write-path-servicessecrets-orguserrepo-secret-management" class="toc-h3" data-anchor="write-path-servicessecrets-orguserrepo-secret-management">Write path: services/secrets (org/user/repo secret management)</a>
+<a href="#precedence" class="toc-h3" data-anchor="precedence">Precedence</a>
+<a href="#fork-pull-request-restriction" class="toc-h3" data-anchor="fork-pull-request-restriction">Fork pull request restriction</a>
+<a href="#reusable-workflow-scoping-getscopedsecretsforjob" class="toc-h3" data-anchor="reusable-workflow-scoping-getscopedsecretsforjob">Reusable workflow scoping (getScopedSecretsForJob)</a>
+<a href="#runtime-tokens-vs-stored-secrets" class="toc-h3" data-anchor="runtime-tokens-vs-stored-secrets">Runtime tokens vs. stored secrets</a>
+<a href="#scoped-workflows" class="" data-anchor="scoped-workflows">Scoped Workflows</a>
+<a href="#job-scheduling-and-dependency-resolution-servicesactionsjob_emittergo" class="" data-anchor="job-scheduling-and-dependency-resolution-servicesactionsjob_emittergo">Job Scheduling and Dependency Resolution (services/actions/job_emitter.go)</a>
+<a href="#related-pages" class="" data-anchor="related-pages">Related Pages</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

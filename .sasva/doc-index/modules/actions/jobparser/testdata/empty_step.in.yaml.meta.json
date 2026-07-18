@@ -1,0 +1,9 @@
+{
+  "source": "modules/actions/jobparser/testdata/empty_step.in.yaml",
+  "format": "yaml",
+  "size_bytes": 102,
+  "source_modified": "2026-07-18T06:05:26.859996+00:00",
+  "indexed_at": "2026-07-18T07:39:40.092513+00:00",
+  "text_length": 102,
+  "line_count": 9
+}

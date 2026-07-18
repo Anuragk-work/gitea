@@ -1,0 +1,13 @@
+=== FILE: modules/actions/jobparser/testdata/null_job_implicit.in.yaml ===
+=== METADATA: format=yaml ===
+[SUMMARY] # null_job_implicit.in.yaml on: push jobs: empty: notempty: needs: empty runs-on: ubuntu-latest steps: - run: echo ok
+
+# null_job_implicit.in.yaml
+on: push
+jobs:
+  empty:
+  notempty:
+    needs: empty
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok

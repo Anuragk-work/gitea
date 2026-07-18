@@ -1,0 +1,6 @@
+=== FILE: models/migrations/fixtures/Test_AddConfidentialClientColumnToOAuth2ApplicationTable/oauth2_application.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] - id: 1
+
+-
+  id: 1

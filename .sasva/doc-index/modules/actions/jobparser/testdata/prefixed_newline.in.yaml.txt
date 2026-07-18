@@ -1,0 +1,18 @@
+=== FILE: modules/actions/jobparser/testdata/prefixed_newline.in.yaml ===
+=== METADATA: format=yaml ===
+[SUMMARY] name: Step with leading new line on: push: jobs: test: runs-on: ubuntu-latest steps: - name: "\nExtract tag for variant" id: extract_tag run: | echo Test
+
+name: Step with leading new line
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "\nExtract tag for variant"
+        id: extract_tag
+        run: |
+
+          echo Test

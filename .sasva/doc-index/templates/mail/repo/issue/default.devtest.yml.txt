@@ -1,0 +1,5 @@
+=== FILE: templates/mail/repo/issue/default.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] CanReply: true
+
+CanReply: true

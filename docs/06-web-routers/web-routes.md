@@ -1,0 +1,646 @@
+# Web Router & Server-Rendered UI
+
+Gitea's server-rendered UI (as opposed to the JSON REST API) is registered in
+`routers/web/web.go`. This page documents how the route tree is built, the major
+route groups that make up the web application, the Git Smart HTTP implementation,
+`go get` vanity import support, the federation endpoints (WebFinger / NodeInfo /
+ActivityPub), and the internal-only API used by Git hooks and the `gitea serv` /
+`gitea hook` sub-commands.
+
+## Router Foundation
+
+Gitea uses a thin wrapper around [chi](https://github.com/go-chi/chi) defined in
+`modules/web`. Every subsystem (web UI, REST API, internal API, package registry,
+actions) builds its own `*web.Router` and the top-level router mounts them together.
+
+`routers/init.go` assembles the full application router:
+
+```go
+// routers/init.go
+func NormalRoutes() *web.Router {
+	r := web.NewRouter()
+	r.BeforeRouting(common.ProtocolMiddlewares()...)
+	r.AfterRouting(common.MaintenanceModeHandler())
+
+	r.Mount("/", web_routers.Routes())      // the server-rendered web UI (this page)
+	r.Mount("/api/v1", apiv1.Routes())      // REST API, see 07-rest-api
+	r.Mount("/api/internal", private.Routes()) // internal API, see below
+
+	r.Post("/-/fetch-redirect", common.FetchRedirectDelegate)
+
+	if setting.Packages.Enabled {
+		r.Mount("/api/packages", packages_router.CommonRoutes())
+		r.Mount("/v2", packages_router.ContainerRoutes()) // OCI registry
+	}
+	if setting.Actions.Enabled {
+		r.Mount("/api/actions", actions_router.Routes("/api/actions")) // Actions runner protocol
+	}
+	...
+}
+```
+
+The web UI itself is produced by `routers/web.Routes()` in `routers/web/web.go`. It
+builds two router layers:
+
+1. An outer `routes` router that serves a small number of unauthenticated, ungzipped
+   endpoints (health checks, static assets, avatars, captcha, `/metrics`, `robots.txt`,
+   `/ssh_info`) directly, before any session/auth middleware runs.
+2. An inner `webRoutes` router (mounted at `""`) that carries the full middleware chain
+   — gzip, session, `Contexter` (build `*context.Context`), authentication, `goGet`,
+   `PageGlobalData`, QoS/expensive-request blocking — and then calls
+   `registerWebRoutes(webRoutes, webAuth)` to register every UI route.
+
+```go
+func Routes() *web.Router {
+	routes := web.NewRouter()
+	routes.BeforeRouting(chi_middleware.GetHead)
+	routes.Head("/", misc.DummyOK)
+	routes.Methods("GET, HEAD, OPTIONS", "/assets/*", ...)
+	...
+	mid = append(mid, common.MustInitSessioner(), context.Contexter())
+	webAuth := newWebAuthMiddleware()
+	mid = append(mid, webAuth.MiddlewareHandler)
+	mid = append(mid, goGet, common.PageGlobalData, common.BlockExpensive(), common.QoS(), ...)
+
+	webRoutes := web.NewRouter()
+	webRoutes.AfterRouting(mid...)
+	registerWebRoutes(webRoutes, webAuth)
+
+	routes.Mount("", webRoutes)
+	return routes
+}
+```
+
+### Authentication middleware
+
+`newWebAuthMiddleware()` builds an `AuthMiddleware` with three exported hooks:
+
+| Field | Purpose |
+|---|---|
+| `AllowBasic` | marks the request as eligible for HTTP Basic auth (used by git-over-http, RSS feeds, attachment downloads) |
+| `AllowOAuth2` | marks the request as eligible for OAuth2 bearer-token auth |
+| `MiddlewareHandler` | the actual `*context.Context` middleware that runs an `auth_service.Group` (OAuth2 → Basic → ReverseProxy → Session → SSPI, depending on what is enabled/allowed) |
+
+Individual route groups opt into `webAuth.AllowBasic` / `webAuth.AllowOAuth2` when a
+route must support non-browser clients (git clients, RSS readers, CI tooling) in
+addition to session cookies.
+
+### Common per-route guard functions
+
+`registerWebRoutes` defines many small guard closures that are attached to routes or
+groups as extra middlewares, for example:
+
+- `reqSignIn` / `reqSignOut` / `optSignIn` — wrap `verifyAuthWithOptions` from
+  `routers/common` to require or forbid a signed-in doer.
+- `reqUnitAccess(unitType, accessMode, ignoreGlobal)` — checks organization/unit-level
+  permission for owner-page sections (projects, code search, etc.).
+- `webhooksEnabled`, `packagesEnabled`, `federationEnabled`, `lfsServerEnabled`,
+  `dlSourceEnabled`, `sitemapEnabled`, `feedEnabled`, `oauth2Enabled`,
+  `openIDSignInEnabled`/`openIDSignUpEnabled` — feature flags read from `setting.*`
+  that return `404`/`403` when a feature is disabled.
+- `context.RequireUnitReader(...)` / `context.RequireUnitWriter(...)` (aliased as
+  `reqRepoIssuesOrPullsReader`, `reqUnitCodeReader`, `reqRepoAdmin`, etc.) — enforce
+  per-repository-unit permission checks (Code, Issues, Pull Requests, Wiki, Releases,
+  Projects, Actions).
+
+## Route Group Hierarchy
+
+At the top level the web router dispatches on fixed prefixes (`/-/admin`, `/explore`,
+`/user`, `/org`, `/notifications`, `/.well-known`) and then falls through to the
+generic `/{username}` and `/{username}/{reponame}` catch-all patterns that represent
+user/organization home pages and repositories, respectively.
+
+```mermaid
+graph TD
+  Root["/"] --> Home["Home() dashboard/landing page"]
+  Root --> WellKnown["/.well-known<br/>OIDC discovery, webfinger, nodeinfo"]
+  Root --> Explore["/explore<br/>repos, users, orgs, code, topics"]
+  Root --> UserAuth["/user<br/>login, sign up, 2FA, WebAuthn, OAuth2"]
+  Root --> OAuthLogin["/login/oauth<br/>authorize, token, userinfo, jwks"]
+  Root --> Admin["/-/admin<br/>site admin panel"]
+  Root --> Org["/org/{org}<br/>dashboard, teams, settings"]
+  Root --> RepoCreate["/repo<br/>create, migrate, search"]
+  Root --> OwnerDash["/{username}/-<br/>packages, projects, code search"]
+  Root --> UserPage["/{username}<br/>profile / org landing page"]
+  Root --> RepoRoot["/{username}/{reponame}<br/>repo home"]
+  RepoRoot --> RepoCode["code: tree, blame, raw, compare"]
+  RepoRoot --> RepoIssues["/issues, /pulls"]
+  RepoRoot --> RepoWiki["/wiki"]
+  RepoRoot --> RepoReleases["/tags, /releases"]
+  RepoRoot --> RepoActions["/actions"]
+  RepoRoot --> RepoSettings["/settings<br/>collaborators, branches, hooks, LFS"]
+  RepoRoot --> RepoGit["Git Smart/Dumb HTTP<br/>info/refs, git-upload-pack, git-receive-pack"]
+  RepoRoot --> RepoLFS["/info/lfs<br/>Git LFS batch API"]
+  Root --> Notifications["/notifications"]
+  Root --> Devtest["/devtest (non-prod only)"]
+```
+
+### Repo browsing & settings
+
+Repository routes are all registered as multiple `m.Group("/{username}/{reponame}", ...)`
+blocks (chi allows repeating a group prefix with different middleware chains), each
+guarded by the unit permission it needs. Highlights:
+
+| Path | Handler package | Middleware | Notes |
+|---|---|---|---|
+| `GET /{username}/{reponame}` | `repo.Home` | `optSignIn`, `context.RepoAssignment`, `context.RepoRefByType` | repo landing page; also serves `.rss`/`.atom` via `webAuth.AllowBasic` |
+| `/{username}/{reponame}/tree-list`, `/tree-view` | `repo.TreeList/TreeViewNodes` | `reqUnitCodeReader` | file browser AJAX endpoints |
+| `/{username}/{reponame}/compare` | `repo.CompareDiff` | `repo.MustBeNotEmpty` | branch/tag/commit compare & PR creation |
+| `/{username}/{reponame}/{type:issues｝` / `{type:pulls}` | `repo.*` | `reqRepoIssuesOrPullsReader/Writer` | shared issue/PR view & edit handlers, dispatched by the `{type}` path param |
+| `/{username}/{reponame}/wiki` | `repo.Wiki*` | `repo.MustEnableWiki`, `reqUnitWikiReader/Writer` | wiki pages, history, raw content |
+| `/{username}/{reponame}/activity` | `repo.Activity*` | `reqUnitCodeReader` (for stats) | contributors, code-frequency, recent-commits charts |
+| `/{username}/{reponame}/actions` | `routers/web/repo/actions` | `reqRepoActionsReader`, `actions.MustEnableActions` | Actions run list/view/logs/artifacts |
+| `/{username}/{reponame}/settings/*` | `routers/web/repo/setting` | `reqSignIn`, `reqRepoAdmin` | collaborators, branch/tag protection, webhooks, deploy keys, LFS admin, Actions secrets/variables/runners |
+| `/{username}/{reponame}/releases`, `/tags` | `repo.Release*`, `repo.Tag*` | `reqRepoReleaseReader/Writer` | includes `.rss`/`.atom` feeds guarded by `feedEnabled` |
+
+Repository "settings" routes are grouped under one big `m.Group("/{username}/{reponame}/settings", ...)`
+block requiring `reqSignIn` + `context.RepoAssignment` + `reqRepoAdmin`, and reuse shared
+helper closures such as `addWebhookAddRoutes`/`addWebhookEditRoutes` (registered
+identically for repo, org, and admin webhook scopes) and
+`addSettingsRunnersRoutes`/`addSettingsSecretsRoutes`/`addSettingsVariablesRoutes`/
+`addSettingsScopedWorkflowsRoutes` (shared by repo, org, and admin Actions settings
+pages, backed by `routers/web/shared/actions`).
+
+### Organization routes
+
+`m.Group("/org", ...)` (requires `reqSignIn`) covers org creation, team invites, and,
+scoped under `m.Group("/{org}", ..., context.OrgAssignment(...))`, dashboards, team
+management, and settings:
+
+- `RequireMember`/`RequireTeamMember` group: `/dashboard`, `/issues`, `/pulls`,
+  `/milestones`, `/teams`.
+- `RequireOwner` group: `/teams/new`, `/worktime`, and the large `/settings` subtree
+  (profile, avatar, OAuth2 applications, webhooks, labels, Actions, packages, blocked
+  users, rename/delete/visibility).
+
+A separate lightweight `m.Group("/org/{org}", func() { m.Get("/members", org.Members) }, optSignIn)`
+exposes the public members list without requiring membership.
+
+### User profile & settings
+
+- `GET /{username}` (`user.UsernameSubRoute`, `optSignIn` + `webAuth.AllowBasic`) is the
+  generic profile/organization landing page and also serves `username.rss`.
+- `m.Group("/user/settings", ...)` (`reqSignIn`) implements the full account settings
+  area: profile, avatar, account/email, appearance/theme, notifications, 2FA/WebAuthn/
+  OpenID security, OAuth2 & access-token applications, SSH/GPG keys, packages, and
+  Actions settings (runners/secrets/variables/scoped workflows) reusing the same shared
+  helpers as repo/org settings.
+- `m.Group("/{username}/-", ...)` (`optSignIn`, `context.UserAssignmentWeb`,
+  `context.OrgAssignment`) hosts owner-level pages that work for both individual users
+  and organizations: package registry browsing, cross-repo project boards, and
+  code search (`/{username}/-/code`).
+
+### Admin panel
+
+`m.Group("/-/admin", ..., adminReq, ...)` in `web.go` (guarded by `adminReq`, a
+`verifyAuthWithOptions`-based site-admin check) implements the whole admin panel:
+dashboard, self-check, configuration viewer/editor, monitoring (stats, cron, queues,
+stack traces, perf trace), user/badge/org/repo/package management, default & system
+webhooks, external auth sources, system notices, OAuth2 applications, and global
+Actions settings (runners/variables/scoped-workflows, shared with repo/org settings via
+the same helper closures).
+
+### Explore & search
+
+`m.Group("/explore", ..., optExploreSignIn)` implements `/explore/repos`,
+`/explore/users`, `/explore/organizations`, `/explore/code` (gated by
+`unit.TypeCode.UnitGlobalDisabled()`), and `/explore/topics/search`, backed by
+`routers/web/explore`. Sitemap variants (`/explore/repos/sitemap-{idx}.xml`, etc.) are
+additionally guarded by `sitemapEnabled`. Global issue/PR search lives at
+`/issues`, `/issues/search`, and `/pulls` (top-level, `reqSignIn`), backed by
+`routers/web/user` and `repo.SearchIssues`.
+
+### Feeds
+
+RSS/Atom feeds are sprinkled across the route tree rather than being a single group,
+always guarded by `feedEnabled` and allowing HTTP Basic auth (`webAuth.AllowBasic`) so
+feed readers can authenticate without a browser session:
+
+- `/{username}/{reponame}.rss` / `.atom` — repo activity feed, served from `repo.Home`.
+- `/{username}/{reponame}/tags.rss` / `.atom`, `/releases.rss` / `.atom` —
+  `repo.TagsListFeedRSS/Atom`, `repo.ReleasesFeedRSS/Atom`.
+- `/{username}/{reponame}/rss/branch/*`, `/atom/branch/*` — `feed.RenderBranchFeedRSS/Atom`
+  (`routers/web/feed`), scoped to a specific branch via `context.RepoRefByType`.
+- `/{username}.rss` — handled inside `user.UsernameSubRoute`.
+
+## Git-over-HTTP: Smart & Dumb Protocol (`githttp.go`)
+
+Git-over-HTTP is wired up in two files:
+
+- `routers/web/githttp.go` — registers the routes.
+- `routers/web/repo/githttp.go` — implements the handlers (Smart HTTP RPC service and
+  the Dumb HTTP static-file fallback).
+
+### Route registration
+
+```go
+// routers/web/githttp.go
+func addOwnerRepoGitHTTPRouters(m *web.Router, middlewares ...any) {
+	m.Group("/{username}/{reponame}", func() {
+		m.Methods("POST,OPTIONS", "/git-upload-pack", repo.ServiceUploadPack)
+		m.Methods("POST,OPTIONS", "/git-receive-pack", repo.ServiceReceivePack)
+		m.Methods("POST,OPTIONS", "/git-upload-archive", repo.ServiceUploadArchive)
+		m.Methods("GET,OPTIONS", "/info/refs", repo.GetInfoRefs)
+		m.Methods("GET,OPTIONS", "/HEAD", repo.GetTextFile("HEAD"))
+		m.Methods("GET,OPTIONS", "/objects/info/alternates", repo.GetTextFile("objects/info/alternates"))
+		m.Methods("GET,OPTIONS", "/objects/info/http-alternates", repo.GetTextFile("objects/info/http-alternates"))
+		m.Methods("GET,OPTIONS", "/objects/info/packs", repo.GetInfoPacks)
+		m.Methods("GET,OPTIONS", "/objects/info/{file:[^/]*}", repo.GetTextFile(""))
+		m.Methods("GET,OPTIONS", "/objects/{head:[0-9a-f]{2}}/{hash:[0-9a-f]{38,62}}", repo.GetLooseObject)
+		m.Methods("GET,OPTIONS", "/objects/pack/pack-{file:[0-9a-f]{40,64}}.pack", repo.GetPackFile)
+		m.Methods("GET,OPTIONS", "/objects/pack/pack-{file:[0-9a-f]{40,64}}.idx", repo.GetIdxFile)
+	}, middlewares...)
+}
+```
+
+It is mounted from `web.go` alongside the LFS routes, with CORS support and both
+Basic and OAuth2 auth enabled so command-line `git` and web-based git clients both
+work:
+
+```go
+common.AddOwnerRepoGitLFSRoutes(m, lfsServerEnabled, webAuth.AllowBasic, repo.CorsHandler(), optSignInFromAnyOrigin)
+addOwnerRepoGitHTTPRouters(m, repo.HTTPGitEnabledHandler, webAuth.AllowBasic, webAuth.AllowOAuth2, repo.CorsHandler(), optSignInFromAnyOrigin, context.UserAssignmentWeb())
+```
+
+`optSignInFromAnyOrigin` disables Gitea's normal cross-origin session protection for
+this route set because non-browser `git clone`/`push` traffic never sends a
+`Sec-Fetch-Site` header and isn't a CSRF risk.
+
+### Request flow
+
+All handlers funnel through `httpBase()` in `routers/web/repo/githttp.go`, which:
+
+1. Short-circuits `go-get=1` requests to the vanity-import responder.
+2. Determines the service type (`git-upload-pack` for reads/clones, `git-receive-pack`
+   for pushes, `git-upload-archive` for `git archive --remote`) and the required
+   `perm.AccessMode` (`Read` for pulls, `Write` for pushes).
+3. Strips a `.wiki` suffix from the repo name to detect wiki-repository access
+   (`unit.TypeWiki` instead of `unit.TypeCode`).
+4. Looks up the repository, following user/repo redirects if necessary.
+5. Blocks pushes to archived or mirror repositories.
+6. Computes `canAnonymousPull` for public repos when sign-in is not strictly required,
+   otherwise requires HTTP Basic/OAuth2 credentials (`WWW-Authenticate` challenge),
+   validates two-factor-enabled accounts can't use plain Basic auth, and checks
+   repo-scoped access tokens via `context.CheckRepoScopedToken`.
+7. If the repo does not exist and the client is pushing, supports "push-to-create"
+   (`setting.Repository.EnablePushCreateUser/Org`).
+8. Builds `serviceHandler{serviceType, repo, isWiki, environ}` where `environ` carries
+   the `DoerPushingEnvironment` values consumed by server-side Git hooks.
+
+```mermaid
+sequenceDiagram
+    participant Git as git client
+    participant Web as web.go routes
+    participant HTTP as repo/githttp.go
+    participant Hooks as routers/private hooks
+    Git->>Web: GET /{owner}/{repo}/info/refs?service=git-receive-pack
+    Web->>HTTP: GetInfoRefs()
+    HTTP->>HTTP: httpBase() auth + permission checks
+    HTTP-->>Git: pkt-line advertised refs
+    Git->>Web: POST /{owner}/{repo}/git-receive-pack
+    Web->>HTTP: ServiceReceivePack() -> serviceRPC()
+    HTTP->>HTTP: run "git receive-pack --stateless-rpc ." with SSH_ORIGINAL_COMMAND env
+    HTTP->>Hooks: git hooks call /api/internal/hook/pre-receive & post-receive
+    Hooks-->>HTTP: allow/deny, push updates
+    HTTP-->>Git: pkt-line result stream
+```
+
+`serviceRPC()` (the Smart HTTP RPC path) streams the client request body directly into
+`git receive-pack --stateless-rpc .` / `git upload-pack --stateless-rpc .` /
+`git upload-archive .` via `gitrepo.RunCmdWithStderr`, forwarding the `Git-Protocol`
+header (validated against `safeGitProtocolHeader`) and `SSH_ORIGINAL_COMMAND` in the
+subprocess environment — this is exactly what makes the server-side `pre-receive`/
+`post-receive`/`proc-receive` git hooks (installed by Gitea in every repo's
+`.git/hooks`) fire, and those hook scripts call back into `/api/internal/hook/...`
+(see below).
+
+`GetInfoRefs()` also supports the legacy **Dumb HTTP** protocol: if no `service`
+query parameter is present, it calls `gitrepo.UpdateServerInfo` and serves the static
+`info/refs` file, and `GetTextFile`, `GetInfoPacks`, `GetLooseObject`, `GetPackFile`,
+`GetIdxFile` serve the corresponding files straight out of repository storage via
+`gitrepo.GetRepoFS` + `http.ServeFileFS`, with aggressive `Cache-Control: public,
+max-age=31536000` headers for immutable pack/loose-object files.
+
+> **Note:** Git LFS uses a separate JWT-based auth mechanism and is registered via
+> `common.AddOwnerRepoGitLFSRoutes` (`routers/common/lfs.go`), mounted both on the web
+> router (`/{username}/{reponame}/info/lfs/...`) and again inside the internal API
+> router for use by `gitea serv`/SSH-initiated LFS transfers.
+
+## `go get` Vanity Import Support (`goget.go`)
+
+`routers/web/goget.go` implements Go's [vanity import path](https://pkg.go.dev/cmd/go#hdr-Remote_import_paths)
+protocol so `go get code.example.com/owner/repo` works against a Gitea instance.
+The `goGet` middleware is inserted globally (after auth/session middleware, before
+route dispatch) via `mid = append(mid, goGet)` in `Routes()`, so it can intercept
+*any* URL that carries `?go-get=1` before the normal route handler runs:
+
+```go
+func goGet(ctx *context.Context) {
+	if ctx.Req.Method != http.MethodGet || len(ctx.Req.URL.RawQuery) < 8 || ctx.FormString("go-get") != "1" {
+		return
+	}
+	parts := strings.SplitN(ctx.Req.URL.EscapedPath(), "/", 4)
+	...
+	ownerName := parts[1]
+	repoName := parts[2]
+	...
+}
+```
+
+Key behavior:
+
+- It always answers with **HTTP 200** and a minimal `<meta name="go-import" ...>` /
+  `<meta name="go-source" ...>` HTML document, *even if the repository doesn't exist or
+  isn't accessible* — this avoids leaking repo existence to `go get` (which doesn't
+  send credentials from `.netrc` reliably) while still letting `go get` complete.
+- `goGetDefaultBranch()` only discloses the *real* default branch (used to build
+  `go-source` documentation links) when the caller can genuinely read the repository:
+  it checks token scope (`goGetTokenCanReadRepo`), public-only token restriction
+  (`context.TokenIsPublicOnly`), and `access_model.GetDoerRepoPermission` /
+  `user_model.IsUserVisibleToViewer`. Otherwise it falls back to
+  `setting.Repository.DefaultBranch`.
+- The clone URL uses either SSH (`repo_model.ComposeSSHCloneURL`) or HTTPS
+  (`repo_model.ComposeHTTPSCloneURL`) depending on
+  `setting.Repository.GoGetCloneURLProtocol`.
+- `context.ComposeGoGetImport` (in `services/context`) builds the fully-qualified
+  import path from `setting.AppURL`, `ownerName`, and `repoName`, honoring
+  `AppSubURL` if Gitea is deployed under a path prefix.
+
+Because `httpBase()` (the git-http handler) also special-cases `go-get=1` requests
+(`context.EarlyResponseForGoGetMeta`), a request to
+`/{owner}/{repo}/info/refs?go-get=1` is answered the same way without touching the
+Smart HTTP machinery.
+
+## Federation Endpoints
+
+Gitea exposes a small federation surface controlled by `setting.Federation.Enabled`
+(`federationEnabled` middleware) plus two always-on discovery endpoints.
+
+### `/.well-known/*`
+
+```go
+m.Group("/.well-known", func() {
+	m.Get("/openid-configuration", auth.OIDCWellKnown)
+	m.Group("", func() {
+		m.Get("/nodeinfo", NodeInfoLinks)
+		m.Get("/webfinger", WebfingerQuery)
+	}, federationEnabled)
+	m.Get("/change-password", func(ctx *context.Context) { ctx.Redirect(...) })
+	m.Get("/passkey-endpoints", passkeyEndpoints)
+	m.Methods("GET, HEAD", "/*", public.FileHandlerFunc())
+}, optionsCorsHandler())
+```
+
+| Endpoint | Handler | Purpose |
+|---|---|---|
+| `/.well-known/openid-configuration` | `auth.OIDCWellKnown` | OpenID Connect discovery document for Gitea acting as an OIDC provider |
+| `/.well-known/nodeinfo` | `web.NodeInfoLinks` (`routers/web/nodeinfo.go`) | returns links to the [NodeInfo](http://nodeinfo.diaspora.software/) document, gated by `federationEnabled` |
+| `/.well-known/webfinger` | `web.WebfingerQuery` (`routers/web/webfinger.go`) | [WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) resource discovery, gated by `federationEnabled` |
+| `/.well-known/passkey-endpoints` | `passkeyEndpoints` | advertises WebAuthn/passkey enrollment/assertion URLs per the [passkey well-known spec](https://passkeys.dev) |
+| `/.well-known/*` (fallback) | `public.FileHandlerFunc()` | serves any static files placed in the `public/.well-known/` custom directory |
+
+`NodeInfoLinks` returns a fixed JSON payload pointing at the real NodeInfo document,
+which is served from the REST API at `GET /api/v1/nodeinfo` (see
+`routers/api/v1/api.go`, currently marked `activitypub.NotImplemented` alongside the
+rest of the ActivityPub surface — see below).
+
+```go
+// routers/web/nodeinfo.go
+func NodeInfoLinks(ctx *context.Context) {
+	nodeinfolinks := &nodeInfoLinks{Links: []nodeInfoLink{{
+		setting.AppURL + "api/v1/nodeinfo",
+		"http://nodeinfo.diaspora.software/ns/schema/2.1",
+	}}}
+	ctx.JSON(http.StatusOK, nodeinfolinks)
+}
+```
+
+`WebfingerQuery` resolves an `acct:` or `mailto:` resource URI to a JRD document
+(RFC 7033 JSON Resource Descriptor) describing a Gitea user: it validates that the host
+in an `acct:user@host` matches the instance's own `AppURL` host, respects
+`KeepEmailPrivate` for `mailto:` lookups, and checks
+`user_model.IsUserVisibleToViewer` before disclosing anything. The returned `links`
+array includes the user's profile page, avatar, an ActivityPub `self` link
+(`/api/v1/activitypub/user-id/{id}`), and the OpenID Connect issuer URL — laying the
+groundwork for federated identity even though full ActivityPub federation is not yet
+implemented.
+
+### ActivityPub
+
+The ActivityPub surface is registered under the REST API (`routers/api/v1/api.go`),
+not the web router, but is referenced from WebFinger and NodeInfo:
+
+```go
+// routers/api/v1/api.go
+m.Get("/nodeinfo", activitypub.NotImplemented)
+m.Any("/activitypub/*", tokenRequiresScopes(auth_model.AccessTokenScopeCategoryActivityPub), activitypub.NotImplemented)
+```
+
+`routers/api/v1/activitypub/person.go` currently implements a single handler:
+
+```go
+func NotImplemented(ctx *context.APIContext) {
+	http.Error(ctx.Resp, "Not implemented", http.StatusNotImplemented)
+}
+```
+
+> **Note:** As of this codebase, ActivityPub endpoints (`/api/v1/activitypub/*`,
+> `/api/v1/nodeinfo`) are stubbed out and always return `501 Not Implemented`. The
+> WebFinger/NodeInfo discovery documents and `AccessTokenScopeCategoryActivityPub`
+> scope exist to support future federation work, but no federated content is currently
+> served. See [REST API](../07-rest-api/README.md) for other implemented endpoints.
+
+## Internal API (`routers/private/`)
+
+`routers/private` implements a *separate, unauthenticated-by-session* API mounted at
+`/api/internal` (see `routers/init.go`). It is not reachable from the public internet
+in a correctly configured deployment — it is only ever called by Gitea's own
+sub-processes (`gitea serv`, `gitea hook pre-receive/update/post-receive`, the
+`gitea manager` CLI) speaking to `setting.LocalURL`, authenticated with a shared
+`INTERNAL_TOKEN` rather than a user session.
+
+### Registration & authentication
+
+```go
+// routers/private/internal.go
+func Routes() *web.Router {
+	r := web.NewRouter()
+	r.AfterRouting(context.PrivateContexter())
+	r.AfterRouting(authInternal)
+	r.AfterRouting(setRealIP)
+
+	r.Get("/dummy", misc.DummyOK)
+	r.Post("/ssh/authorized_keys", AuthorizedPublicKeyByContent)
+	r.Post("/ssh/{id}/update/{repoid}", UpdatePublicKeyInRepo)
+	r.Post("/ssh/log", bind(private.SSHLogOption{}), SSHLog)
+	r.Post("/hook/pre-receive/{owner}/{repo}", RepoAssignment, bind(private.HookOptions{}), HookPreReceive)
+	r.Post("/hook/post-receive/{owner}/{repo}", context.OverrideContext(), bind(private.HookOptions{}), HookPostReceive)
+	r.Post("/hook/proc-receive/{owner}/{repo}", context.OverrideContext(), RepoAssignment, bind(private.HookOptions{}), HookProcReceive)
+	r.Post("/hook/set-default-branch/{owner}/{repo}/{branch}", RepoAssignment, SetDefaultBranch)
+	r.Get("/serv/none/{keyid}", ServNoCommand)
+	r.Get("/serv/command/{keyid}/{owner}/{repo}", ServCommand)
+	r.Post("/manager/shutdown", Shutdown)
+	r.Post("/manager/restart", Restart)
+	r.Post("/manager/reload-templates", ReloadTemplates)
+	r.Post("/manager/flush-queues", bind(private.FlushOptions{}), FlushQueues)
+	r.Post("/manager/pause-logging", PauseLogging)
+	r.Post("/manager/resume-logging", ResumeLogging)
+	r.Post("/manager/release-and-reopen-logging", ReleaseReopenLogging)
+	r.Post("/manager/set-log-sql", SetLogSQL)
+	r.Post("/manager/add-logger", bind(private.LoggerOptions{}), AddLogger)
+	r.Post("/manager/remove-logger/{logger}/{writer}", RemoveLogger)
+	r.Get("/manager/processes", Processes)
+	r.Post("/mail/send", SendEmail)
+	r.Post("/restore_repo", RestoreRepo)
+	r.Post("/actions/generate_actions_runner_token", GenerateActionsRunnerToken)
+
+	r.Group("/repo", func() {
+		common.AddOwnerRepoGitLFSRoutes(r, ...) // LFS over SSH support
+	})
+	return r
+}
+```
+
+`authInternal` is a `chi`-style middleware that rejects any request whose
+`X-Gitea-Internal-Auth: Bearer <token>` header does not constant-time-match
+`setting.InternalToken` (returns `403` and refuses to serve if `InternalToken` is
+unset). `setRealIP` trusts the `X-Real-IP` header set by the internal client (safe
+here because the whole surface is gated by the token) so audit logs show the real
+SSH/CLI client IP instead of `127.0.0.1`/the local loopback address.
+
+All requests are built with `modules/private.NewInternalRequest`, which refuses to run
+unless `setting.InternalToken` is configured, always targets `setting.LocalURL`
+(optionally over a Unix socket when `Protocol == HTTPUnix`), and sets the auth header:
+
+```go
+// modules/private/internal.go
+func NewInternalRequest(ctx context.Context, url, method string) *httplib.Request {
+	if setting.InternalToken == "" {
+		log.Fatal(`The INTERNAL_TOKEN setting is missing ...`)
+	}
+	if !strings.HasPrefix(url, setting.LocalURL) {
+		log.Fatal("Invalid internal request URL: %q", url)
+	}
+	return httplib.NewRequest(url, method).
+		SetContext(ctx).
+		SetTransport(internalAPITransport()).
+		Header("X-Real-IP", getClientIP()).
+		Header("X-Gitea-Internal-Auth", "Bearer "+setting.InternalToken)
+}
+```
+
+### Endpoint reference
+
+| Endpoint | Handler (`routers/private`) | Called by | Purpose |
+|---|---|---|---|
+| `GET /dummy` | `misc.DummyOK` | health checks | trivial liveness check |
+| `POST /ssh/authorized_keys` | `key.go: AuthorizedPublicKeyByContent` | `gitea serv` / SSH `AuthorizedKeysCommand` | look up a public key by content prefix to build the SSH `authorized_keys` line |
+| `POST /ssh/{id}/update/{repoid}` | `key.go: UpdatePublicKeyInRepo` | `gitea serv` after successful SSH auth | bump `updated_unix` on the key and any matching deploy key |
+| `POST /ssh/log` | `ssh_log.go: SSHLog` | Gitea's built-in SSH server | forward SSH-server-side log/error lines into the main log system |
+| `POST /hook/pre-receive/{owner}/{repo}` | `hook_pre_receive.go: HookPreReceive` | server-side git `pre-receive` hook (invoked by `git receive-pack`, itself invoked by SSH or the Smart HTTP `ServiceReceivePack`) | validates push permissions per-ref (branch protection, tag protection, force-push rules, PR head-branch maintainer edits, LFS pointer/quota checks, size limits) — returning non-2xx aborts the push before any object is written |
+| `POST /hook/post-receive/{owner}/{repo}` | `hook_post_receive.go: HookPostReceive` | server-side git `post-receive` hook | after refs are updated: syncs branches/tags into the DB, triggers push notifications/webhooks, updates PRs, triggers Actions runs, prints the git-push CLI hints (PR creation URL, etc.) |
+| `POST /hook/proc-receive/{owner}/{repo}` | `hook_proc_receive.go: HookProcReceive` | git's `proc-receive` hook (used for `agit`-style `refs/for/...` pushes) | implements the AGit flow: creates/updates pull requests directly from a `refs/for/<branch>` push |
+| `POST /hook/set-default-branch/{owner}/{repo}/{branch}` | `default_branch.go: SetDefaultBranch` | `gitea admin`/repo migration code paths that change HEAD outside the web UI | updates the git `HEAD` symref and the DB `default_branch` column |
+| `GET /serv/none/{keyid}` | `serv.go: ServNoCommand` | `gitea serv` when the SSH client sent no git command (e.g. plain `ssh git@host`) | resolves a key id to its owner for a friendly SSH banner |
+| `GET /serv/command/{keyid}/{owner}/{repo}` | `serv.go: ServCommand` | `gitea serv` when handling `git-upload-pack`/`git-receive-pack`/`git-upload-archive`/LFS over SSH | resolves key → user/deploy-key, repo existence/redirects, and required access mode; the CLI then execs the real `git-*` subprocess only if this call succeeds |
+| `POST /manager/shutdown`, `/restart` | `manager.go` | `gitea manager shutdown/restart` | graceful shutdown / restart via `graceful.Manager` |
+| `POST /manager/reload-templates` | `manager.go` | `gitea manager reload-templates` | hot-reload HTML templates in dev/custom-template setups |
+| `POST /manager/flush-queues` | `manager.go: FlushQueues` | `gitea manager flush-queues` | drains all in-process queues with a timeout |
+| `POST /manager/pause-logging` etc. | `manager.go` | `gitea manager logging ...` | pause/resume/reopen log writers, change SQL logging, add/remove loggers at runtime |
+| `GET /manager/processes` | `manager_process.go: Processes` | `gitea manager processes` | lists tracked long-running processes (used for admin's "Monitor → Processes" page too, via a direct in-process call) |
+| `POST /mail/send` | `mail.go: SendEmail` | `gitea admin sendmail`, notification code paths | queues/sends a test or administrative email |
+| `POST /restore_repo` | `restore_repo.go: RestoreRepo` | `gitea admin restore-repo` | drives the repository-from-dump restore workflow |
+| `POST /actions/generate_actions_runner_token` | `actions.go: GenerateActionsRunnerToken` | `gitea actions generate-runner-token` CLI, and indirectly the runner-registration UI flow | mints/returns a registration token scoped to instance/org/repo, used by the Actions **runner registration protocol** so a self-hosted `act_runner` can register itself |
+| `/repo/{username}/{reponame}/info/lfs/*` | `common.AddOwnerRepoGitLFSRoutes` | `gitea serv` / SSH-based LFS transfer | reuses the same LFS batch/upload/download/lock handlers as the public web router, for LFS-over-SSH |
+
+### Git hook flow in detail
+
+Gitea installs `pre-receive`, `update`, and `post-receive` shell/Go hook scripts into
+every repository's `.git/hooks` directory (via `gitea hook` sub-commands, see
+`cmd/hook.go`). When `git receive-pack` runs — whether invoked over SSH by `gitea serv`
+or over Smart HTTP by `repo.ServiceReceivePack` — these hook scripts re-exec the
+`gitea` binary as `gitea hook pre-receive` / `gitea hook post-receive` /
+`gitea hook proc-receive`, which in turn call the internal API:
+
+```go
+// cmd/hook.go (simplified)
+extra := private.HookPreReceive(ctx, username, reponame, hookOptions)
+...
+resp, extra := private.HookPostReceive(ctx, repoUser, repoName, hookOptions)
+...
+resp, extra := private.HookProcReceive(ctx, repoUser, repoName, hookOptions)
+```
+
+```mermaid
+sequenceDiagram
+    participant Client as git client (SSH or HTTP)
+    participant GitProc as git receive-pack subprocess
+    participant HookCLI as gitea hook <name> (re-exec of gitea binary)
+    participant Internal as /api/internal (routers/private)
+    participant DB as Database / Queues
+
+    Client->>GitProc: push refs
+    GitProc->>HookCLI: exec .git/hooks/pre-receive
+    HookCLI->>Internal: POST /hook/pre-receive/{owner}/{repo}
+    Internal->>DB: check branch/tag protection, quotas, LFS pointers
+    Internal-->>HookCLI: 200 OK or 403 with UserMsg
+    HookCLI-->>GitProc: exit 0 (allow) or non-zero (reject, message shown to git client)
+    GitProc->>GitProc: writes objects & updates refs
+    GitProc->>HookCLI: exec .git/hooks/post-receive
+    HookCLI->>Internal: POST /hook/post-receive/{owner}/{repo}
+    Internal->>DB: sync branches, create/update PRs, enqueue notifications & Actions runs
+    Internal-->>HookCLI: 200 OK with per-branch results (PR create URL, etc.)
+    HookCLI-->>Client: prints CLI hints (e.g. "Create a pull request for ...")
+```
+
+`preReceiveContext` (in `hook_pre_receive.go`) wraps `*context.PrivateContext` with
+cached permission state (`userPerm`, `deployKeyAccessMode`, `canWriteCodeUnit`,
+`canCreatePullRequest`, `protectedTags`) so the many individual ref checks performed
+during a single push don't repeatedly hit the database. `assertCanWriteRef` is the
+common guard used by every per-ref check to reject with `403` and a `UserMsg` that git
+clients display verbatim.
+
+`hookPostReceiveCollectPushUpdates` / `hookPostReceiveSyncDatabaseBranches` (in
+`hook_post_receive.go`) turn the raw `HookOptions.OldCommitIDs`/`NewCommitIDs`/
+`RefFullNames` arrays into `repo_module.PushUpdateOptions`, restricted to branches and
+tags (other refs like `refs/notes` are ignored to avoid unbounded DB writes), and use
+these to update branch sync state, trigger `pull_service`, and queue notifications.
+
+`HookProcReceive` (`hook_proc_receive.go`) implements the **AGit** push flow: instead of
+a normal branch push, the client pushes to `refs/for/<target-branch>[/<topic>]`, and
+`proc-receive` (rather than `pre-`/`post-receive`) is responsible for turning that into
+a created/updated pull request without ever creating the literal ref, delegated to
+`services/agit`.
+
+### Relationship to the Actions runner protocol
+
+The Actions runner *registration* token endpoint
+(`POST /api/internal/actions/generate_actions_runner_token`) lives in the internal API
+because minting a registration token is a privileged, instance-local operation. Once a
+runner is registered, however, the ongoing runner protocol (polling for jobs, streaming
+logs, uploading artifacts) uses the separate, always-public `/api/actions` gRPC-over-HTTP
+surface mounted in `routers/init.go` (`actions_router.Routes("/api/actions")`), which is
+authenticated by the runner's own registration-derived token, not `INTERNAL_TOKEN`. See
+[Services](../08-services/README.md) for the Actions service internals.
+
+## Related Pages
+
+- [Web Routers overview](README.md)
+- [Route Organization](route-organization.md) — the full route-group tree and how
+  `routers/init.go` mounts this web UI router alongside the REST/internal/package/
+  actions routers.
+- [Middleware Chain](middleware-chain.md) — the ordered session/CSRF/auth-context
+  middleware chain summarized in this page's "Router Foundation" and "Authentication
+  middleware" sections.
+- [Install & Private Routers](install-and-private.md) — the pre-install wizard that
+  runs instead of this router, and the full breakdown of the `/api/internal` routes
+  referenced in "Internal API (`routers/private/`)" above.
+- [Events & Healthcheck](events-and-healthcheck.md) — `/user/events` and
+  `/api/healthz`, registered by this router but documented in detail on their own
+  page.
+- [REST API](../07-rest-api/README.md) — the public `/api/v1` surface, including
+  ActivityPub stubs and the `nodeinfo` endpoint referenced from `NodeInfoLinks`.
+- [Services](../08-services/README.md) — `services/agit`, `services/lfs`,
+  `services/pull` used by the hook handlers described above.
+- [Configuration](../04-configuration/README.md) — `INTERNAL_TOKEN`, `LOCAL_ROOT_URL`,
+  federation, and package/registry settings referenced throughout this page.

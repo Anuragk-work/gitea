@@ -1,0 +1,14 @@
+=== FILE: pnpm-workspace.yaml ===
+=== METADATA: format=yaml ===
+[SUMMARY] savePrefix: '' dedupePeerDependents: false updateNotifier: false minimumReleaseAge: 0 allowBuilds: '@scarf/scarf': false core-js: false esbuild: true unrs-resolver: true
+
+savePrefix: ''
+dedupePeerDependents: false
+updateNotifier: false
+minimumReleaseAge: 0
+
+allowBuilds:
+  '@scarf/scarf': false
+  core-js: false
+  esbuild: true
+  unrs-resolver: true

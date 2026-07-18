@@ -1,0 +1,33 @@
+<section class="briefing" id="briefing" aria-label="Report briefing">
+  <h2 class="briefing-title"><span class="secnum">&#9733;</span> At a glance</h2>
+
+  <div class="highlight-grid">
+    <div class="highlight-card">
+      <div class="hl-label">What this is</div>
+      <p><strong>Gitea</strong> &mdash; a large, mature self-hosted Git platform. Go 1.26 layered-monolith backend (<code>routers &rarr; services &rarr; models &rarr; modules</code>) paired with a Vue&nbsp;3 / TypeScript frontend built on Vite &amp; TailwindCSS.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Enforcement, not discipline</div>
+      <p>Architecture and style rules are enforced by tooling &mdash; <code>depguard</code>, <code>golangci-lint</code>, ESLint (flat config + a dedicated JSON linter), and Stylelint &mdash; rather than left to reviewer memory.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Confidence split</div>
+      <p>Frontend tooling configs and two Go entrypoint files were <strong>directly verified</strong> this pass. Deeper backend claims (ORM exclusivity, migration <code>depguard</code> rules, LDAP, goldmark) are <strong>carried forward, unverified-but-uncontradicted</strong>.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-label">Hard constraints</div>
+      <p>Mandatory <code>gitea.dev/modules/json</code> (never <code>encoding/json</code>), mandatory <code>Assisted-by</code> trailer on AI commits, and a CI-breaking forbidden-import list enforced via <code>depguard</code>.</p>
+    </div>
+  </div>
+
+  <h3 class="briefing-sub">Key items to verify or watch</h3>
+  <ul class="watch-list">
+    <li><strong>ORM exclusivity:</strong> confirm no raw <code>database/sql</code> usage anywhere in <code>models/</code> &mdash; claim is carried forward, not re-checked.</li>
+    <li><strong>Migration depguard rule:</strong> inspect <code>.golangci.yml</code> directly to confirm migrations truly cannot import <code>models</code>/<code>modules/structs</code>.</li>
+    <li><strong>Markdown engine:</strong> verify <code>goldmark</code> is the only renderer &mdash; no competing library sneaking in via a transitive dependency.</li>
+    <li><strong>LDAP surface:</strong> review <code>cmd/admin_auth_ldap*.go</code> first-hand before treating LDAP as fully core.</li>
+    <li><strong>Layering discipline in practice:</strong> trace one real feature (e.g. issues or actions) end-to-end through <code>models &rarr; services &rarr; routers</code> to confirm the layering holds, not just the docs.</li>
+    <li><strong>Forbidden imports:</strong> any PR introducing <code>encoding/json</code>, <code>io/ioutil</code>, <code>pkg/errors</code>, or <code>gopkg.in/ini.v1</code> will fail CI via <code>depguard</code> &mdash; catch this in review, not just CI.</li>
+    <li><strong>AI commit trailers:</strong> <code>Co-Authored-By</code> / <code>Signed-off-by</code> are explicitly forbidden for AI contributions &mdash; use <code>Assisted-by: AGENT_NAME:MODEL_VERSION</code> instead.</li>
+  </ul>
+</section>

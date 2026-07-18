@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_AddHeaderAuthorizationEncryptedColWebhook/expected_webhook.yml",
+  "format": "yml",
+  "size_bytes": 264,
+  "source_modified": "2026-07-18T06:05:26.815748+00:00",
+  "indexed_at": "2026-07-18T07:39:39.885957+00:00",
+  "text_length": 264,
+  "line_count": 10
+}

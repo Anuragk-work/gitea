@@ -1,0 +1,22 @@
+{
+  "name": "YouTube Video Transcript & Actionable Steps (Whisper)",
+  "description": "Downloads the audio of a YouTube video (yt-dlp), normalizes it (ffmpeg), transcribes it locally with OpenAI Whisper (small model), and has AI extract actionable steps and rules from the content.",
+  "sources": [
+    {
+      "id": "src_youtube_whisper",
+      "type": "script",
+      "command": "python3",
+      "args": [
+        "transcribe_youtube.py",
+        "--url", "https://www.youtube.com/watch?v=Kg0ct2lBUVg",
+        "--model", "small",
+        "--output", "$OUTPUT_FILE"
+      ],
+      "timeout": 1800
+    }
+  ],
+  "analysis_prompt": "You are analyzing a transcript of a YouTube video (Self-host your own Git platform! // Gitea Tutorial, by Christian Lempa). The data contains one video_metadata record (title, channel, duration, url) and many transcript_segment records (start, end, text) in chronological order. Reconstruct the full narrative from the segments, then extract a clear, actionable set of steps and rules a viewer should follow to replicate what is demonstrated (e.g., setup steps, configuration choices, commands, best practices, gotchas/warnings mentioned). Organize the output as: 1) a one-paragraph overview of the video's purpose, 2) a numbered list of actionable steps in the order they should be performed, 3) a list of extracted rules/best-practices/warnings with supporting evidence (quote or paraphrase from the transcript, with approximate timestamp), and 4) any tools, commands, or configuration values explicitly mentioned.",
+  "output_format": "rules",
+  "created_at": "2026-07-18T06:38:22Z",
+  "updated_at": "2026-07-18T06:38:22Z"
+}

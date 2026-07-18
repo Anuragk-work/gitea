@@ -1,0 +1,9 @@
+=== FILE: modules/migration/file_format_testdata/issue_b.json ===
+=== METADATA: format=json ===
+[SUMMARY] [ { "number": 1 } ]
+
+[
+  {
+      "number": 1
+  }
+]

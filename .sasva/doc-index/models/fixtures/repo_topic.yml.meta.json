@@ -1,0 +1,9 @@
+{
+  "source": "models/fixtures/repo_topic.yml",
+  "format": "yml",
+  "size_bytes": 325,
+  "source_modified": "2026-07-18T06:05:26.805446+00:00",
+  "indexed_at": "2026-07-18T07:39:39.913176+00:00",
+  "text_length": 325,
+  "line_count": 30
+}

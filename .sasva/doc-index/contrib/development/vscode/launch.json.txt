@@ -1,0 +1,22 @@
+=== FILE: contrib/development/vscode/launch.json ===
+=== METADATA: format=json ===
+[SUMMARY] { "version": "0.2.0", "configurations": [ { "name": "Launch", "type": "go", "request": "launch", "mode": "debug", "buildFlags": "", "program": "${workspaceRoot}/main.go", "env": { "GITEA_WORK_DIR": "${workspaceRoot}", }, "args": ["web"], "showLog": true } ] }
+
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "buildFlags": "",
+      "program": "${workspaceRoot}/main.go",
+      "env": {
+        "GITEA_WORK_DIR": "${workspaceRoot}",
+      },
+      "args": ["web"],
+      "showLog": true
+    }
+  ]
+}

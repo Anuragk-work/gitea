@@ -1,0 +1,13 @@
+{
+  "source": "assets/misspellings.csv",
+  "format": "csv",
+  "size_bytes": 413,
+  "source_modified": "2026-07-18T06:05:26.753465+00:00",
+  "indexed_at": "2026-07-18T07:39:40.103083+00:00",
+  "text_length": 464,
+  "row_count": 21,
+  "headers": [
+    "acounts",
+    "accounts"
+  ]
+}

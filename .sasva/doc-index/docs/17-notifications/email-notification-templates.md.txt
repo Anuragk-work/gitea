@@ -1,0 +1,326 @@
+=== FILE: docs/17-notifications/email-notification-templates.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Email Notification Templates This page documents the e-mail leg of Gitea's notification fan-out: the `services/mailer` package (queueing, sending, and per-event composition logic) and the `templates/mail/` directory (the actual Go `html/template` files rendered into message subjects and bodies).
+
+# Email Notification Templates
+
+This page documents the e-mail leg of Gitea's notification fan-out: the `services/mailer`
+package (queueing, sending, and per-event composition logic) and the `templates/mail/`
+directory (the actual Go `html/template` files rendered into message subjects and bodies).
+
+> For the full fan-out picture (how a domain event reaches the mailer alongside the in-app
+> inbox, webhooks, and Actions) see
+> [Notification Delivery & UI Notifications](notification-delivery-and-uinotification.md) and
+> [Notifications, Mailer & Webhooks](../09-core-modules/notify-mailer-webhook.md).
+
+## 1. Where the templates live
+
+```
+templates/mail/
+├── org/
+│   └── team_invite.tmpl                 # "You've been invited to join a team" e-mail
+├── repo/
+│   ├── actions/
+│   │   └── workflow_run.tmpl            # Actions workflow run status notification
+│   ├── collaborator.tmpl                # "You've been added as a collaborator"
+│   ├── issue/
+│   │   ├── assigned.tmpl                # Issue/PR assignment notification
+│   │   └── default.tmpl                 # Generic issue/PR/comment/review notification body
+│   ├── release.tmpl                     # New release published
+│   └── transfer.tmpl                    # Repository (pending) transfer notification
+└── user/
+    └── auth/
+        ├── activate.tmpl                # Account activation link
+        ├── activate_email.tmpl          # Secondary e-mail activation link
+        ├── register_notify.tmpl         # "Welcome" e-mail after registration
+        └── reset_passwd.tmpl            # Password reset link
+```
+
+Each `.tmpl` file has a matching `.devtest.yml` fixture (e.g.
+`templates/mail/repo/issue/default.devtest.yml`) supplying sample template data — these fixtures
+back Gitea's mail preview/devtest tooling (`gitea docs`/`make watch` mail preview target) so
+template authors can render every e-mail without triggering a real domain event.
+
+Templates are loaded and cached by `templates.MailRenderer()` (`modules/templates/`), exposed
+to the mailer package via `mailer.LoadedTemplates()` (`services/mailer/mail.go`):
+
+```go
+func LoadedTemplates() *templates.MailRender {
+	return templates.MailRenderer()
+}
+```
+
+`MailRender` actually holds **two** parsed template sets — `SubjectTemplates` and
+`BodyTemplates` — because a single logical template name (e.g. `repo/issue/default`) has both a
+subject line and an HTML body rendered from the *same* template file (Gitea's mail templates
+use Go's convention of a leading `{{define "mail/... subject"}}`/body split inside one file, or
+matching filenames per renderer — see the `.tmpl` files themselves for the exact block
+structure used by each template).
+
+## 2. Template resolution (`actionToTemplate`)
+
+Not every action gets its own literal template file. `services/mailer/mail_issue_common.go`
+maps a domain action + comment/review type onto a `typeName/name` pair, then falls back through
+increasingly generic templates if a specific one doesn't exist:
+
+```go
+func actionToTemplate(issue *issues_model.Issue, actionType activities_model.ActionType,
+	commentType issues_model.CommentType, reviewType issues_model.ReviewType,
+) (typeName, name, template string) {
+	if issue.IsPull {
+		typeName = "pull"
+	} else {
+		typeName = "issue"
+	}
+	switch actionType {
+	case activities_model.ActionCreateIssue, activities_model.ActionCreatePullRequest:
+		name = "new"
+	case activities_model.ActionCommentIssue, activities_model.ActionCommentPull:
+		name = "comment"
+	case activities_model.ActionCloseIssue, activities_model.ActionClosePullRequest:
+		name = "close"
+	case activities_model.ActionReopenIssue, activities_model.ActionReopenPullRequest:
+		name = "reopen"
+	case activities_model.ActionMergePullRequest, activities_model.ActionAutoMergePullRequest:
+		name = "merge"
+	case activities_model.ActionPullReviewDismissed:
+		name = "review_dismissed"
+	case activities_model.ActionPullRequestReadyForReview:
+		name = "ready_for_review"
+	default:
+		switch commentType {
+		case issues_model.CommentTypeReview:
+			switch reviewType {
+			case issues_model.ReviewTypeApprove:
+				name = "approve"
+			case issues_model.ReviewTypeReject:
+				name = "reject"
+			default:
+				name = "review"
+			}
+		case issues_model.CommentTypeCode:
+			name = "code"
+		case issues_model.CommentTypeAssignees:
+			name = "assigned"
+		case issues_model.CommentTypePullRequestPush:
+			name = "push"
+		default:
+			name = "default"
+		}
+	}
+
+	template = "repo/" + typeName + "/" + name       // e.g. repo/pull/approve
+	if !LoadedTemplates().BodyTemplates.HasTemplate(template) && typeName != "issue" {
+		template = "repo/issue/" + name               // fall back to the issue-flavored name
+	}
+	if !LoadedTemplates().BodyTemplates.HasTemplate(template) {
+		template = "repo/" + typeName + "/default"    // fall back to the generic pull/issue template
+	}
+	if !LoadedTemplates().BodyTemplates.HasTemplate(template) {
+		template = "repo/issue/default"               // final fallback — always exists
+	}
+	return typeName, name, template
+}
+```
+
+In practice almost every issue/PR-related notification (new issue, new comment, close, reopen,
+merge, review, review-dismiss, ready-for-review, assignment, code comment, push-to-PR) resolves
+down to `templates/mail/repo/issue/default.tmpl`, which branches internally on an `ActionName`
+template variable (`new`, `comment`, `close`, `reopen`, `merge`, `approve`, `reject`, `review`,
+`review_dismissed`, `ready_for_review`, `code`, `assigned`, `push`) to compose the right
+localized sentence before appending the actual comment/review body:
+
+```html
+<p>
+  {{if eq .ActionName "close"}}
+    {{.locale.Tr "mail.issue.action.close" .Doer.Name .Issue.Index}}
+  {{else if eq .ActionName "merge"}}
+    {{.locale.Tr "mail.issue.action.merge" .Doer.Name .Issue.Index .Issue.PullRequest.BaseBranch}}
+  {{else if eq .ActionName "review"}}
+    {{.locale.Tr "mail.issue.action.review" .Doer.Name}}
+  {{end}}
+  ...
+  {{.Body}}
+</p>
+<div style="font-size:small; color:#666;">
+  <a href="{{.Link}}">{{.locale.Tr "mail.view_it_on" AppName}}</a>
+</div>
+```
+
+`templates/mail/repo/issue/assigned.tmpl` is the one notable exception with its own dedicated
+template (used for both direct assignment and review-request e-mails, both driven by
+`SendIssueAssignedMail`).
+
+## 3. Composing a message (`composeIssueCommentMessages`)
+
+`services/mailer/mail_issue_common.go`'s `composeIssueCommentMessages` builds the actual
+`*sender_service.Message` objects handed to the send queue. The key steps, in order:
+
+1. **Render the Markdown body.** The comment/issue content is rendered to HTML via
+   `markdown.RenderString` using a repo-comment render context with absolute links
+   (`renderhelper.NewRenderContextRepoComment(...).WithUseAbsoluteLink(true)`), so links/images
+   resolve correctly outside the browser.
+2. **Optionally inline attachment images as base64.** If
+   `setting.MailService.EmbedAttachmentImages` is enabled, `mailAttachmentBase64Embedder`
+   (`services/mailer/mail.go`) walks the rendered HTML DOM, finds `<img>` tags pointing at
+   Gitea-hosted attachments, and replaces their `src` with a `data:` URI — so images still
+   render in mail clients that block remote image loading. Non-Gitea image URLs are left
+   untouched.
+3. **Resolve the template** via `actionToTemplate` (see above).
+4. **Render subject and body** from `LoadedTemplates().SubjectTemplates` /
+   `.BodyTemplates`, passing a `mailMeta` map with all the fields the templates rely on:
+   `locale`, `FallbackSubject`, `Body`, `Link`, `Issue`, `Comment`, `IsPull`, `User`, `Repo`,
+   `Doer`, `IsMention`, `SubjectPrefix` (`"Re: "` for anything but a brand-new issue/PR),
+   `ActionType`, `ActionName`, `ReviewComments` (flattened inline diff comments from a review),
+   `Language`, and `CanReply` (whether the configured incoming-mail handler supports replying
+   by e-mail). If the subject template errors or renders empty, a computed
+   `FallbackSubject` (`"[owner/repo] Title (#123)"`) is used instead, guaranteeing every e-mail
+   has a usable subject.
+5. **Set threading and reply headers.** Every message gets a deterministic `Message-ID`
+   (`generateMessageIDForIssue`, keyed by repo/issue/comment/action + timestamp for
+   status-change events), an `In-Reply-To`/`References` chain pointing back at the issue's root
+   message, and — when `setting.IncomingEmail.Enabled` — a per-recipient signed reply token
+   (`services/mailer/token`) embedded in the `Reply-To` address and a `List-Post` header, so
+   replying to the notification e-mail posts a new comment back onto the issue. A
+   `List-Unsubscribe` header (with a similarly signed unsubscribe token) is always attached.
+6. **Emit one message per recipient**, batched per detected language so translators' locale
+   strings render correctly for multi-language teams.
+
+## 4. Choosing recipients
+
+`services/mailer/mail_issue.go`'s `mailIssueCommentToParticipants` (used for both new-issue and
+new-comment notifications) assembles the candidate recipient set from, in order:
+
+1. The issue's original poster.
+2. Current assignees (`issues_model.GetAssigneeIDsByIssue`).
+3. Participants — everyone who has commented or reviewed
+   (`issues_model.GetParticipantsIDsByIssueID`).
+4. Users who explicitly opted in to watch the issue (`issues_model.GetIssueWatchersIDs(..., true)`).
+5. Repository watchers (`repo_model.GetRepoWatchersIDs`) — **skipped** for still-work-in-progress
+   pull requests, unless the event is the PR's own creation.
+
+The doer themselves is excluded unless their `EmailNotificationsPreference` is explicitly set to
+"notify me of my own actions too" (`EmailNotificationsAndYourOwn`), or the event forces
+self-notification (currently only auto-merge completion, so the PR author learns their PR
+merged even if they triggered the auto-merge).
+
+Mentioned users (`mentions []*user_model.User`, resolved separately — see
+[Notification Delivery & UI Notifications](notification-delivery-and-uinotification.md#c-mention))
+are processed *first* and marked `fromMention: true`, which lets `mailIssueCommentBatch` include
+users whose preference is "only e-mail me on mention"
+(`EmailNotificationsOnMention`) — a preference level that would otherwise exclude them from the
+main participant/watcher batch. Users who explicitly *unwatched* the issue
+(`GetIssueWatchersIDs(..., false)`) are always excluded, even if mentioned, since an explicit
+unwatch is treated as a stronger signal than a mention.
+
+Final filtering in `mailIssueCommentBatch`:
+
+* Deactivated accounts (`!user.IsActive`) are always skipped.
+* `EmailNotificationsPreference` must be `Enabled`, `AndYourOwn`, or (for mention-sourced
+  recipients) `OnMention` — `Disabled` always excludes.
+* `access_model.CheckRepoUnitUser` re-verifies the recipient still has read access to the
+  Issues/PullRequests unit of the repository (handles the case where access was revoked after
+  the user became a participant).
+* Recipients are deduplicated via a `container.Set[int64]` of already-visited user IDs, so a
+  user who is both a participant and a mention only receives one e-mail.
+* Recipients are grouped per detected `Language` and chunked into batches of
+  `MailBatchSize = 100` for the actual send.
+
+## 5. Queueing & transport (`services/mailer/mailer.go`)
+
+Mail is never sent synchronously from the request/notifier goroutine. `NewContext` (called
+during application start-up if `setting.MailService != nil`) wires up an async queue:
+
+```go
+func NewContext(ctx context.Context) {
+	if setting.MailService == nil || mailQueue != nil {
+		return
+	}
+	if setting.Service.EnableNotifyMail {
+		notify_service.RegisterNotifier(NewNotifier())
+	}
+
+	switch setting.MailService.Protocol {
+	case "sendmail":
+		sender = &sender_service.SendmailSender{}
+	case "dummy":
+		sender = &sender_service.DummySender{}
+	default:
+		sender = &sender_service.SMTPSender{}
+	}
+
+	_ = templates.MailRenderer()
+
+	mailQueue = queue.CreateSimpleQueue(graceful.GetManager().ShutdownContext(), "mail", func(items ...*sender_service.Message) []*sender_service.Message {
+		for _, msg := range items {
+			gomailMsg := msg.ToMessage()
+			if err := sender_service.Send(sender, msg); err != nil {
+				log.Error("Failed to send emails %s: %s - %v", gomailMsg.GetGenHeader("To"), msg.Info, err)
+			}
+		}
+		return nil
+	})
+	go graceful.GetManager().RunWithCancel(mailQueue)
+}
+```
+
+* **`SendAsync`** (the exported alias callers use) pushes one or more `*sender_service.Message`
+  onto `mailQueue` without blocking the caller; a single worker pool drains the queue and calls
+  `sender_service.Send` for each message.
+* **Transport implementations** live in `services/mailer/sender/`:
+  `SMTPSender` (the default — talks SMTP, with STARTTLS/implicit TLS and optional
+  PLAIN/LOGIN/CRAM-MD5 auth negotiation), `SendmailSender` (shells out to the local `sendmail`
+  binary), and `DummySender` (a no-op logger, used in tests and `MAIL_SERVICE.PROTOCOL=dummy`
+  setups where you want to exercise the mailer code paths without a real mail transport).
+* `_ = templates.MailRenderer()` eagerly parses (and caches) all `templates/mail/**/*.tmpl`
+  files at start-up so the first real notification doesn't pay template-parsing latency and so
+  a broken template is caught in logs immediately rather than on first use.
+
+## 6. The `mailNotifier` — translating events into sends
+
+`services/mailer/notify.go` implements `notify.Notifier` and is the actual registered fan-out
+consumer for e-mail. It is a thin adapter: each method extracts the right
+`activities_model.ActionType` for the event and delegates to a `mail_*.go` helper
+(`mail_issue.go`, `mail_issue_common.go`, `mail_comment.go`, `mail_release.go`, `mail_repo.go`,
+`mail_team_invite.go`, `mail_user.go`, `mail_workflow_run.go`):
+
+```go
+func (m *mailNotifier) NewIssue(ctx context.Context, issue *issues_model.Issue, mentions []*user_model.User) {
+	if err := MailParticipants(ctx, issue, issue.Poster, activities_model.ActionCreateIssue, mentions); err != nil {
+		log.Error("MailParticipants: %v", err)
+	}
+}
+
+func (m *mailNotifier) IssueChangeAssignee(ctx context.Context, doer *user_model.User, issue *issues_model.Issue, assignee *user_model.User, removed bool, comment *issues_model.Comment) {
+	// mail only sent to added assignees and not self-assignee
+	if !removed && doer.ID != assignee.ID && assignee.EmailNotificationsPreference != user_model.EmailNotificationsDisabled {
+		ct := fmt.Sprintf("Assigned #%d.", issue.Index)
+		_ = SendIssueAssignedMail(ctx, issue, doer, ct, comment, []*user_model.User{assignee})
+	}
+}
+
+func (m *mailNotifier) NewRelease(ctx context.Context, rel *repo_model.Release) {
+	if rel.IsDraft || rel.IsPrerelease {
+		return
+	}
+	MailNewRelease(ctx, rel)
+}
+```
+
+Notable behaviors enforced directly at the notifier level (before any recipient-list logic
+runs):
+
+* **Draft/pre-release releases never e-mail anyone** (`NewRelease` returns early).
+* **Self-assignment never e-mails** (`doer.ID != assignee.ID` guard).
+* **A disabled preference short-circuits before any DB/template work happens** for
+  single-recipient sends like assignment and review-request e-mails.
+* `MailParticipants` / `MailParticipantsComment` / `SendIssueAssignedMail` all early-return with
+  no error if `setting.MailService == nil` (mail not configured at all) — every code path is
+  safe to call unconditionally.
+
+## Related pages
+
+* [Notification Delivery & UI Notifications](notification-delivery-and-uinotification.md)
+* [Notifications, Mailer & Webhooks (full reference)](../09-core-modules/notify-mailer-webhook.md)
+* [Settings Catalog — mailer/incoming-mail settings](../04-configuration/settings-catalog.md)
+* [Webhooks & Integrations](../16-webhooks-integrations/README.md)

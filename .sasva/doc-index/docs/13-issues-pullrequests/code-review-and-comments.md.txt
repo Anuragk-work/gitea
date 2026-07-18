@@ -1,0 +1,256 @@
+=== FILE: docs/13-issues-pullrequests/code-review-and-comments.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Code Review & Comments This page documents the pull request diff-review workflow: how a diff is rendered for review (`services/gitdiff`), how inline/general review comments and submitted reviews are modeled and orchestrated (`services/pull/review.go`, `models/issues/review.go`), how CODEOWNERS-driven review requests work, and the overall PR state machine from "opened" to "merged." Source: `services/gitdiff/gitdiff.go`, `services/pull/{review,comment,merge,check}.
+
+# Code Review & Comments
+
+This page documents the pull request diff-review workflow: how a diff is rendered for review
+(`services/gitdiff`), how inline/general review comments and submitted reviews are modeled and
+orchestrated (`services/pull/review.go`, `models/issues/review.go`), how CODEOWNERS-driven review
+requests work, and the overall PR state machine from "opened" to "merged."
+
+Source: `services/gitdiff/gitdiff.go`, `services/pull/{review,comment,merge,check}.go`,
+`services/issue/{review_request,pull}.go`, `models/issues/review.go`.
+
+## Rendering the Diff for Review — `services/gitdiff`
+
+`GetDiffForRender` / `GetDiffForAPI` (`services/gitdiff/gitdiff.go`) parse `git diff` output into a
+tree of Go structs used both by the web PR "Files changed" tab and by the API:
+
+```go
+type Diff struct { /* ... */ Files []*DiffFile }
+
+type DiffFile struct {
+    Name, OldName string
+    Addition, Deletion int
+    Type DiffFileType // Add | Change | Del | Rename | Copy
+    IsBin, IsLFSFile, IsSubmodule bool
+    Sections []*DiffSection
+
+    IsGenerated, IsVendored bool   // filled by a post-parse classification pass
+    IsProtected             bool   // filled by the route handler from ProtectedBranch file patterns
+    IsViewed                bool   // per-user "mark file as viewed" state
+    HasChangedSinceLastReview bool // per-user: true if this file changed after the user's last review
+}
+
+type DiffSection struct { FileName string; Lines []*DiffLine }
+
+type DiffLine struct {
+    LeftIdx, RightIdx int              // 1-based line numbers on each side
+    Type              DiffLineType     // Plain | Add | Del | Section(hunk header)
+    Content           string
+    Comments          issues_model.CommentList // review comments anchored to this exact line
+    SectionInfo       *DiffLineSectionInfo     // hunk metadata, used to render "expand context" links
+}
+```
+
+Notable behaviors:
+
+- **`DiffLine.CanComment()`** returns `false` for hunk-header ("Section") lines and for lines that
+  already have a comment thread on them in the classic (non-conversation-thread) UI mode — the "+"
+  add-comment affordance only renders where this is `true`.
+- **`ShouldBeHidden()`** on a `DiffFile` collapses generated files (lockfiles, vendored code,
+  detected via the repo's `.gitattributes`/heuristics) and already-viewed files by default, so
+  reviewers focus on unreviewed, hand-written changes.
+- **Blob excerpts**: when a hunk doesn't reach the top/bottom of the file, `GetTailSectionAndLimitedContent`
+  synthesizes a trailing `DiffLineSection` so the UI can offer "load more context" without
+  re-diffing; `BlobExcerptChunkSize` (20 lines) bounds how much context is fetched per click via
+  `getBlobExcerptQuery`.
+- **Whitespace handling**: `GetWhitespaceFlag(whitespaceBehavior)` maps the PR's "ignore whitespace"
+  view option to the corresponding `git diff` trusted CLI flags (`-w`, `-b`, `--ignore-space-at-eol`).
+- Large-file protection: `MaxFullFileHighlightSizeLimit` (256 KiB) and
+  `MaxFullFileHighlightTimeLimit` (2s) cap how much syntax highlighting work is done per file before
+  falling back to unhighlighted / line-by-line rendering, so a single huge generated file can't stall
+  the whole diff render.
+
+## Review Comments — `services/pull/review.go`
+
+### Inline code comments
+
+`CreateCodeComment(ctx, doer, gitRepo, issue, line, content, treePath, pendingReview,
+replyReviewID, latestCommitID, attachments)` handles three distinct cases through one function:
+
+1. **Single (non-review) comment** — `pendingReview=false`, no existing review on that line: posted
+   immediately as a standalone `CommentTypeCode` comment.
+2. **Reply to an existing review thread** — `pendingReview=false` but `ReviewExists(issue, treePath,
+   line)` is true: the new comment attaches to the existing thread without requiring the replier to
+   start their own pending review; if the replier has no pending review of their own yet, a
+   synthetic `ReviewTypeComment` review is submitted immediately via `SubmitReview` to own the reply.
+3. **Part of an in-progress review** — `pendingReview=true`: the comment attaches to (or creates) a
+   `Review{Type: ReviewTypePending}` row owned by the doer, and stays invisible to other users until
+   the review is submitted.
+
+### Comment invalidation on new pushes
+
+`InvalidateCodeComments(ctx, prs, doer, repo, gitRepo, branch)` re-blames every non-invalidated
+`CommentTypeCode` comment's `TreePath`/line against the *new* head commit
+(`checkInvalidation` → `lineBlame` → `git blame`). If the underlying line no longer exists (the file
+was deleted, or blame reports "not enough lines") or the blamed commit for that line no longer
+matches the comment's recorded `CommitSHA`, the comment is flagged `Invalidated=true` — the UI then
+renders it as "outdated" rather than silently dropping or re-anchoring it, since anchoring across an
+arbitrary edit is not reliably correct.
+
+### Submitting a Review — `SubmitReview`
+
+```go
+func SubmitReview(ctx context.Context, doer *user_model.User, gitRepo *git.Repository,
+    issue *issues_model.Issue, reviewType issues_model.ReviewType, content, commitID string,
+    attachmentUUIDs []string) (*issues_model.Review, *issues_model.Comment, error)
+```
+
+Guards before touching the DB:
+
+- `ErrSubmitReviewOnClosedPR` if the PR is closed/merged and the review type is `Approve` or
+  `Reject` (a closed PR can still receive a plain `Comment` review, but not an approval/rejection
+  that would imply an in-progress decision).
+- `reviewType != Approve` with empty content and no pending code comments is rejected — an empty
+  "Request Changes"/"Comment" review carries no information.
+
+On success, the pending review (if any) is finalized to the given `reviewType`, its pending code
+comments become visible, a summary `Comment{Type: CommentTypeReview}` is created if `content` is
+non-empty, and — for `Approve`/`Reject` on an org-owned repo — any matching `ReviewTypeRequest`
+placeholder row for this reviewer is removed (the request is now fulfilled).
+
+`ReviewType` values (`models/issues/review.go`):
+
+```go
+const (
+    ReviewTypePending  ReviewType = iota // in-progress, not yet visible to others
+    ReviewTypeApprove                    // "Approve"
+    ReviewTypeComment                    // "Comment" — feedback with no merge effect
+    ReviewTypeReject                     // "Request Changes"
+    ReviewTypeRequest                    // synthetic placeholder: "review requested from X", not a submitted review
+)
+```
+
+### Dismissing Reviews
+
+- **`DismissReview(ctx, reviewID, repoID, message, doer, isDismiss, dismissPriors)`** — flips a
+  single `Approve`/`Reject` review's `Dismissed` flag (only these two types can be dismissed; a
+  `Comment` review carries no merge-blocking weight to dismiss) and posts a
+  `CommentTypeDismissReview` comment recording who dismissed it and why.
+- **`DismissApprovalReviews(ctx, doer, pull)`** — bulk-dismisses every `Approve` review on the PR;
+  this is what `DismissStaleApprovals` on a `ProtectedBranch` triggers automatically whenever the
+  head branch receives a new push, forcing reviewers to re-approve the latest code.
+
+### `Official` Reviews and Required Approvals
+
+A review only counts toward a branch's `RequiredApprovals` (see
+[Branch Protection & Merge](branch-protection-and-merge.md)) if its `Official` flag is set — computed
+at submission time via `git_model.IsUserOfficialReviewer`/`IsUserMergeWhitelisted`-style checks: by
+default any user with write access is "official," but if `EnableApprovalsWhitelist` is set on the
+protected branch, only users/teams on that specific whitelist count. This lets a repo require
+approval specifically from senior reviewers or a designated team, even if other collaborators can
+also comment/approve for visibility.
+
+## CODEOWNERS — `services/issue/pull.go`
+
+`PullRequestCodeOwnersReview(ctx, pr)` is invoked when a PR is opened and whenever its
+work-in-progress prefix is removed (`services/issue/issue.go`'s `ChangeTitle`):
+
+1. Skips entirely for WIP PRs, and for PRs whose base repo `IsFork` (CODEOWNERS enforcement only
+   applies to the canonical repo, to avoid a fork owner spoofing reviewer assignment for their own
+   fork).
+2. Reads the first of `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS` found on the base repo's
+   **default branch** (not the PR's target branch — CODEOWNERS itself is not subject to per-branch
+   review, only its rules are), then parses ownership rules via `GetCodeOwnersFromContent`.
+3. Computes the file list actually changed by the PR as `git diff` between the **merge base** and
+   the head commit (not base-branch-vs-head), specifically to avoid attributing files that only
+   differ because the base branch has moved on (go-gitea/gitea#29763).
+4. For every changed file, matches it against every CODEOWNERS rule, subject to a hard
+   `codeOwnerMatchBudget` (2 seconds total across the whole PR) — this bounds worst-case CPU from a
+   crafted CODEOWNERS file combined with a PR touching many files; once the budget is exceeded,
+   remaining rules are skipped and a warning is logged rather than blocking the PR indefinitely.
+5. Every distinct matched user (excluding the PR's own poster) and team gets an automatic review
+   request — `issues_model.AddReviewRequest`/`AddTeamReviewRequest` — unless that user has already
+   left a review, and each request is wrapped as a `ReviewRequestNotifier` for a batched
+   notification pass (`ReviewRequestNotify`).
+
+## Manual Review Requests — `services/issue/review_request.go`
+
+`ReviewRequest(ctx, issue, doer, permDoer, reviewer, isAdd)` and its team counterpart
+`TeamReviewRequest` gate who may add/remove a reviewer via `isValidReviewRequest`/
+`isValidTeamReviewRequest`:
+
+- The PR poster, the repo owner, any repo collaborator, or a member of an org team with read access
+  to the pull-requests unit (`CanDoerChangeReviewRequests`) may freely add/remove any reviewer.
+- Otherwise, a user may only remove *themselves* from the reviewer list if they were the one who
+  was requested (self-service opt-out), and the PR poster may re-request a reviewer who already
+  left a non-pending review (asking them to look again), but no one else may pick an arbitrary
+  reviewer.
+- The reviewer being added must have at least read access to the pull-requests unit, and cannot be
+  the PR's own poster (unless the PR was migrated and has a distinct `OriginalAuthorID`, in which
+  case the "poster" on record didn't actually author it).
+
+## Suggested Changes / Line Comments in Practice
+
+Code review comments (`Comment{Type: CommentTypeCode}`) carry `TreePath`, `Line` (positive for the
+new/right side, negative for the old/left side — see `Comment.UnsignedLine()`/`DiffSide()`), and a
+`PatchQuoted` snapshot of the diff hunk at comment time, so the comment can still show its original
+context even after the underlying lines are edited or the comment is marked `Invalidated`. Comments
+belonging to the same review thread share a `ReviewID`; a thread's `ResolveDoerID` records who
+marked the conversation as resolved (a separate action from approving/rejecting the review itself).
+
+## The Merge-Box / PR State Machine
+
+Putting the review model together with the branch-protection gate from
+[Branch Protection & Merge](branch-protection-and-merge.md), a pull request moves through the
+following states. "Mergeable" here means `CheckPullMergeable` would currently succeed; the actual
+merge is still a separate, explicit action (or an auto-merge trigger).
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: PR created (Issue.IsPull=true)
+    Open --> Checking: push / re-check triggered
+    Checking --> Conflict: test-merge fails
+    Checking --> Open: test-merge succeeds (Status=Mergeable)
+    Conflict --> Checking: new commits pushed to head
+
+    Open --> UnderReview: reviewer requested / review submitted
+    UnderReview --> ChangesRequested: official Reject review
+    UnderReview --> Approved: enough official Approve reviews (RequiredApprovals met)
+    ChangesRequested --> UnderReview: new commits pushed (DismissStaleApprovals) or review dismissed
+    Approved --> UnderReview: new push invalidates approvals (DismissStaleApprovals) or new review request
+
+    Approved --> Mergeable: status checks pass AND no blocking protection rule
+    UnderReview --> Mergeable: (unprotected branch, or all rules already satisfied)
+    ChangesRequested --> Mergeable: rejection resolved/dismissed AND checks pass
+
+    Mergeable --> Merged: doer clicks Merge / scheduled auto-merge fires
+    Mergeable --> ScheduledAutoMerge: doer schedules auto-merge
+    ScheduledAutoMerge --> Merged: checks pass on next status update
+    ScheduledAutoMerge --> Mergeable: schedule cancelled
+
+    Open --> Closed: closed without merging
+    UnderReview --> Closed: closed without merging
+    ChangesRequested --> Closed: closed without merging
+    Mergeable --> Closed: closed without merging
+    Merged --> [*]
+    Closed --> [*]
+    Closed --> Open: reopened
+```
+
+Notes on how this diagram maps to code:
+
+- `Checking` / `Conflict` / `Mergeable` (branch-mergeability, ignoring review/protection) are
+  literally `issues_model.PullRequestStatus` values (`PullRequestStatusChecking`,
+  `PullRequestStatusConflict`, `PullRequestStatusMergeable`) recomputed by the background job in
+  `services/pull/check.go` (`checkPullRequestMergeable`).
+- `Approved` / `ChangesRequested` / `UnderReview` are *not* separate stored states — they are
+  derived at check time from `Review` rows via `HasEnoughApprovals`,
+  `MergeBlockedByRejectedReview`, and `MergeBlockedByOfficialReviewRequests`, all invoked from
+  `CheckPullBranchProtections`.
+- The transition into the diagram's `Mergeable` (i.e., "actually allowed to merge now") is exactly
+  `CheckPullMergeable` returning `nil` — it requires the git-level `Mergeable` status **and** the
+  review/protection gate to both currently be satisfied.
+- `ScheduledAutoMerge` corresponds to a `pull_model.ScheduledPullRequestMerge` row existing for the
+  PR (see [Branch Protection & Merge](branch-protection-and-merge.md) for the queue mechanics).
+- `Merged` is `HasMerged=true` with `Status` set to one of `PullRequestStatusManuallyMerged` or left
+  as the pre-merge mergeable status, depending on whether the merge was performed by Gitea
+  (`SetMerged` with the actual merge status) or recorded after the fact (`MergedManually`).
+
+## Related Pages
+
+- [Branch Protection & Merge](branch-protection-and-merge.md)
+- [Issue Tracking Workflow](issue-tracking-workflow.md)
+- [Issues & Pull Requests Model](../05-database-models/issues-and-pulls-model.md)

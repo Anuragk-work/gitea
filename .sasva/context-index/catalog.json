@@ -1,0 +1,468 @@
+{
+  "version": 1,
+  "last_updated": "2026-07-16T10:57:11.813475",
+  "categories": {
+    "guidelines": {
+      "name": "Repo Guidelines",
+      "entry_count": 10,
+      "last_updated": "2026-07-14T22:25:59.034484",
+      "intents": []
+    },
+    "derived": {
+      "name": "Derived Contexts",
+      "entry_count": 1,
+      "last_updated": "2026-07-14T23:44:26.504540",
+      "intents": [
+        "find Security Issues using tools like trivy and opengrep"
+      ]
+    },
+    "product-docs": {
+      "name": "Product Documentation",
+      "entry_count": 25,
+      "last_updated": "2026-07-16T10:57:11.813001",
+      "intents": []
+    }
+  },
+  "entries": [
+    {
+      "id": "guidelines/repo_guidelines_gitea/tech-stack-&-frameworks",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Tech Stack & Frameworks",
+      "summary": "> Note on verification coverage: the most recent verification pass sampled mostly frontend-tooling configs (stylelint, tailwind, eslint-json, playwright, vitest, `types.d.ts`) plus two Go files (`main.go`, `main_timezones.go`). Backend-specific claims below (ORM, migrations, LDAP, markdown engine, m",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034354"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/project-structure",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Project Structure",
+      "summary": "> Note: no `models/`, `services/`, `routers/`, or `models/migrations/` files were present in the latest verification sample — the items below remain as previously established and were not re-confirmed or contradicted this pass.\n\n- **Layered monolith**, not MVC: `models/` (persistence) → `services/` ",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034374"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/coding-style-&-naming",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Coding Style & Naming",
+      "summary": "- **Files:** `snake_case.go` (`protected_branch.go`, `run_job.go`). Migration files: strictly `v<version>.go`. Platform-specific files use Go build tags (`//go:build windows`) combined with a descriptive suffix rather than a strict `_windows.go`-only convention — e.g. `main_timezones.go` guards a `_",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034401"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/required-libraries-&-packages",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Required Libraries & Packages",
+      "summary": "### Core/Framework\n- `xorm.io/xorm` + `xorm.io/builder` — the only DB/query layer. Do not introduce `database/sql` directly or another ORM.\n- `github.com/yuin/goldmark` (66 files) — sole markdown renderer.\n- `github.com/urfave/cli/v3` — CLI subcommand framework used throughout `cmd/`; pair new comma",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [
+        "core/framework",
+        "internal/private-(must-use)",
+        "preferred-third-party",
+        "explicitly-forbidden-—-do-not-introduce"
+      ],
+      "indexed_at": "2026-07-14T22:25:59.034417"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/common-patterns",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Common Patterns",
+      "summary": "### CLI Entrypoint Pattern\n- `main.go` overrides `cli.OsExiter` and explicitly calls `log.GetManager().Close()` both inside the custom exiter **and** after `RunMainApp` returns normally — this is called out in-code as a **MUST**, \"otherwise there will be log loss.\" When adding new exit paths in `cmd",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [
+        "cli-entrypoint-pattern",
+        "error-handling",
+        "data-access-/-api-patterns",
+        "component/module-structure",
+        "state-management"
+      ],
+      "indexed_at": "2026-07-14T22:25:59.034439"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/import-&-export-conventions",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Import & Export Conventions",
+      "summary": "- **Three-block Go import grouping** [ENFORCED by `gci` formatter, CONFIRMED via `main.go`/`main_timezones.go`]: stdlib → blank line → `gitea.dev/...` internal (including blank-import side-effect groups) → blank line → third-party.\n- Custom import order confirmed in `.golangci.yml` gci config: stand",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034446"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/testing-conventions",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Testing Conventions",
+      "summary": "- Unit tests: `_test.go` colocated with source; `main_test.go` per package for shared setup.\n- Assertions: `testify` (`assert`/`require`) is the standard — 589 files use it; don't introduce a second assertion library.\n- Integration tests: YAML fixtures in `models/fixtures/<entity>.yml`, loaded via f",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034457"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/internal-frameworks-&-utilitie",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Internal Frameworks & Utilities",
+      "summary": "- `gitea.dev/modules/util` — error sentinels (`ErrNotExist`, `ErrPermissionDenied`), `ErrorWrap`, `NewInvalidArgumentErrorf`. Use instead of ad hoc error construction.\n- `gitea.dev/modules/json` — drop-in `encoding/json` replacement; mandatory.\n- `gitea.dev/modules/log` — `log.Error`, `log.Warn`, `l",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034464"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/anti-patterns-to-avoid",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Anti-patterns to Avoid",
+      "summary": "- Do **not** import live `models` structs into `models/migrations/*` — [ENFORCED] by `depguard` (\"migrations must not depend on the models package\" / \"must not depend on modules/structs\"). Redefine the needed shape locally instead.\n- Do **not** use `encoding/json`, `io/ioutil`, `github.com/unknwon/c",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034474"
+    },
+    {
+      "id": "guidelines/repo_guidelines_gitea/build,-lint-&-ci",
+      "category": "guidelines",
+      "context_id": "repo_guidelines_gitea",
+      "title": "[Guidelines] Build, Lint & CI",
+      "summary": "- **Build orchestration:** root `Makefile` — key targets: `make help`, `make fmt`, `make lint-go`, `make lint-js`, `make tidy`, `make frontend`.\n- **Go linting** [ENFORCED, golangci-lint v2, opt-in list only — `linters.default: none`]: `bidichk`, `bodyclose`, `depguard`, `dupl`, `errcheck`, `forbidi",
+      "source_path": ".sasva/contexts/guidelines_repo_guidelines_3195aa6e/CONTEXT_REPORT.md",
+      "tags": [],
+      "indexed_at": "2026-07-14T22:25:59.034484"
+    },
+    {
+      "id": "derived/derived-docs",
+      "category": "derived",
+      "context_id": "derived_derived-docs",
+      "title": "security-issues",
+      "summary": "This documentation set is a **derived, focused reorganization** of Gitea's existing Markdown",
+      "source_path": "derived-docs/",
+      "intent": "find Security Issues using tools like trivy and opengrep",
+      "parent_context_id": "product_docs_security-issues",
+      "tags": [
+        "find",
+        "security",
+        "issues",
+        "using",
+        "tools"
+      ],
+      "indexed_at": "2026-07-14T23:44:26.504540"
+    },
+    {
+      "id": "product-docs/docs__index",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Product Documentation (docs/)",
+      "summary": "Comprehensive technical documentation for Gitea, a lightweight, self-hosted, all-in-one software development service written in Go. Gitea brings Git hosting, code review, issue tracking, project management (kanban boards), a wiki, team/organization collaboration, a multi-ecosystem package registry, and CI/CD (Gitea Actions, compatible with GitHub Actions workflow syntax) together into a single sel",
+      "source_path": "docs/index.md",
+      "is_rollup": true,
+      "section_count": 24,
+      "tags": [
+        "product-docs",
+        "documentation",
+        "introduction",
+        "architecture",
+        "getting started",
+        "configuration",
+        "database models",
+        "web routers",
+        "rest api",
+        "services"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809017"
+    },
+    {
+      "id": "product-docs/introduction",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Introduction",
+      "summary": "Gitea is a lightweight, self-hosted, all-in-one software development service written in [Go](https://go.dev). It brings together **Git hosting**, **code review**, **issue tracking**, **project managem",
+      "source_path": "docs/01-introduction/",
+      "tags": [
+        "introduction"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809235"
+    },
+    {
+      "id": "product-docs/architecture",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Architecture",
+      "summary": "The overall system design, source-tree layout, and how Gitea's components fit together. This",
+      "source_path": "docs/02-architecture/",
+      "tags": [
+        "architecture"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809438"
+    },
+    {
+      "id": "product-docs/getting-started",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Getting Started",
+      "summary": "Installing, configuring, and running Gitea for the first time — from a fresh `git clone` to a fully installed, running instance.",
+      "source_path": "docs/03-getting-started/",
+      "tags": [
+        "getting-started"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809585"
+    },
+    {
+      "id": "product-docs/configuration",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Configuration",
+      "summary": "Gitea is configured almost entirely through a single INI-format file, conventionally located at `custom/conf/app.ini`. Internally, all configuration parsing, validation, defaulting, and type conversio",
+      "source_path": "docs/04-configuration/",
+      "tags": [
+        "configuration"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809723"
+    },
+    {
+      "id": "product-docs/database-models",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Database Models",
+      "summary": "Gitea's ORM entities, database schema, and migration system in `models/`.",
+      "source_path": "docs/05-database-models/",
+      "tags": [
+        "database-models"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.809945"
+    },
+    {
+      "id": "product-docs/web-routers",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Web Routers",
+      "summary": "This section documents the HTML/UI-facing HTTP layer of Gitea: how incoming browser requests are",
+      "source_path": "docs/06-web-routers/",
+      "tags": [
+        "web-routers"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810078"
+    },
+    {
+      "id": "product-docs/rest-api",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Rest Api",
+      "summary": "Gitea exposes nearly all of its functionality through a comprehensive, versioned JSON REST API mounted at `/api/v1`. The API is implemented in `routers/api/v1/`, uses the same `chi`-based `web.Router`",
+      "source_path": "docs/07-rest-api/",
+      "tags": [
+        "rest-api"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810204"
+    },
+    {
+      "id": "product-docs/services",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Services",
+      "summary": "Business-logic layer in `services/` that orchestrates models and modules. Routers (both the HTML",
+      "source_path": "docs/08-services/",
+      "tags": [
+        "services"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810336"
+    },
+    {
+      "id": "product-docs/core-modules",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Core Modules",
+      "summary": "Dependency-free shared libraries in `modules/` such as git, cache, queue, and storage. Unlike",
+      "source_path": "docs/09-core-modules/",
+      "tags": [
+        "core-modules"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810444"
+    },
+    {
+      "id": "product-docs/git-integration",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Git Integration",
+      "summary": "How Gitea shells out to and wraps native Git operations via `modules/git`. This section is a",
+      "source_path": "docs/10-git-integration/",
+      "tags": [
+        "git-integration"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810557"
+    },
+    {
+      "id": "product-docs/authentication",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Authentication",
+      "summary": "Gitea supports a wide range of authentication mechanisms — a built-in username/password",
+      "source_path": "docs/11-authentication/",
+      "tags": [
+        "authentication"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810805"
+    },
+    {
+      "id": "product-docs/repository-management",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Repository Management",
+      "summary": "Repository creation, forking, mirroring, wikis, and settings.",
+      "source_path": "docs/12-repository-management/",
+      "tags": [
+        "repository-management"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.810923"
+    },
+    {
+      "id": "product-docs/issues-pullrequests",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Issues Pullrequests",
+      "summary": "Issue tracking, pull request workflows, reviews, and merging.",
+      "source_path": "docs/13-issues-pullrequests/",
+      "tags": [
+        "issues-pullrequests"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811042"
+    },
+    {
+      "id": "product-docs/actions-ci",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Actions Ci",
+      "summary": "Gitea Actions is Gitea's built-in CI/CD system, designed to be workflow-YAML-compatible with",
+      "source_path": "docs/14-actions-ci/",
+      "tags": [
+        "actions-ci"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811171"
+    },
+    {
+      "id": "product-docs/packages-registry",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Packages Registry",
+      "summary": "Gitea ships a built-in, multi-ecosystem package registry: a single Gitea instance can serve",
+      "source_path": "docs/15-packages-registry/",
+      "tags": [
+        "packages-registry"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811306"
+    },
+    {
+      "id": "product-docs/cli-admin",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Cli Admin",
+      "summary": "Administrative command-line operations for managing a Gitea instance. Gitea",
+      "source_path": "docs/16-cli-admin/",
+      "tags": [
+        "cli-admin"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811496"
+    },
+    {
+      "id": "product-docs/webhooks-integrations",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Webhooks Integrations",
+      "summary": "Outbound webhooks and third-party integrations triggered by repository events. This section is a",
+      "source_path": "docs/16-webhooks-integrations/",
+      "tags": [
+        "webhooks-integrations"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811608"
+    },
+    {
+      "id": "product-docs/notifications",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Notifications",
+      "summary": "In-app and email notification systems for repository and user activity. This section is a short",
+      "source_path": "docs/17-notifications/",
+      "tags": [
+        "notifications"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.811820"
+    },
+    {
+      "id": "product-docs/admin-guide",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Admin Guide",
+      "summary": "Operational guidance for running, upgrading, and maintaining a Gitea instance. This section is a",
+      "source_path": "docs/18-admin-guide/",
+      "tags": [
+        "admin-guide"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.812019"
+    },
+    {
+      "id": "product-docs/cli-commands",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Cli Commands",
+      "summary": "Reference for the `gitea` binary's command-line subcommands and flags. This section is a short",
+      "source_path": "docs/19-cli-commands/",
+      "tags": [
+        "cli-commands"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.812285"
+    },
+    {
+      "id": "product-docs/frontend-ui",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Frontend Ui",
+      "summary": "The web frontend built with Vue, Fomantic-UI, and Vite in `web_src/`. Gitea's UI is",
+      "source_path": "docs/20-frontend-ui/",
+      "tags": [
+        "frontend-ui"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.812392"
+    },
+    {
+      "id": "product-docs/testing-quality",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Testing Quality",
+      "summary": "Gitea's test suite spans five layers — Go backend unit tests, database-backed integration tests, frontend (Vitest) unit tests, Playwright end-to-end browser tests, and continuous fuzz testing of secur",
+      "source_path": "docs/21-testing-quality/",
+      "tags": [
+        "testing-quality"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.812573"
+    },
+    {
+      "id": "product-docs/contributing-development",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Contributing Development",
+      "summary": "Contributor workflow, coding guidelines, and project governance for Gitea. This",
+      "source_path": "docs/22-contributing-development/",
+      "tags": [
+        "contributing-development"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.812787"
+    },
+    {
+      "id": "product-docs/build-cicd-deployment",
+      "category": "product-docs",
+      "context_id": "product_docs_docs",
+      "title": "Build Cicd Deployment",
+      "summary": "This section documents everything involved in turning Gitea source code into a running service: the local `Makefile`-driven build system, the multi-stage Docker images, the full catalog of GitHub Acti",
+      "source_path": "docs/build-cicd-deployment/",
+      "tags": [
+        "build-cicd-deployment"
+      ],
+      "indexed_at": "2026-07-16T10:57:11.813001"
+    }
+  ]
+}

@@ -1,0 +1,337 @@
+# Admin Panel & Operations
+
+The web-based site administration panel lives entirely under the
+`/-/admin` URL prefix and is implemented by `routers/web/admin` (20 Go
+files, one per functional area) plus the `admin/*` templates rendered
+through `gitea.dev/modules/templates`. Unlike the CLI (`gitea admin ...`,
+documented in [CLI & Admin Operations](../16-cli-admin/cli-commands.md)),
+the admin panel is a **live, browser-driven** surface: every page reads
+and mutates the running instance's in-memory and database state directly,
+without requiring a restart.
+
+## Access Control
+
+The entire `/-/admin` route group is wrapped in a single requirement,
+defined once in `routers/web/web.go`:
+
+```go
+adminReq := verifyAuthWithOptions(&common.VerifyOptions{SignInRequired: true, AdminRequired: true})
+
+m.Group("/-/admin", func() {
+    m.Get("", admin.Dashboard)
+    // ... every admin sub-route ...
+}, adminReq, ctxDataSet("EnableOAuth2", setting.OAuth2.Enabled, "EnablePackages", setting.Packages.Enabled))
+```
+
+`adminReq` rejects any request that is not both authenticated
+(`SignInRequired`) and made by a user with `IsAdmin == true`
+(`AdminRequired`) — see
+[Authorization Model](../11-authentication/authorization-model.md) for how
+`ctx.Doer.IsAdmin` is derived. Individual sub-groups add their own extra
+guard functions where a feature can be globally disabled, e.g.
+`/-/admin/packages` is additionally gated by `packagesEnabled`,
+`/-/admin/hooks` by `webhooksEnabled`, and `/-/admin/applications` by
+`oauth2Enabled` — all resolved from `setting.Packages.Enabled`,
+`setting.Webhook`, and `setting.OAuth2.Enabled` respectively.
+
+## Route Map
+
+All routes are registered inside the single `m.Group("/-/admin", ...)`
+block in `routers/web/web.go`. The table below groups them by the
+controller file that implements them.
+
+| Path prefix | Controller file | Purpose |
+|---|---|---|
+| `/-/admin` (root) | `admin.go` | Dashboard: system status, cron task triggers, self-check |
+| `/-/admin/self_check` | `admin.go` | Frontend/backend `AppURL` mismatch + DB collation + cache latency checks |
+| `/-/admin/config`, `/-/admin/config/settings` | `config.go` | Read-only `app.ini` summary, dynamic settings editor, test-mail/test-cache |
+| `/-/admin/monitor/*` | `admin.go`, `queue.go`, `stacktrace.go`, `perftrace.go`, `diagnosis.go` | Cron tasks, statistics, queues, goroutine/process stacktraces, performance trace, diagnosis ZIP |
+| `/-/admin/users` | `users.go` | User CRUD, avatar management, account deletion |
+| `/-/admin/badges` | `badges.go` | Badge CRUD and badge-to-user assignment |
+| `/-/admin/emails` | `emails.go` | Cross-user email search, activation toggling, deletion |
+| `/-/admin/orgs` | `orgs.go` | Organization listing (read-only; deletion goes through the org's own settings) |
+| `/-/admin/repos` | `repos.go` | Repository listing/deletion, unadopted-repository adopt/delete |
+| `/-/admin/packages` | `packages.go` | Cross-owner package browsing, version deletion, expired-data cleanup |
+| `/-/admin/hooks`, `/-/admin/{default,system}-hooks` | `hooks.go` + shared `repo_setting` webhook routes | Default & system webhooks applied to every repository |
+| `/-/admin/auths` | `auths.go` | Authentication source (LDAP/SMTP/OAuth2/PAM/SSPI) CRUD |
+| `/-/admin/notices` | `notice.go` | System notice log viewing/deletion |
+| `/-/admin/applications` | `applications.go` | Global (non-user-owned) OAuth2 application management |
+| `/-/admin/actions` | shared actions routes | Instance-level Actions runners, variables, and workflow visibility |
+
+## Dashboard & System Status (`admin.go`)
+
+`Dashboard` (`GET /-/admin`) is the panel's landing page. It calls
+`updateSystemStatus()`, which populates the package-level `sysStatus`
+struct from `runtime.ReadMemStats` and `runtime.NumGoroutine()` — heap
+size, GC pause times, goroutine count, uptime (`setting.AppStartTime`) —
+all formatted with `base.FileSize` for human-readable byte counts. The
+same data is also served standalone at `GET /-/admin/system_status` for
+AJAX polling from the dashboard template.
+
+`Dashboard` also calls `prepareStartupProblemsAlert`, which surfaces
+`setting.StartupProblems` (warnings collected during configuration
+loading, e.g. deprecated settings) as a flash error banner — the same list
+consumed by `SelfCheck` (below) and by the *diagnosis ZIP*.
+
+### Triggering Operations from the Dashboard
+
+`DashboardPost` (`POST /-/admin`, bound to `forms.AdminDashboardForm`)
+implements a single dispatch table keyed by `form.Op`:
+
+- `sync_repo_branches` / `sync_repo_tags` — spawn a goroutine calling
+  `repo_service.AddAllRepoBranchesToSyncQueue` /
+  `release_service.AddAllRepoTagsToSyncQueue` against the graceful
+  shutdown context, then flash a "started" message immediately (the work
+  itself is queued and asynchronous — see
+  [Git Operations & Hooks](../10-git-integration/git-operations-and-hooks.md)
+  for the underlying sync queue).
+- any other value is looked up via `cron.GetTask(form.Op)` — every
+  registered cron task (repository health check, cleanup jobs, GC, etc.,
+  see [CLI & Admin Operations](../16-cli-admin/cli-commands.md)) can be
+  run on demand with `task.RunWithUser(ctx.Doer, nil)`, and unknown task
+  names flash an "unknown task" error instead of failing silently.
+
+If the POST originated from the monitor page (`form.From == "monitor"`)
+the redirect target is `/-/admin/monitor/cron` instead of the dashboard
+root, so the operator lands back on the cron task list to watch the
+triggered task's `LastEndTime` update.
+
+### Self Check (`SelfCheck` / `SelfCheckPost`)
+
+`GET /-/admin/self_check` runs three lightweight diagnostics synchronously
+on every page load:
+
+1. **Startup problems** — re-displays `setting.StartupProblems`; in
+   non-production builds a fake warning is injected on alternating page
+   loads purely to exercise the UI.
+2. **Database collation** — `db.CheckCollationsDefaultEngine()` reports
+   collation mismatches or case-insensitive collations that can silently
+   corrupt username/repo-name uniqueness (see
+   [Database & Models](../05-database-models/README.md)).
+3. **Cache round-trip** — `cache.Test()` measures a set/get/delete cycle
+   against the configured cache backend and flags it if the elapsed time
+   exceeds `cache.SlowCacheThreshold`.
+
+`SelfCheckPost` is called asynchronously by the page's JavaScript with the
+browser's `location.origin`; it compares that against
+`httplib.GuessCurrentAppURL(ctx)` (the URL the *backend* believes it is
+being reached at) and reports a mismatch as a JSON `problems` array — this
+catches the extremely common reverse-proxy misconfiguration where
+`ROOT_URL` in `app.ini` doesn't match what's actually exposed to browsers.
+
+## Configuration Panel (`config.go`)
+
+`Config` (`GET /-/admin/config`) renders a **read-only** dump of the
+in-memory `setting.*` structs: paths (`AppDataPath`, `RepoRootPath`,
+`CustomPath`, `Log.RootPath`), the SSH/LFS/Service/Database/Webhook
+sub-structs, mailer status, cache adapter/interval/TTL, session config
+(with `ProviderConfig` scrubbed before display, and — for the
+`VirtualSession` provider used in clustered deployments — transparently
+unwrapped to show the real underlying provider), and the full logger
+configuration via `log.GetManager().DumpLoggers()`. This page never writes
+`app.ini` — it exists purely so an admin can confirm what configuration
+the running process actually loaded, which is invaluable when multiple
+config files or environment-variable overrides are in play (see
+[Configuration (`app.ini`)](../03-getting-started/configuration-app-ini.md)).
+
+`ConfigSettings` (`GET /-/admin/config/settings`) is a *separate*, dynamic
+settings editor for the subset of options registered in
+`modules/setting/config` as `config.GetConfigOption` entries — these are
+settings that are safe to change at runtime and are persisted to the
+`system_setting` DB table rather than `app.ini`. `ChangeConfig` (`POST`) is
+the corresponding save handler: it iterates the submitted `key[]`/`value[]`
+form-array pairs, validates each with `validateConfigKeyValue` (key must be
+a registered dynamic option, value capped at 64 KiB and must be valid
+JSON), and on success calls `system_model.SetSettings` followed by
+`config.GetDynGetter().InvalidateCache()` so the new value takes effect on
+the very next read without a restart.
+
+`SendTestMail` and `TestCache` are two one-shot diagnostic POSTs reachable
+from the same page: the former calls `mailer.SendTestMail(email)` to
+verify outbound SMTP configuration end-to-end, the latter re-runs
+`cache.Test()` on demand and reports timing via flash message.
+
+## User, Org, Repo & Package Administration
+
+These four controllers share a common shape: a paginated **list** view
+built on top of the same search infrastructure used by the public explore
+pages (`routers/web/explore`), plus **mutation** endpoints that delegate to
+the same service-layer functions the self-service settings pages use, so
+admin actions get identical validation and side-effect handling.
+
+- **`users.go`** — `Users` renders `explore.RenderUserSearch` with
+  `IncludeReserved: true` (so bot/remote/system accounts are visible to
+  admins even though they're hidden from public search) and a
+  `statusFilterMap` built from five checkbox filters
+  (`is_active`/`is_admin`/`is_restricted`/`is_2fa_enabled`/`is_prohibit_login`).
+  `NewUserPost` builds a `user_model.User` and calls
+  `user_model.AdminCreateUser`, applying the same password-strength
+  (`password.IsComplexEnough`) and pwned-password (`password.IsPwned`)
+  checks as self-registration. `DeleteUser` refuses to let an admin delete
+  themselves and translates `DeleteUser`'s typed errors
+  (`ErrUserOwnRepos`, `ErrUserHasOrgs`, `ErrUserOwnPackages`,
+  `ErrDeleteLastAdminUser`) into actionable flash messages rather than a
+  generic 500.
+- **`badges.go`** — a full CRUD surface (list/new/view/edit/delete) for
+  the `user_model.Badge` profile-badge feature, plus a nested
+  `/slug/{badge_slug}/users` sub-resource for granting/revoking a badge
+  from individual users (`BadgeUsersPost` / `DeleteBadgeUser`).
+- **`emails.go`** — a cross-account email search (`SearchEmails`) that an
+  admin can filter by activation/primary status and sort by
+  email/username; `ActivateEmail` flips a specific address's activation
+  flag (guarding against `ErrEmailAlreadyUsed` if activating would create
+  a duplicate), `DeleteEmail` removes a secondary address via
+  `services/user.DeleteEmailAddresses`.
+- **`orgs.go`** — read-only listing only (`Organizations`); org lifecycle
+  management itself is handled through each organization's own settings
+  pages, not the admin panel.
+- **`repos.go`** — `Repos` reuses `explore.RenderRepoSearch` with
+  `Private: true` so every repository regardless of visibility is listed.
+  `DeleteRepo` closes any open `ctx.Repo.GitRepo` handle before calling
+  `repo_service.DeleteRepository`. `UnadoptedRepos` /
+  `AdoptOrDeleteRepository` handle the "directory exists on disk under
+  `RepoRootPath` but has no matching DB row" case — an admin can either
+  adopt it into a real repository (`repo_service.AdoptRepository`) or
+  delete the orphaned directory (`repo_service.DeleteUnadoptedRepository`).
+- **`packages.go`** — `Packages` combines `packages_model.SearchVersions`
+  with `GetTotalBlobSize`/`GetTotalUnreferencedBlobSize` to show both the
+  package listing *and* aggregate storage consumption (referenced vs.
+  unreferenced blob bytes) on one page. `CleanupExpiredData` triggers
+  `packages_cleanup_service.CleanupExpiredData` immediately rather than
+  waiting for its normal cron schedule — see
+  [Packages & Registry](../15-packages-registry/README.md).
+
+## Authentication Sources (`auths.go`)
+
+`Authentications` lists every configured `auth.Source` (LDAP, DLDAP, SMTP,
+OAuth2, PAM if compiled with `pam.Supported`, SSPI). `NewAuthSourcePost`
+and `EditAuthSourcePost` share a `switch auth.Type(form.Type)` that builds
+the correct typed `auth.Config` implementation
+(`parseLDAPConfig`/`parseSMTPConfig`/`parseOAuth2Config`/
+`pam_service.Source`/`parseSSPIConfig`) from the shared
+`forms.AuthenticationForm`. Notable validation baked into this path:
+
+- **OpenID Connect discovery** — if `Oauth2Provider == "openidConnect"`,
+  the discovery URL must parse as `http`/`https` before the source is
+  saved, since a bad discovery URL would otherwise only fail lazily at
+  first login.
+- **SSPI is a singleton** — `NewAuthSourcePost` explicitly queries for an
+  existing `auth.Source` with `LoginType: auth.SSPI` and rejects creation
+  of a second one, because SSPI authentication is inherently tied to the
+  single Windows domain the server itself is joined to.
+- **SSPI separator/locale validation** — `parseSSPIConfig` validates
+  `SSPISeparatorReplacement` against `separatorAntiPattern`
+  (`[^\w-\.]`) and `SSPIDefaultLanguage` against `langCodePattern`
+  (`^[a-z]{2}-[A-Z]{2}$`) before accepting the form.
+
+`DeleteAuthSource` calls `auth_service.DeleteSource`, which itself refuses
+to delete a source that still has bound user accounts
+(`auth.IsErrSourceInUse`) — the admin panel surfaces that as a flash error
+rather than allowing an orphaning delete. See
+[Auth Sources](../11-authentication/auth-sources.md) for the full source
+type reference.
+
+## System Webhooks & OAuth2 Applications
+
+`hooks.go`'s `DefaultOrSystemWebhooks` renders two logically distinct
+webhook sets on one page by copying `ctx.Data` into two maps (`def`/`sys`)
+and populating each independently from
+`webhook.GetDefaultWebhooks`/`webhook.GetSystemWebhooks`:
+
+- **Default webhooks** are cloned onto every *newly created* repository
+  automatically.
+- **System webhooks** fire for every event across *every* repository,
+  regardless of when it was created — useful for instance-wide audit or
+  notification integrations.
+
+Both sets reuse the exact same webhook edit/new/test/replay routes as
+per-repository webhooks (`repo_setting.WebHooksEdit`,
+`repo_setting.ReplayWebhook`, `addWebhookEditRoutes`/
+`addWebhookAddRoutes`) — see
+[Webhook Delivery Pipeline](../16-webhooks-integrations/webhook-delivery-pipeline.md)
+for the shared delivery internals.
+
+`applications.go` wraps the same `user_setting.OAuth2CommonHandlers` used
+by per-user/per-org OAuth2 application settings, but constructed with
+`OwnerID: 0` — i.e. these are **global** applications
+(`auth.FindOAuth2ApplicationsOptions{IsGlobal: true}`) not owned by any
+account, alongside a read-only list of `auth.BuiltinApplications()` (the
+applications Gitea itself ships, such as the git-credential helper).
+
+## Monitor: Cron, Stats, Queues & Diagnostics
+
+The `/-/admin/monitor` sub-group is the panel's operational-visibility
+center, spread across four files:
+
+- **`admin.go`** — `CronTasks` lists every registered `cron.Task` (name,
+  schedule, last run time/duration, next run time); `MonitorStats` dumps
+  the same `activities_model.GetStatistic(ctx).Counter` structure that
+  backs the `/metrics` endpoint, but as sorted key/value pairs for human
+  reading rather than Prometheus format.
+- **`queue.go`** — `Queues` lists every `queue.GetManager().ManagedQueue`
+  (name, current length, worker count); `QueueManage` shows one queue's
+  detail page; `QueueSet` lets an admin change
+  `mq.SetWorkerMaxNumber` live (clamping any value below `-1` up to `-1`,
+  which the queue package treats as "unlimited"); `QueueRemoveAllItems`
+  is an explicit escape hatch for the documented lack of transactional
+  guarantees in Gitea's queue implementation — if a queue gets stuck with
+  poisoned/duplicate items, an admin can drain it entirely rather than
+  restarting the whole server.
+- **`stacktrace.go`** — `Stacktrace` calls
+  `process.GetManager().ProcessStacktraces(false, showNoSystem)` to render
+  live goroutine stacks grouped by Gitea's internal process tracker
+  (which wraps long-running operations like git commands and task
+  execution with human-readable descriptions, not just raw goroutine
+  IDs); `StacktraceCancel` lets an admin forcibly cancel one tracked
+  process by ID via `process.GetManager().Cancel`.
+- **`perftrace.go`** — `PerfTrace` surfaces the in-memory ring buffer kept
+  by `tailmsg.GetManager().GetTraceRecorder()`, which records
+  slow/expensive operations (e.g. slow SQL). This tab is hidden in
+  production builds (`!setting.IsProd`) because it can expose SQL text;
+  production operators are steered toward the diagnosis ZIP instead.
+- **`diagnosis.go`** — `MonitorDiagnosis` (`GET
+  /-/admin/monitor/diagnosis`) is the "download everything" button: it
+  streams a ZIP directly to the response (`Content-Disposition:
+  attachment`, filename `gitea-diagnosis-<timestamp>.zip`) containing a
+  goroutine dump taken *before* profiling, a CPU profile captured for a
+  caller-specified duration (`seconds` form value, clamped to 1–300s via
+  `pprof.StartCPUProfile`/`StopCPUProfile`), a *second* goroutine dump
+  taken *after* profiling (to spot goroutine leaks introduced during the
+  profiled window), a heap profile, and the same perf-trace records shown
+  on the `/monitor/perftrace` page. This single artifact is the
+  recommended first attachment for any Gitea performance bug report.
+
+## Notices (`notice.go`)
+
+`system_model.Notice` rows are Gitea's internal audit/error log, distinct
+from the structured application log files configured under `[log]`.
+`Notices` paginates them (`setting.UI.Admin.NoticePagingNum` per page);
+`DeleteNotices` removes a specific set of IDs (submitted as `ids[]`);
+`EmptyNotices` truncates the entire table via
+`system_model.DeleteNotices(ctx, 0, 0)`. Because notices accumulate from
+every unexpected internal error across the whole instance, periodically
+emptying this table (or automating it via the `EmptyNotices` route) keeps
+the admin panel itself responsive.
+
+## Actions Runners, Variables & Workflows
+
+`/-/admin/actions` is a thin redirect (`misc.LocationRedirect("./actions/runners")`)
+into the same shared route builders
+(`addSettingsRunnersRoutes`, `addSettingsVariablesRoutes`,
+`addSettingsScopedWorkflowsRoutes`, `shared_actions.RunnerBulkActionPost`)
+used at the org/repo level, mounted here with an owner scope of "the whole
+instance" instead of a specific repository or organization — giving
+instance-wide runner registration/removal, instance-level Actions secrets
+and variables, and global workflow enable/disable toggles. See
+[Actions/CI](../14-actions-ci/README.md) for the runner registration
+protocol these routes drive.
+
+## Where to Go Next
+
+| If you want to... | Go to |
+|---|---|
+| Back up the instance or run integrity checks | [Backup, Restore & Doctor](backup-restore-and-doctor.md) |
+| Scrape metrics or profile a running process | [Monitoring & Observability](monitoring-and-observability.md) |
+| Manage the instance from the command line instead | [CLI & Admin Operations](../16-cli-admin/cli-commands.md) |
+| Understand the auth-source data model in depth | [Auth Sources](../11-authentication/auth-sources.md) |
+| Understand webhook delivery internals | [Webhook Delivery Pipeline](../16-webhooks-integrations/webhook-delivery-pipeline.md) |

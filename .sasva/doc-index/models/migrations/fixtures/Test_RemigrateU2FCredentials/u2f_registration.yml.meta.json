@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_RemigrateU2FCredentials/u2f_registration.yml",
+  "format": "yml",
+  "size_bytes": 7572,
+  "source_modified": "2026-07-18T06:05:26.817281+00:00",
+  "indexed_at": "2026-07-18T07:39:39.887770+00:00",
+  "text_length": 7572,
+  "line_count": 22
+}

@@ -1,0 +1,870 @@
+=== FILE: docs/04-configuration/settings-catalog.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Settings Catalog</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"> <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings Catalog</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../build-setup.html" class="nav-root">Setup and requirements</a>
+<a href="../build-source.html" class="nav-root">Prepare build environment</a>
+<a href="../community-governance.html" class="nav-root">Community governance and review process</a>
+<a href="../development.html" class="nav-root">Development</a>
+<a href="../guidelines-backend.html" class="nav-root">Backend development guidelines</a>
+<a href="../guidelines-frontend.html" class="nav-root">Frontend development guidelines</a>
+<a href="../guidelines-refactoring.html" class="nav-root">Refactoring guidelines</a>
+<a href="../index.html" class="nav-root">Gitea Technical Documentation</a>
+<a href="../release-management.html" class="nav-root">Release management</a>
+<a href="../testing.html" class="nav-root">Testing</a>
+<div class="section-title">Introduction</div>
+<a href="../01-introduction/README.html">Introduction</a>
+<div class="section-title">Architecture</div>
+<a href="../02-architecture/README.html">Architecture</a>
+<a href="../02-architecture/deployment-topologies.html">Deployment Topologies</a>
+<a href="../02-architecture/module-dependency-map.html">Module Dependency Map</a>
+<a href="../02-architecture/request-lifecycle.html">Request Lifecycle</a>
+<a href="../02-architecture/system-architecture.html">System Architecture</a>
+<div class="section-title">Getting Started</div>
+<a href="../03-getting-started/README.html">Getting Started</a>
+<a href="../03-getting-started/configuration-app-ini.html">Configuration (`app.ini`)</a>
+<a href="../03-getting-started/installation-and-build.html">Installation and Build</a>
+<a href="../03-getting-started/overview.html">Overview</a>
+<a href="../03-getting-started/running-gitea.html">Running Gitea</a>
+<div class="section-title">Configuration</div>
+<a href="../04-configuration/README.html">Configuration</a>
+<a href="../04-configuration/settings-catalog.html">Settings Catalog</a>
+<div class="section-title">Database Models</div>
+<a href="../05-database-models/README.html">Database & Models</a>
+<a href="../05-database-models/db-engine-and-drivers.html">DB Engine and Drivers</a>
+<a href="../05-database-models/issues-and-pulls-model.html">Issues & Pull Requests Model</a>
+<a href="../05-database-models/migrations.html">Database Migrations</a>
+<a href="../05-database-models/permissions-model.html">Permissions Model</a>
+<a href="../05-database-models/repository-model.html">Repository Model</a>
+<a href="../05-database-models/supplementary-models.html">Supplementary Models</a>
+<a href="../05-database-models/testing-fixtures.html">Testing & Fixtures</a>
+<a href="../05-database-models/user-organization-model.html">User & Organization Model</a>
+<div class="section-title">Web Routers</div>
+<a href="../06-web-routers/README.html">Web Routers</a>
+<a href="../06-web-routers/events-and-healthcheck.html">Events (Server-Sent Events) & Healthcheck</a>
+<a href="../06-web-routers/install-and-private.html">Install & Private Routers</a>
+<a href="../06-web-routers/middleware-chain.html">Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context</a>
+<a href="../06-web-routers/route-organization.html">Route Organization</a>
+<a href="../06-web-routers/web-routes.html">Web Router & Server-Rendered UI</a>
+<div class="section-title">Rest Api</div>
+<a href="../07-rest-api/README.html">REST API</a>
+<a href="../07-rest-api/api-conventions-and-swagger.html">API Conventions & Swagger</a>
+<a href="../07-rest-api/api-v1-overview.html">REST API v1 Overview</a>
+<a href="../07-rest-api/packages-and-actions-api.html">Packages & Actions API</a>
+<div class="section-title">Services</div>
+<a href="../08-services/README.html">Services</a>
+<a href="../08-services/auth-providers.html">Authentication & Authorization</a>
+<a href="../08-services/services-catalog-full.html">Services Catalog (Full)</a>
+<a href="../08-services/services-catalog.html">Services Catalog</a>
+<div class="section-title">Core Modules</div>
+<a href="../09-core-modules/README.html">Core Modules</a>
+<a href="../09-core-modules/frontend-build.html">Frontend Build Pipeline</a>
+<a href="../09-core-modules/frontend-features.html">Frontend Features & the "Islands of Interactivity" Pattern</a>
+<a href="../09-core-modules/git-module.html">Git Module</a>
+<a href="../09-core-modules/indexers.html">Search & Indexing</a>
+<a href="../09-core-modules/lfs-and-hooks.html">Git LFS & Server-Side Hooks</a>
+<a href="../09-core-modules/markup-engines.html">Markup Rendering Engines</a>
+<a href="../09-core-modules/modules-catalog-full.html">Modules Catalog (Full)</a>
+<a href="../09-core-modules/notify-mailer-webhook.html">Notifications, Mailer & Webhooks</a>
+<a href="../09-core-modules/storage-queue-cache.html">Storage, Queue & Caching</a>
+<div class="section-title">Git Integration</div>
+<a href="../10-git-integration/README.html">Git Integration</a>
+<a href="../10-git-integration/git-backends-and-catfile.html">Git Backends & Cat-File Batch Processes</a>
+<a href="../10-git-integration/git-operations-and-hooks.html">Git Operations & Server-Side Hooks</a>
+<a href="../10-git-integration/gitrepo-and-repository-access.html">GitRepo & Repository Access</a>
+<div class="section-title">Authentication</div>
+<a href="../11-authentication/README.html">Authentication</a>
+<a href="../11-authentication/auth-sources.html">Authentication Sources</a>
+<a href="../11-authentication/authorization-model.html">Authorization Model</a>
+<a href="../11-authentication/tokens-and-oauth-apps.html">Access Tokens & OAuth2 Applications</a>
+<a href="../11-authentication/two-factor-and-recovery.html">Two-Factor Authentication & Account Recovery</a>
+<div class="section-title">Repository Management</div>
+<a href="../12-repository-management/README.html">Repository Management</a>
+<a href="../12-repository-management/releases-wiki-projects.html">Releases, Wiki & Projects</a>
+<a href="../12-repository-management/repository-lifecycle.html">Repository Lifecycle</a>
+<div class="section-title">Issues Pullrequests</div>
+<a href="../13-issues-pullrequests/README.html">Issues & Pull Requests</a>
+<a href="../13-issues-pullrequests/branch-protection-and-merge.html">Branch Protection & Merge</a>
+<a href="../13-issues-pullrequests/code-review-and-comments.html">Code Review & Comments</a>
+<a href="../13-issues-pullrequests/issue-tracking-workflow.html">Issue Tracking Workflow</a>
+<div class="section-title">Actions Ci</div>
+<a href="../14-actions-ci/README.html">Actions & CI</a>
+<a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>
+<div class="section-title">Packages Registry</div>
+<a href="../15-packages-registry/README.html">Packages & Registry</a>
+<a href="../15-packages-registry/database-schema.html">Package Registry Database Schema</a>
+<a href="../15-packages-registry/package-flow.html">Package Upload / Download Flow</a>
+<a href="../15-packages-registry/protocol-adapters.html">Protocol Adapters</a>
+<a href="../15-packages-registry/shared-infrastructure.html">Shared Infrastructure</a>
+<a href="../15-packages-registry/supported-ecosystems.html">Supported Package Ecosystems</a>
+<div class="section-title">Cli Admin</div>
+<a href="../16-cli-admin/README.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/cli-command-reference-index.html">CLI Command Reference Index</a>
+<a href="../16-cli-admin/cli-commands.html">CLI & Admin Operations</a>
+<a href="../16-cli-admin/service-management.html">Running Gitea as a System Service</a>
+<div class="section-title">Webhooks Integrations</div>
+<a href="../16-webhooks-integrations/README.html">Webhooks & Integrations</a>
+<a href="../16-webhooks-integrations/third-party-integrations.html">Third-Party Integrations</a>
+<a href="../16-webhooks-integrations/webhook-delivery-pipeline.html">Webhook Delivery Pipeline</a>
+<a href="../16-webhooks-integrations/webhook-event-types-and-payloads.html">Webhook Event Types & Payloads</a>
+<div class="section-title">Notifications</div>
+<a href="../17-notifications/README.html">Notifications</a>
+<a href="../17-notifications/email-notification-templates.html">Email Notification Templates</a>
+<a href="../17-notifications/notification-delivery-and-uinotification.html">Notification Delivery & UI Notifications</a>
+<div class="section-title">Admin Guide</div>
+<a href="../18-admin-guide/README.html">Admin Guide</a>
+<a href="../18-admin-guide/admin-panel-and-operations.html">Admin Panel & Operations</a>
+<a href="../18-admin-guide/backup-restore-and-doctor.html">Backup, Restore & Doctor</a>
+<a href="../18-admin-guide/monitoring-and-observability.html">Monitoring & Observability</a>
+<div class="section-title">Cli Commands</div>
+<a href="../19-cli-commands/README.html">CLI Commands</a>
+<a href="../19-cli-commands/cli-command-reference-index.html">CLI Command Reference Index</a>
+<div class="section-title">Frontend Ui</div>
+<a href="../20-frontend-ui/README.html">Frontend & UI</a>
+<a href="../20-frontend-ui/go-templates.html">Go Templates & Views</a>
+<a href="../20-frontend-ui/web_src-directory-map.html">`web_src/` Directory Map</a>
+<div class="section-title">Testing Quality</div>
+<a href="../21-testing-quality/README.html">Testing & Quality</a>
+<a href="../21-testing-quality/unit-integration-e2e-fuzz.html">Unit, Integration, E2E & Fuzz Testing</a>
+<div class="section-title">Contributing Development</div>
+<a href="../22-contributing-development/README.html">Contributing & Development</a>
+<a href="../22-contributing-development/ai-assisted-contributions.html">AI-Assisted Contributions</a>
+<a href="../22-contributing-development/backend-coding-conventions.html">Backend Coding Conventions</a>
+<a href="../22-contributing-development/contribution-workflow.html">Contribution Workflow & Governance</a>
+<a href="../22-contributing-development/frontend-coding-conventions.html">Frontend Coding Conventions</a>
+<a href="../22-contributing-development/governance-and-security.html">Governance & Security</a>
+<a href="../22-contributing-development/issue-pr-templates-and-automation.html">Issue & PR Templates and Automation</a>
+<div class="section-title">Build Cicd Deployment</div>
+<a href="../build-cicd-deployment/README.html">Build, CI/CD & Deployment</a>
+<a href="../build-cicd-deployment/docker-and-packaging.html">Docker & Packaging</a>
+<a href="../build-cicd-deployment/github-workflows.html">GitHub Workflows & Actions</a>
+<a href="../build-cicd-deployment/makefile-and-build.html">Makefile & Build System</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../04-configuration/README.html">Configuration</a> &rsaquo; Settings Catalog</div>
+<h1>Settings Catalog</h1>
+<h1 id="settings-catalog">Settings Catalog</h1>
+<p>This page is a reference catalog of Gitea's configuration surface: which Go source file in <code>modules/setting/*.go</code> owns which <code>app.ini</code> section, how environment variables can override any value, and how a small subset of settings can additionally be changed live from the Admin UI without restarting the server (the "dynamic" settings mechanism).</p>
+<blockquote>
+<p>[!TIP]
+For a narrative walkthrough of the INI file format and the most commonly-touched sections (<code>[server]</code>, <code>[database]</code>, <code>[security]</code>, <code>[mailer]</code>), see <a href="../03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a>. This page focuses on <strong>mapping every settings file to its INI section</strong> and on the <strong>loading/override mechanics</strong>.</p>
+</blockquote>
+<h2 id="how-configuration-loading-works">How Configuration Loading Works<a href="#how-configuration-loading-works" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea's configuration subsystem lives entirely in <code>modules/setting</code>. The flow from disk to typed Go variables is:</p>
+<pre class="mermaid">flowchart LR
+    A["custom/conf/app.ini"] --> B["ini.File<br/>(gopkg.in/ini.v1)"]
+    E["GITEA__SECTION__KEY<br/>env vars"] --> C["EnvironmentToConfig()<br/>config_env.go"]
+    C --> B
+    B --> D["iniConfigProvider<br/>config_provider.go"]
+    D --> F["loadXxxFrom(cfg)<br/>one per modules/setting/*.go"]
+    F --> G["package-level Go vars<br/>e.g. setting.Server, setting.Database"]
+    H["system_setting DB table"] --> I["config.Option~T~<br/>config_option_instance.go"]
+    D -.->|"CfgSecKeyGetter fallback"| I
+    G --> J["Rest of the application"]
+    I --> J</pre>
+<ol>
+<li><strong><code>NewConfigProviderFromFile</code></strong> (<code>config_provider.go</code>) loads <code>app.ini</code> (and any files appended to it) into a <code>gopkg.in/ini.v1</code> document wrapped by the <code>ConfigProvider</code>/<code>ConfigSection</code>/<code>ConfigKey</code> interfaces. This abstraction is what the rest of <code>modules/setting</code> reads from — no code touches the <code>ini</code> package directly.</li>
+<li><strong><code>EnvironmentToConfig</code></strong> (<code>config_env.go</code>) is run over the loaded provider before any <code>loadXxxFrom</code> function executes, injecting/overriding INI keys from <code>GITEA__...</code> environment variables.</li>
+<li>Each settings file exposes one (or more) <code>loadXxxFrom(rootCfg ConfigProvider)</code> function that reads a specific <code>[section]</code> via <code>rootCfg.Section("name")</code> and populates exported package-level variables (e.g. <code>setting.Database</code>, <code>setting.Git</code>, <code>setting.Actions</code>). <code>modules/setting/setting.go</code>'s <code>loadCommonSettingsFrom</code> and <code>LoadSettings</code> call these in a carefully ordered sequence (see below).</li>
+<li>A separate, much smaller mechanism — <code>config.Option[T]</code> in <code>modules/setting/config</code> — supports <strong>dynamic</strong> settings that can be changed at runtime from the Admin UI and are persisted to the <code>system_setting</code> database table instead of <code>app.ini</code>. These are documented in <a href="#dynamic-vs-static-settings">Dynamic vs. Static Settings</a> below.</li>
+</ol>
+<h3 id="load-ordering">Load Ordering<a href="#load-ordering" class="heading-anchor" aria-label="Link">#</a></h3>
+<p><code>loadCommonSettingsFrom</code> in <code>setting.go</code> loads settings needed very early (install lock, run mode, logging, server, SSH — the SSH check needs to happen before the run-user match check) and then a long list of the remaining common settings. A second pass, <code>LoadSettings()</code>, is only run for a fully started server (not during <code>install</code>) and loads settings that depend on the database or other already-loaded settings (DB connection, mailer, queues, indexers, tasks):</p>
+<pre class="highlight"><code class="language-go">// modules/setting/setting.go (abridged)
+func loadCommonSettingsFrom(cfg ConfigProvider) error {
+    InstallLock = HasInstallLock(cfg)
+    loadRunModeFrom(cfg)
+    loadLogGlobalFrom(cfg)
+    loadServerFrom(cfg)
+    loadSSHFrom(cfg)
+    mustCurrentRunUserMatch(cfg)
+    loadOAuth2From(cfg)
+    loadSecurityFrom(cfg)
+    // ... attachment, LFS, time, repository, avatars, packages, actions, UI,
+    // admin, api, metrics, camo, i18n, git, mirror, markup, global lock, other
+}
+
+func LoadSettings() {
+    initAllLoggers()
+    loadDBSetting(CfgProvider)
+    loadServiceFrom(CfgProvider)
+    loadOAuth2ClientFrom(CfgProvider)
+    loadCacheFrom(CfgProvider)
+    loadSessionFrom(CfgProvider)
+    loadCorsFrom(CfgProvider)
+    loadMailsFrom(CfgProvider)
+    loadProxyFrom(CfgProvider)
+    loadWebhookFrom(CfgProvider)
+    loadMigrationsFrom(CfgProvider)
+    loadIndexerFrom(CfgProvider)
+    loadTaskFrom(CfgProvider)
+    LoadQueueSettings()
+    loadProjectFrom(CfgProvider)
+    loadMimeTypeMapFrom(CfgProvider)
+    loadFederationFrom(CfgProvider)
+}</code></pre>
+<blockquote>
+<p>[!NOTE]
+The comment "WARNING: don't change the sequence except you know what you are doing" in <code>loadCommonSettingsFrom</code> is not decorative — several loaders read package variables set by earlier loaders (e.g. <code>mustCurrentRunUserMatch</code> depends on <code>SSH.StartBuiltinServer</code>, and <code>loadRepositoryFrom</code> checks <code>Packages.Enabled</code>/<code>Actions.Enabled</code> which are only meaningful after those sections load).</p>
+</blockquote>
+<h2 id="settings-file-ini-section-catalog">Settings File → INI Section Catalog<a href="#settings-file-ini-section-catalog" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The table below enumerates every settings file in <code>modules/setting/</code> (excluding <code>_test.go</code> files), the INI section(s) it maps, and a short description of its purpose. "Dynamic option" marks files that also register <code>config.Option[T]</code> values (system-setting/DB-backed, editable from the Admin UI) in addition to, or instead of, static <code>app.ini</code> keys.</p>
+<table>
+<thead>
+<tr>
+<th>Settings file</th>
+<th>INI section(s)</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setting.go</code></td>
+<td><em>(root, no header)</em> — <code>RUN_MODE</code>, <code>RUN_USER</code>, <code>WORK_PATH</code>, <code>I_AM_BEING_UNSAFE_RUNNING_AS_ROOT</code></td>
+<td>Global bootstrap: run mode/user, orchestrates the overall load sequence (<code>loadCommonSettingsFrom</code>, <code>LoadSettings</code>).</td>
+</tr>
+<tr>
+<td><code>config_provider.go</code></td>
+<td><em>(infra, no section of its own)</em></td>
+<td>Defines the <code>ConfigProvider</code>/<code>ConfigSection</code>/<code>ConfigKey</code> abstraction over <code>ini.v1</code>; helper functions (<code>ConfigSectionKey</code>, <code>ConfigInheritedKey</code>, <code>deprecatedSetting</code>) used by every other loader.</td>
+</tr>
+<tr>
+<td><code>config_env.go</code></td>
+<td><em>(infra)</em></td>
+<td>Implements <code>GITEA__SECTION__KEY</code> environment-variable override mechanism (see <a href="#environment-variable-overrides">Environment Variable Overrides</a>).</td>
+</tr>
+<tr>
+<td><code>config.go</code> / <code>config_option_instance.go</code> / <code>config/*.go</code></td>
+<td><code>[picture]</code>, <code>[repository]</code> (partial, dynamic keys only), plus DB-backed instance settings</td>
+<td>Dynamic settings registry: <code>config.Option[T]</code>, <code>WebBannerType</code>, <code>MaintenanceModeType</code> (see <a href="#dynamic-vs-static-settings">Dynamic vs. Static Settings</a>).</td>
+</tr>
+<tr>
+<td><code>server.go</code></td>
+<td><code>[server]</code></td>
+<td>HTTP/HTTPS/FastCGI listener, <code>ROOT_URL</code>/public URL detection, ACME/TLS, graceful restart, static file serving.</td>
+</tr>
+<tr>
+<td><code>ssh.go</code></td>
+<td><code>[server]</code> (SSH-prefixed keys), <code>[ssh.minimum_key_sizes]</code></td>
+<td>Built-in vs. OS SSH server, host keys, trusted CA keys, minimum key size policy.</td>
+</tr>
+<tr>
+<td><code>database.go</code></td>
+<td><code>[database]</code></td>
+<td>DB engine selection (<code>mysql</code>/<code>postgres</code>/<code>mssql</code>/<code>sqlite3</code>), connection pool tuning, retries, SQL logging.</td>
+</tr>
+<tr>
+<td><code>security.go</code></td>
+<td><code>[security]</code>, cross-reads <code>[cors]</code> for <code>X_FRAME_OPTIONS</code></td>
+<td><code>SECRET_KEY</code>/<code>INTERNAL_TOKEN</code> (and their <code>*_URI</code> file-based variants), install lock, password policy, reverse-proxy auth headers, HTTP security headers, allowed-host list.</td>
+</tr>
+<tr>
+<td><code>camo.go</code></td>
+<td><code>[camo]</code></td>
+<td>Optional image-proxy (Camo) settings to avoid mixed-content/leak-referrer issues for external images.</td>
+</tr>
+<tr>
+<td><code>oauth2.go</code></td>
+<td><code>[oauth2]</code>, <code>[oauth2_client]</code></td>
+<td>Built-in OAuth2 provider (JWT signing key, token TTLs) and OAuth2 <em>client</em> behavior for third-party logins/updates.</td>
+</tr>
+<tr>
+<td><code>log.go</code></td>
+<td><code>[log]</code>, <code>[log.&lt;mode-name&gt;]</code> (e.g. <code>[log.console]</code>, <code>[log.file]</code>, <code>[log.conn]</code>)</td>
+<td>Logger configuration: root log level, per-writer sub-sections, access log template.</td>
+</tr>
+<tr>
+<td><code>git.go</code></td>
+<td><code>[git]</code>, <code>[git.timeout]</code>, <code>[git.config]</code>, <code>[git.reflog]</code> (deprecated)</td>
+<td>Git binary behavior: diff limits, GC args, wire protocol, passthrough <code>git config</code> key/value pairs.</td>
+</tr>
+<tr>
+<td><code>service.go</code></td>
+<td><code>[service]</code>, <code>[service.explore]</code>, <code>[openid]</code>, <code>[qos]</code></td>
+<td>Registration/sign-in policy, captcha providers, visibility defaults, explore-page filtering, OpenID login, QoS (request prioritization).</td>
+</tr>
+<tr>
+<td><code>repository.go</code></td>
+<td><code>[repository]</code>, <code>[repository.editor]</code>, <code>[repository.upload]</code>, <code>[repository.pull-request]</code>, <code>[repository.issue]</code>, <code>[repository.release]</code>, <code>[repository.signing]</code></td>
+<td>Repository-wide defaults and per-feature sub-sections (web editor, upload, PR, issue, release, commit-signing behavior).</td>
+</tr>
+<tr>
+<td><code>mime_type_map.go</code></td>
+<td><code>[repository.mimetype_mapping]</code></td>
+<td>Custom file-extension → MIME-type overrides used when serving raw repository content.</td>
+</tr>
+<tr>
+<td><code>project.go</code></td>
+<td><code>[project]</code></td>
+<td>Kanban-style Project board defaults.</td>
+</tr>
+<tr>
+<td><code>cors.go</code></td>
+<td><code>[cors]</code></td>
+<td>Cross-Origin Resource Sharing policy for the API.</td>
+</tr>
+<tr>
+<td><code>ui.go</code></td>
+<td><code>[ui]</code>, <code>[ui.admin]</code>, <code>[ui.user]</code>, <code>[ui.meta]</code>, <code>[ui.notification]</code>, <code>[ui.svg]</code>, <code>[ui.csv]</code></td>
+<td>Pagination sizes, themes, emoji/reactions, notification polling intervals, SVG/CSV render limits.</td>
+</tr>
+<tr>
+<td><code>markup.go</code></td>
+<td><code>[markdown]</code>, <code>[markup]</code>, <code>[markup.&lt;name&gt;]</code> (custom renderers)</td>
+<td>Markdown rendering options and pluggable external renderers (each custom renderer gets its own <code>[markup.xxx]</code> sub-section).</td>
+</tr>
+<tr>
+<td><code>highlight.go</code></td>
+<td><code>[highlight.mapping]</code></td>
+<td>Maps file extensions to a specific Chroma syntax-highlighting lexer name.</td>
+</tr>
+<tr>
+<td><code>indexer.go</code></td>
+<td><code>[indexer]</code></td>
+<td>Code search and issue search indexer backend selection (bleve/elasticsearch/meilisearch), paths, connection strings.</td>
+</tr>
+<tr>
+<td><code>queue.go</code></td>
+<td><code>[queue]</code>, <code>[queue.&lt;name&gt;]</code> (e.g. <code>[queue.issue_indexer]</code>)</td>
+<td>Background queue backend (<code>level</code>/<code>channel</code>/<code>redis</code>/<code>dummy</code>), per-queue overrides, worker counts.</td>
+</tr>
+<tr>
+<td><code>admin.go</code></td>
+<td><code>[admin]</code></td>
+<td>Default admin-created-user email notification behavior, disabled regex/self-registration options for admin-only account creation.</td>
+</tr>
+<tr>
+<td><code>api.go</code></td>
+<td><code>[api]</code> (reads <code>ROOT_URL</code> from <code>[server]</code> for defaults)</td>
+<td>REST API-wide settings: max response items, enable Swagger, default git trees per page.</td>
+</tr>
+<tr>
+<td><code>metrics.go</code></td>
+<td><code>[metrics]</code></td>
+<td>Prometheus <code>/metrics</code> endpoint toggle and auth token requirement.</td>
+</tr>
+<tr>
+<td><code>i18n.go</code></td>
+<td><code>[i18n]</code></td>
+<td>Enabled UI languages (<code>LANGS</code>) and display names (<code>NAMES</code>).</td>
+</tr>
+<tr>
+<td><code>mirror.go</code></td>
+<td><code>[mirror]</code>, checks <code>[repository].DISABLE_MIRRORS</code></td>
+<td>Pull-mirror concurrency/timeout defaults.</td>
+</tr>
+<tr>
+<td><code>webhook.go</code></td>
+<td><code>[webhook]</code></td>
+<td>Outgoing webhook delivery: timeout, allowed target host list, paged-history retention.</td>
+</tr>
+<tr>
+<td><code>mailer.go</code></td>
+<td><code>[mailer]</code>, <code>[mailer.override_header]</code></td>
+<td>Outgoing SMTP/sendmail configuration, per-header overrides, and (cross-reads <code>[service]</code>) whether email confirmation/notification mail are enabled.</td>
+</tr>
+<tr>
+<td><code>incoming_email.go</code></td>
+<td><code>[email.incoming]</code></td>
+<td>Inbound email (reply-by-email) IMAP polling configuration for issue/PR comments.</td>
+</tr>
+<tr>
+<td><code>cache.go</code></td>
+<td><code>[cache]</code>, <code>[cache.last_commit]</code></td>
+<td>Generic cache backend (<code>memory</code>/<code>redis</code>/<code>memcache</code>/<code>twoqueue</code>) plus a dedicated last-commit-info cache.</td>
+</tr>
+<tr>
+<td><code>session.go</code></td>
+<td><code>[session]</code></td>
+<td>Web session store backend and cookie behavior.</td>
+</tr>
+<tr>
+<td><code>picture.go</code></td>
+<td><code>[picture]</code>, <code>[avatar]</code>, <code>[repo-avatar]</code></td>
+<td>Avatar storage paths/sizes and (via <code>config.go</code>) the dynamic <code>DISABLE_GRAVATAR</code> / <code>ENABLE_FEDERATED_AVATAR</code> options.</td>
+</tr>
+<tr>
+<td><code>attachment.go</code></td>
+<td><code>[attachment]</code></td>
+<td>Issue/PR/release attachment size limits, allowed types, storage backend selection.</td>
+</tr>
+<tr>
+<td><code>time.go</code></td>
+<td><code>[time]</code></td>
+<td>Default UI time-zone display (<code>DEFAULT_UI_LOCATION</code>).</td>
+</tr>
+<tr>
+<td><code>cron.go</code> (+ each feature's own file, e.g. <code>mirror.go</code>)</td>
+<td><code>[cron]</code>, <code>[cron.&lt;task-name&gt;]</code> (~25 sub-sections, e.g. <code>[cron.archive_cleanup]</code>, <code>[cron.update_mirrors]</code>, <code>[cron.gc_lfs]</code>)</td>
+<td>Generic cron scheduling helper (<code>SetCronConfigs</code>, uses reflection over struct fields tagged with cron task names) shared by every periodic task.</td>
+</tr>
+<tr>
+<td><code>task.go</code></td>
+<td><code>[task]</code>, <code>[queue.task]</code></td>
+<td>Migration/mirror-clone task queue configuration.</td>
+</tr>
+<tr>
+<td><code>migrations.go</code></td>
+<td><code>[migrations]</code></td>
+<td>Repository migration (import from GitHub/GitLab/etc.) allow/block lists and timeout.</td>
+</tr>
+<tr>
+<td><code>federation.go</code></td>
+<td><code>[federation]</code></td>
+<td>ActivityPub federation enable flag, request size limits, custom headers.</td>
+</tr>
+<tr>
+<td><code>packages.go</code></td>
+<td><code>[packages]</code></td>
+<td>Package registry enable flag, storage backend, per-ecosystem chunk size limits (see <a href="../15-packages-registry/README.html">Packages Registry</a>).</td>
+</tr>
+<tr>
+<td><code>actions.go</code></td>
+<td><code>[actions]</code>, <code>[actions.artifacts]</code>/storage sections</td>
+<td>Actions (CI/CD) enable flag, workflow directory discovery, log/artifact retention, task-picking concurrency, log compression (see <a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a>).</td>
+</tr>
+<tr>
+<td><code>lfs.go</code></td>
+<td><code>[server]</code> (<code>LFS_START_SERVER</code>, <code>LFS_JWT_SECRET*</code>), <code>[lfs]</code></td>
+<td>Git LFS server toggle, JWT auth secret, LFS object storage backend.</td>
+</tr>
+<tr>
+<td><code>storage.go</code></td>
+<td><code>[storage]</code>, <code>[storage.&lt;name&gt;]</code> (e.g. <code>[storage.repo-archive]</code>, <code>[storage.packages]</code>, <code>[storage.minio]</code>, <code>[storage.azureblob]</code>, <code>[storage.actions_log]</code>)</td>
+<td>Generic object storage abstraction (local/MinIO/Azure Blob) shared by LFS, avatars, attachments, packages, actions logs/artifacts, and repo archives (see <a href="../09-core-modules/storage-queue-cache.html">Storage, Queue &amp; Caching</a>).</td>
+</tr>
+<tr>
+<td><code>repository_archive.go</code></td>
+<td><code>[repo-archive]</code> (via <code>getStorage</code>, falls back to <code>[storage.repo-archive]</code>)</td>
+<td>Repository archive (zip/tar.gz download) storage-specific settings.</td>
+</tr>
+<tr>
+<td><code>proxy.go</code></td>
+<td><code>[proxy]</code></td>
+<td>Outbound HTTP proxy used for webhooks, migrations, and other outgoing requests.</td>
+</tr>
+<tr>
+<td><code>other.go</code></td>
+<td><code>[other]</code></td>
+<td>Miscellaneous flags: <code>SHOW_FOOTER_VERSION</code>, <code>ENABLE_SITEMAP</code>, <code>ENABLE_FEED_HEADER</code>, etc.</td>
+</tr>
+<tr>
+<td><code>gloabl_lock.go</code> (sic — file name typo in upstream)</td>
+<td><code>[global_lock]</code></td>
+<td>Distributed lock backend selection (in-memory vs. Redis) used to serialize cross-node operations.</td>
+</tr>
+<tr>
+<td><code>glob.go</code></td>
+<td><em>(helper, no section)</em></td>
+<td>Shared glob-pattern parsing helper used by several <code>*_LIST</code> config keys (e.g. email domain allow/block lists).</td>
+</tr>
+<tr>
+<td><code>global.go</code></td>
+<td><em>(package-level constants)</em></td>
+<td>Shared constants (e.g. <code>SettingsKeyHiddenCommentTypes</code>) with no dedicated INI section.</td>
+</tr>
+<tr>
+<td><code>path.go</code></td>
+<td><em>(root)</em> — <code>WORK_PATH</code>, and CLI/env inputs</td>
+<td>Resolves <code>AppPath</code>, <code>AppWorkPath</code>, <code>CustomPath</code>, <code>CustomConf</code> before any INI section is even read (see <a href="../03-getting-started/configuration-app-ini.html#loading-order-and-path-resolution">Configuration (<code>app.ini</code>) → Loading Order</a>).</td>
+</tr>
+<tr>
+<td><code>testenv.go</code></td>
+<td><em>(test-only)</em></td>
+<td>Test-harness helpers to construct a <code>ConfigProvider</code> in unit tests; not used in production.</td>
+</tr>
+<tr>
+<td><code>asset_dynamic.go</code> / <code>asset_static.go</code></td>
+<td><em>(build-tag switch, no section)</em></td>
+<td>Chooses between filesystem-based (<code>dynamic</code>) and embedded (<code>static</code>, release builds) asset loading; controlled by Go build tags, not INI.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="environment-variable-overrides">Environment Variable Overrides<a href="#environment-variable-overrides" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Any <code>app.ini</code> key can be overridden — or injected without an <code>app.ini</code> file at all — through environment variables. This is implemented entirely in <code>modules/setting/config_env.go</code> and consumed by <code>EnvironmentToConfig</code>, which is called before the section loaders run.</p>
+<h3 id="naming-convention">Naming Convention<a href="#naming-convention" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code>GITEA__SECTION__KEY=value</code></pre>
+<ul>
+<li>Prefix is the constant <code>EnvConfigKeyPrefixGitea = "GITEA__"</code>.</li>
+<li><code>SECTION</code> and <code>KEY</code> are separated by a double underscore <code>__</code>.</li>
+<li>Section names are lower-cased automatically (<code>decodeEnvSectionKey</code>), matching the case-insensitive nature of INI section names.</li>
+<li>The <strong>default (no-header) section</strong> is addressed with an empty section name: <code>GITEA____KEY=value</code> (double underscore, empty section, double underscore, key).</li>
+</ul>
+<h3 id="escaping-special-characters-sub-sections-dots-dashes">Escaping Special Characters (sub-sections, dots, dashes)<a href="#escaping-special-characters-sub-sections-dots-dashes" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Section names that contain characters outside <code>[A-Z0-9_]</code> (most commonly a <code>.</code> for sub-sections like <code>log.console</code>, or a <code>-</code> as in <code>repository.pull-request</code>) must be escaped using the <code>_0x</code>/<code>_0X</code> hex-byte encoding implemented by <code>decodeEnvSectionKey</code>:</p>
+<pre class="highlight"><code>_0x2E_   ; encodes '.' (0x2E)
+_0x2D_   ; encodes '-' (0x2D)</code></pre>
+<p>Example — overriding <code>[log.console] LEVEL</code> and <code>[repository.pull-request] WORK_IN_PROGRESS_PREFIXES</code>:</p>
+<pre class="highlight"><code class="language-bash">GITEA__LOG_0x2E_CONSOLE__LEVEL=debug
+GITEA__REPOSITORY_0x2D_PULL_0x2D_REQUEST__WORK_IN_PROGRESS_PREFIXES="WIP:,[WIP]"</code></pre>
+<h3 id="reading-a-value-from-a-file">Reading a Value from a File<a href="#reading-a-value-from-a-file" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Appending <code>__FILE</code> to the key name (<code>EnvConfigKeySuffixFile = "__FILE"</code>) tells Gitea to treat the environment variable's value as a <strong>path</strong>, read that file's contents, and use the (trimmed) file contents as the actual config value — the standard pattern for injecting secrets from Docker/Kubernetes secret mounts without putting them directly in the environment:</p>
+<pre class="highlight"><code class="language-bash">GITEA__SECURITY__SECRET_KEY__FILE=/run/secrets/gitea_secret_key
+GITEA__MAILER__PASSWD__FILE=/run/secrets/smtp_password</code></pre>
+<p><code>EnvironmentToConfig</code> strips a single trailing <code>\n</code> or <code>\r\n</code> from the file content before applying it.</p>
+<h3 id="precedence-and-collection">Precedence and Collection<a href="#precedence-and-collection" class="heading-anchor" aria-label="Link">#</a></h3>
+<ul>
+<li>Environment variables are applied <strong>on top of</strong> whatever <code>app.ini</code> already contains — <code>EnvironmentToConfig</code> creates the section/key if missing, or overwrites the existing key's value if present.</li>
+<li><code>CollectEnvConfigKeys()</code> scans <code>os.Environ()</code> for anything with the <code>GITEA__</code> prefix, primarily so the install wizard can display which environment-driven keys are in effect (<code>routers/install/install.go</code>) — this is informational, not required for the override to take effect.</li>
+<li><code>ClearEnvConfigKeys()</code> unsets every <code>GITEA__*</code> variable from the current process environment after installation completes, so environment-provided secrets aren't inherited by subprocesses Gitea spawns (e.g. git hooks) unless intentionally passed through.</li>
+<li><code>UnsetUnnecessaryEnvVars()</code> additionally clears <code>XDG_CONFIG_HOME</code> so Gitea's git operations consistently use <code>HOME/.gitconfig</code> rather than an XDG-based config path.</li>
+</ul>
+<p>This is the mechanism the official Docker image relies on to let operators configure Gitea purely via <code>docker run -e GITEA__...</code> or a Kubernetes <code>ConfigMap</code>/<code>Secret</code>, without mounting a custom <code>app.ini</code> at all.</p>
+<h2 id="dynamic-vs-static-settings">Dynamic vs. Static Settings<a href="#dynamic-vs-static-settings" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>The overwhelming majority of Gitea's configuration is <strong>static</strong>: read once from <code>app.ini</code> (plus environment overrides) at process startup into package-level Go variables (<code>setting.Server</code>, <code>setting.Database</code>, <code>setting.Git</code>, etc.), and never re-read until the process restarts. Changing these requires editing <code>app.ini</code> (or the environment) and restarting Gitea.</p>
+<p>A small, deliberately narrow set of options are <strong>dynamic</strong>: they can be changed by an instance administrator from <strong>Admin Panel → Configuration → Config Settings</strong> (<code>routers/web/admin/config.go</code>, function <code>ConfigSettings</code>/<code>ChangeConfig</code>) while the server keeps running, with no restart required. These are implemented by <code>config.Option[T]</code> in <code>modules/setting/config/value.go</code>, registered from <code>modules/setting/config_option_instance.go</code> and <code>modules/setting/config.go</code>.</p>
+<pre class="mermaid">sequenceDiagram
+    participant Admin as Admin (browser)
+    participant Router as routers/web/admin/config.go
+    participant DB as models/system.SetSettings
+    participant Opt as "config.Option~T~.ValueRevision"
+    participant App as "Code reading Config().X.Y"
+
+    Admin->>Router: POST ChangeConfig {key, value}
+    Router->>Router: validateConfigKeyValue (JSON, size limit)
+    Router->>DB: SetSettings(ctx, {key: value})
+    DB->>DB: UPDATE system_setting SET version=version+1 (per key + global revision row)
+    Router->>Opt: config.GetDynGetter().InvalidateCache()
+    App->>Opt: Value(ctx) / ValueRevision(ctx)
+    Opt->>DB: GetRevision(ctx) -- cached for 1s
+    alt revision changed
+        Opt->>DB: GetValue(ctx, dynKey)
+        Opt->>Opt: parse JSON, cache value+revision
+    end
+    Opt-->>App: typed value (or default)</pre>
+<h3 id="the-configoptiont-type">The <code>config.Option[T]</code> Type<a href="#the-configoptiont-type" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Each dynamic setting is a generic <code>*config.Option[T]</code> value, created with <code>config.NewOption[T](dynKey string)</code> and configured with a fluent API:</p>
+<pre class="highlight"><code class="language-go">// modules/setting/config.go
+Picture: &amp;PictureStruct{
+    DisableGravatar: config.NewOption[bool]("picture.disable_gravatar").
+        WithDefaultSimple(true).
+        WithFileConfig(config.CfgSecKey{Sec: "picture", Key: "DISABLE_GRAVATAR"}),
+    EnableFederatedAvatar: config.NewOption[bool]("picture.enable_federated_avatar").
+        WithFileConfig(config.CfgSecKey{Sec: "picture", Key: "ENABLE_FEDERATED_AVATAR"}),
+},
+Repository: &amp;RepositoryStruct{
+    OpenWithEditorApps: config.NewOption[OpenWithEditorAppsType]("repository.open-with.editor-apps").
+        WithEmptyAsDefault().
+        WithDefaultFunc(openWithEditorAppsDefaultValue),
+    GitGuideRemoteName: config.NewOption[string]("repository.git-guide-remote-name").
+        WithEmptyAsDefault().WithDefaultSimple("origin"),
+},
+Instance: &amp;InstanceStruct{
+    WebBanner:       config.NewOption[WebBannerType]("instance.web_banner"),
+    MaintenanceMode: config.NewOption[MaintenanceModeType]("instance.maintenance_mode"),
+},</code></pre>
+<p>Key building blocks (<code>modules/setting/config/value.go</code>):</p>
+<ul>
+<li><code>dynKey</code> — the string key stored in the <code>system_setting</code> DB table (e.g. <code>"picture.disable_gravatar"</code>).</li>
+<li><code>WithFileConfig(CfgSecKey{Sec, Key})</code> — an <strong>optional fallback</strong>: if no value has ever been set in the database, the option falls back to reading the classic <code>app.ini</code> <code>[Sec] Key</code> value (via <code>GetCfgSecKeyGetter()</code>, backed by <code>CfgProvider</code>). This lets an option start life as a normal static <code>app.ini</code> setting and be promoted to dynamic without breaking existing deployments.</li>
+<li><code>WithDefaultSimple(v)</code> / <code>WithDefaultFunc(f)</code> — the default value used when neither the DB nor <code>app.ini</code> has a value.</li>
+<li><code>WithEmptyAsDefault()</code> — treat a zero/empty parsed value as "unset" and fall back to the default instead.</li>
+<li><code>Value(ctx)</code> / <code>HasValue(ctx)</code> / <code>ValueRevision(ctx)</code> — read the current effective value; internally cached per-<code>Option</code> and invalidated only when the shared <strong>revision</strong> counter changes (<code>opt.revision</code> vs. <code>dg.GetRevision(ctx)</code>), so hot-path reads are cheap (no DB round-trip on every call).</li>
+<li>Values are stored/parsed as <strong>JSON</strong> (<code>json.Unmarshal</code>/<code>Marshal</code> against <code>util.UnsafeStringToBytes</code>), which is why <code>ChangeConfig</code>'s <code>validateConfigKeyValue</code> checks <code>json.Valid([]byte(input))</code> before persisting.</li>
+</ul>
+<h3 id="storage-and-revisioning">Storage and Revisioning<a href="#storage-and-revisioning" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The actual persistence layer is <code>models/system.Setting</code> (table <code>system_setting</code>, columns <code>setting_key</code>, <code>setting_value</code>, <code>Version</code>) — see <code>models/system/setting.go</code>:</p>
+<ul>
+<li>A synthetic row with key <code>"revision"</code> acts as a global change counter; <code>SetSettings</code> increments it (and each touched row's <code>version</code>) inside a transaction.</li>
+<li><code>dbConfigCachedGetter</code> (implements <code>config.DynKeyGetter</code>) caches the entire settings map in memory and only re-queries the database when the cached revision is older than <strong>1 second</strong> or the global revision counter has changed — this keeps <code>Value(ctx)</code> calls cheap even though they are effectively backed by a database table.</li>
+<li><code>routers/common/db.go</code> wires this in during startup: <code>config.SetDynGetter(system_model.NewDatabaseDynKeyGetter())</code>.</li>
+<li>Admin UI writes (<code>ChangeConfig</code>) call <code>config.GetDynGetter().InvalidateCache()</code> immediately after <code>SetSettings</code>, so the change is visible on the very next read rather than waiting up to a second for the cache TTL.</li>
+</ul>
+<h3 id="currently-registered-dynamic-options">Currently Registered Dynamic Options<a href="#currently-registered-dynamic-options" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Dynamic key</th>
+<th>Go type</th>
+<th>Default</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>picture.disable_gravatar</code></td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Disable Gravatar avatar lookups instance-wide, overridable per admin action; read in <code>models/user/avatar.go</code>, <code>models/avatars/avatar.go</code>.</td>
+</tr>
+<tr>
+<td><code>picture.enable_federated_avatar</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Enable federated avatar (libravatar-style) lookups.</td>
+</tr>
+<tr>
+<td><code>repository.open-with.editor-apps</code></td>
+<td><code>OpenWithEditorAppsType</code> (list of <code>{DisplayName, OpenURL}</code>)</td>
+<td>VS Code / VSCodium / IntelliJ IDEA presets</td>
+<td>Populates the "Open with" dropdown on repository pages (<code>routers/web/repo/view_home.go</code>).</td>
+</tr>
+<tr>
+<td><code>repository.git-guide-remote-name</code></td>
+<td><code>string</code></td>
+<td><code>"origin"</code></td>
+<td>Remote name shown in the repository's clone/quick-start instructions.</td>
+</tr>
+<tr>
+<td><code>instance.web_banner</code></td>
+<td><code>WebBannerType</code> (<code>DisplayEnabled</code>, <code>ContentMessage</code>, <code>StartTimeUnix</code>, <code>EndTimeUnix</code>)</td>
+<td>disabled</td>
+<td>Site-wide announcement banner with an optional scheduled display window (<code>ShouldDisplay()</code> checks the time window); rendered via <code>routers/web/misc/misc.go</code>.</td>
+</tr>
+<tr>
+<td><code>instance.maintenance_mode</code></td>
+<td><code>MaintenanceModeType</code> (<code>AdminWebAccessOnly</code>, <code>StartTimeUnix</code>, <code>EndTimeUnix</code>)</td>
+<td>disabled</td>
+<td>Puts the instance into maintenance mode (only admins can browse the web UI) for a scheduled window; enforced in <code>routers/common/maintenancemode.go</code> and checked at login (<code>routers/web/auth/auth.go</code>).</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!NOTE]
+These are the <strong>only</strong> two structs registered under <code>Config().Instance/Picture/Repository</code> at the time of writing (<code>modules/setting/config.go</code>, <code>initDefaultConfig</code>). Per-repository unit configs (<code>ExternalTrackerConfig()</code>, <code>PullRequestsConfig()</code>, <code>ProjectsConfig()</code>, <code>IssuesConfig()</code>, etc.) use a related but separate mechanism — they are JSON blobs stored per-repository in the <code>repo_unit</code> table, not global <code>config.Option[T]</code> values, and are documented in <a href="../05-database-models/repository-model.html">Repository Model</a>.</p>
+</blockquote>
+<h3 id="choosing-between-static-and-dynamic">Choosing Between Static and Dynamic<a href="#choosing-between-static-and-dynamic" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>When adding a new setting to Gitea, the project convention favors <strong>static <code>app.ini</code> options</strong> for anything that:</p>
+<ul>
+<li>affects process-level behavior (ports, storage backends, database connections) — these inherently require a restart anyway;</li>
+<li>is security-sensitive and should be controlled by the file-system/deployment owner, not a web-authenticated admin session.</li>
+</ul>
+<p><strong>Dynamic <code>config.Option[T]</code></strong> options are reserved for settings that:</p>
+<ul>
+<li>are safe for a web admin to toggle without SSH/file access to the host;</li>
+<li>benefit from taking effect immediately across all instance processes (e.g. in a multi-node deployment, a static <code>app.ini</code> change requires updating and restarting every node, while a dynamic option is read from the shared database by all nodes as soon as the cache TTL/invalidation fires).</li>
+</ul>
+<h2 id="see-also">See Also<a href="#see-also" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="../03-getting-started/configuration-app-ini.html">Configuration (<code>app.ini</code>)</a> — narrative introduction to the INI format, path resolution, and the most common sections.</li>
+<li><a href="../09-core-modules/storage-queue-cache.html">Storage, Queue &amp; Caching</a> — deep dive on <code>[storage]</code>, <code>[storage.*]</code>, <code>[queue]</code>, <code>[cache]</code> internals.</li>
+<li><a href="../14-actions-ci/actions-architecture.html">Actions Architecture</a> — <code>[actions]</code> section in the context of the CI/CD runner protocol.</li>
+<li><a href="../15-packages-registry/README.html">Packages Registry</a> — <code>[packages]</code> section and per-ecosystem storage settings.</li>
+<li><a href="../08-services/auth-providers.html">Auth Providers</a> — <code>[oauth2]</code>, <code>[oauth2_client]</code>, <code>[openid]</code>, <code>[service]</code> in the context of authentication flows.</li>
+</ul>
+<div class="page-nav">
+<a href="README.html"><div class="nav-label">← Previous</div><div class="nav-title">Configuration</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-18</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#how-configuration-loading-works" class="" data-anchor="how-configuration-loading-works">How Configuration Loading Works</a>
+<a href="#load-ordering" class="toc-h3" data-anchor="load-ordering">Load Ordering</a>
+<a href="#settings-file-ini-section-catalog" class="" data-anchor="settings-file-ini-section-catalog">Settings File → INI Section Catalog</a>
+<a href="#environment-variable-overrides" class="" data-anchor="environment-variable-overrides">Environment Variable Overrides</a>
+<a href="#naming-convention" class="toc-h3" data-anchor="naming-convention">Naming Convention</a>
+<a href="#escaping-special-characters-sub-sections-dots-dashes" class="toc-h3" data-anchor="escaping-special-characters-sub-sections-dots-dashes">Escaping Special Characters (sub-sections, dots, dashes)</a>
+<a href="#reading-a-value-from-a-file" class="toc-h3" data-anchor="reading-a-value-from-a-file">Reading a Value from a File</a>
+<a href="#precedence-and-collection" class="toc-h3" data-anchor="precedence-and-collection">Precedence and Collection</a>
+<a href="#dynamic-vs-static-settings" class="" data-anchor="dynamic-vs-static-settings">Dynamic vs. Static Settings</a>
+<a href="#the-configoptiont-type" class="toc-h3" data-anchor="the-configoptiont-type">The config.Option[T] Type</a>
+<a href="#storage-and-revisioning" class="toc-h3" data-anchor="storage-and-revisioning">Storage and Revisioning</a>
+<a href="#currently-registered-dynamic-options" class="toc-h3" data-anchor="currently-registered-dynamic-options">Currently Registered Dynamic Options</a>
+<a href="#choosing-between-static-and-dynamic" class="toc-h3" data-anchor="choosing-between-static-and-dynamic">Choosing Between Static and Dynamic</a>
+<a href="#see-also" class="" data-anchor="see-also">See Also</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Introduction", "p": "01-introduction/README.html", "h": ["What Gitea Is", "Feature Domains", "Licensing and Security", "Section Contents", "Where to Go Next"]}, {"t": "Architecture", "p": "02-architecture/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Deployment Topologies", "p": "02-architecture/deployment-topologies.html", "h": ["1. Single-Binary Deployment", "2. Docker Deployment", "2.3 Choosing between them", "3. Reverse Proxy Setups", "4. High-Availability (HA) Considerations", "Related Pages"]}, {"t": "Module Dependency Map", "p": "02-architecture/module-dependency-map.html", "h": ["The Rule", "Why the Rule Exists", "How It Is Enforced", "A Documented Exception", "Package-Level Map (representative packages)", "Naming Convention Cheat Sheet", "Related Pages"]}, {"t": "Request Lifecycle", "p": "02-architecture/request-lifecycle.html", "h": ["Overview", "Step-by-Step", "1. Process entry and listener setup", "2. Chi routing and \"before routing\" middleware", "4. Authentication middleware", "5. Authorization / CSRF / feature checks", "6. Handler execution — business logic, models, and git", "7. Response: template render or JSON", "8. Cleanup", "Divergence: REST API and Internal API", "Related Pages"]}, {"t": "System Architecture", "p": "02-architecture/system-architecture.html", "h": ["The Seven Layers", "Layer Details", "How the Layers Cooperate at Runtime", "Build-Time View", "Related Pages"]}, {"t": "Getting Started", "p": "03-getting-started/README.html", "h": []}, {"t": "Configuration (`app.ini`)", "p": "03-getting-started/configuration-app-ini.html", "h": ["The INI Format", "Loading Order and Path Resolution", "Overriding Config with Environment Variables", "Adding New Configuration Options (for contributors)", "Next Steps"]}, {"t": "Installation and Build", "p": "03-getting-started/installation-and-build.html", "h": ["Prerequisites", "Getting the source", "Reproducible Dev Environments (Nix Flake / DevContainer)", "The Build Pipeline", "Running Both Together", "Continuous / Watch Mode", "Running Tests", "Build Tags", "Examples", "Binary Output", "Generating Shell Completions", "Next Steps"]}, {"t": "Overview", "p": "03-getting-started/overview.html", "h": ["Core Features", "High-Level Architecture", "Supported Platforms and Architectures", "Deployment Options", "Where to Look in the Source Tree"]}, {"t": "Running Gitea", "p": "03-getting-started/running-gitea.html", "h": ["Starting the Server", "What Happens on Startup", "The First-Run Install Wizard", "Routing and Handlers", "Post-Install Steps", "1. Create the First Administrator (if you skipped the wizard's admin field)", "2. Verify Configuration and Look for Warnings", "3. Set Up Process Supervision", "4. Put a Reverse Proxy in Front (recommended for HTTPS)", "5. Configure Backups", "6. Enable Background Services as Needed", "Stopping and Restarting", "Related Pages"]}, {"t": "Configuration", "p": "04-configuration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Settings Catalog", "p": "04-configuration/settings-catalog.html", "h": ["How Configuration Loading Works", "Load Ordering", "Settings File → INI Section Catalog", "Environment Variable Overrides", "Naming Convention", "Escaping Special Characters (sub-sections, dots, dashes)", "Reading a Value from a File", "Precedence and Collection", "Dynamic vs. Static Settings", "Storage and Revisioning", "Currently Registered Dynamic Options", "Choosing Between Static and Dynamic", "See Also"]}, {"t": "Database & Models", "p": "05-database-models/README.html", "h": ["Section Contents", "Core Entity Relationships", "Where to Go Next"]}, {"t": "DB Engine and Drivers", "p": "05-database-models/db-engine-and-drivers.html", "h": ["Overview", "Call sites", "SQLite Drivers: mattn vs modernc (pluggable via build tags)", "PostgreSQL connection string &amp; host/port parsing", "MSSQL host/port parsing", "Generic CRUD helpers", "Related Pages"]}, {"t": "Issues & Pull Requests Model", "p": "05-database-models/issues-and-pulls-model.html", "h": ["Comment types", "Time Tracking — Stopwatch &amp; TrackedTime", "Issue / PR / Review / Comment Relationship Diagram", "Related Pages"]}, {"t": "Database Migrations", "p": "05-database-models/migrations.html", "h": ["Why a Custom Framework?", "The Migration Lifecycle", "Supporting Functions", "Directory / Naming Convention per Gitea Version", "How to Add a New Migration", "Data type / dialect notes", "Migration Test Harness", "Example: A full migration + test pair", "Related Pages"]}, {"t": "Permissions Model", "p": "05-database-models/permissions-model.html", "h": ["Recalculation functions", "Resolving a unit's effective access mode", "Other permission entry points", "Unit Types Recap", "Permission Resolution Diagram", "Related Pages"]}, {"t": "Repository Model", "p": "05-database-models/repository-model.html", "h": ["Useful methods", "Topics, Stars, Watches", "Repo Units — Feature Toggle System", "Repository Relationship Diagram", "Related Pages"]}, {"t": "Supplementary Models", "p": "05-database-models/supplementary-models.html", "h": ["Related Pages"]}, {"t": "Testing & Fixtures", "p": "05-database-models/testing-fixtures.html", "h": ["Loading Fixtures into a Test Database", "Supporting Utilities", "Migration Tests vs. Model Tests", "Related Pages"]}, {"t": "User & Organization Model", "p": "05-database-models/user-organization-model.html", "h": ["Key behaviors", "Team ↔ repository / team ↔ user joins", "User / Organization / Team Relationship Diagram", "Related Pages"]}, {"t": "Web Routers", "p": "06-web-routers/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Events (Server-Sent Events) & Healthcheck", "p": "06-web-routers/events-and-healthcheck.html", "h": ["Route registration", "Who publishes events", "Route registration", "Where to go next"]}, {"t": "Install & Private Routers", "p": "06-web-routers/install-and-private.html", "h": ["Endpoint groups", "Where to go next"]}, {"t": "Middleware Chain: Sessions, CSRF/Origin Protection, and the Auth Context", "p": "06-web-routers/middleware-chain.html", "h": ["Ordering overview", "6. Feature-flag &amp; permission guards", "Internal API and install-page differences", "Where to go next"]}, {"t": "Route Organization", "p": "06-web-routers/route-organization.html", "h": ["Route-group tree", "How groups are registered", "Where to go next"]}, {"t": "Web Router & Server-Rendered UI", "p": "06-web-routers/web-routes.html", "h": ["Router Foundation", "Authentication middleware", "Common per-route guard functions", "Route Group Hierarchy", "Repo browsing &amp; settings", "Organization routes", "User profile &amp; settings", "Admin panel", "Explore &amp; search", "Feeds", "Route registration", "Request flow", "Federation Endpoints", "ActivityPub", "Registration &amp; authentication", "Endpoint reference", "Git hook flow in detail", "Relationship to the Actions runner protocol", "Related Pages"]}, {"t": "REST API", "p": "07-rest-api/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "API Conventions & Swagger", "p": "07-rest-api/api-conventions-and-swagger.html", "h": ["Authentication Schemes", "Access-Token Scopes", "Authorization Middleware Chain", "Pagination Conventions", "Error Response Format", "API Request Flow", "Swagger / OpenAPI Generation &amp; Validation", "Where this fits in CI", "Interactive Docs", "Related Pages"]}, {"t": "REST API v1 Overview", "p": "07-rest-api/api-v1-overview.html", "h": ["Versioning Strategy", "Base URL Structure", "Resource Groups", "High-Level Route Tree", "Repository Group Example", "Cross-Cutting Enum Types", "Other Domain Files (Quick Reference)", "Related Pages"]}, {"t": "Packages & Actions API", "p": "07-rest-api/packages-and-actions-api.html", "h": ["Code Layout", "Ecosystem Route Reference", "Authentication for the Non-Container Registries", "The Three API Surfaces at a Glance", "Related Pages"]}, {"t": "Services", "p": "08-services/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Authentication & Authorization", "p": "08-services/auth-providers.html", "h": ["Provider Catalog", "Provider Details", "Access Tokens &amp; Scopes", "Auth Tokens (Remember-Me cookies)", "WebAuthn / Passkeys and TOTP (Two-Factor Auth)", "TOTP (Time-based One-Time Password)", "WebAuthn / Passkeys", "Group Sync — Mapping External Groups to Teams", "Configuration shape", "Core sync algorithm", "Call sites", "Where scope and access mode intersect", "Related Pages"]}, {"t": "Services Catalog (Full)", "p": "08-services/services-catalog-full.html", "h": ["Functional Clusters", "Full Catalog Table", "Cluster Summary", "Related Pages"]}, {"t": "Services Catalog", "p": "08-services/services-catalog.html", "h": ["Layout at a Glance", "Cross-References"]}, {"t": "Core Modules", "p": "09-core-modules/README.html", "h": ["Pages"]}, {"t": "Frontend Build Pipeline", "p": "09-core-modules/frontend-build.html", "h": ["High-Level Pipeline", "Multiple entry points", "Output file naming", "Vue integration", "Other notable plugins", "Dev server security", "License aggregation", "Tailwind + Fomantic-UI Dual CSS Strategy", "Fomantic UI: prebuilt, vendored JS/CSS", "Integration point: PostCSS", "esbuild Usage", "pnpm Workspace", "Build Pipeline: TS/Vue Source to Go Binary", "Common Workflows", "See Also"]}, {"t": "Frontend Features & the \"Islands of Interactivity\" Pattern", "p": "09-core-modules/frontend-features.html", "h": ["The Islands of Interactivity Pattern", "1. Global init functions, called once at page load", "3. Vue components mounted onto specific elements (\"islands\")", "Repository: code browsing &amp; editing", "Repository: diff &amp; review", "Repository: issues, pulls, projects", "Repository: actions (CI/CD)", "Repository: branches, releases, wiki, settings, migration", "User account &amp; auth", "Admin", "Cross-cutting / common utilities", "Why This Architecture"]}, {"t": "Git Module", "p": "09-core-modules/git-module.html", "h": ["Two Backends, One Interface", "Feature differences", "Key Abstractions", "The catfile-batch Protocol", "Diff Implementation", "Grep Implementation", "Initialization &amp; Version Features", "Related Pages"]}, {"t": "Search & Indexing", "p": "09-core-modules/indexers.html", "h": ["Architecture Overview", "The Base Indexer Interface", "Code Indexer", "Backends", "Indexing pipeline (repo push → index)", "Issue Indexer", "Backends", "Data model", "Indexing pipeline", "Repository Stats / Language Indexer", "Backend Selection &amp; End-to-End Pipeline", "Startup and readiness", "Where indexing is triggered from", "Related Pages"]}, {"t": "Git LFS & Server-Side Hooks", "p": "09-core-modules/lfs-and-hooks.html", "h": ["Git LFS Architecture", "Pointer Files", "Scanning a Repository for LFS Objects", "Content Store", "Batch Handler Walkthrough", "Authentication", "Locking", "Server-Side Git Hooks", "Post-Receive Side Effects", "Related Pages"]}, {"t": "Markup Rendering Engines", "p": "09-core-modules/markup-engines.html", "h": ["Renderer Registration Pattern", "Built-in Renderer Catalog", "Renderer Selection: File Name and Content Sniffing", "The Rendering Pipeline", "Renderer Deep Dive", "External Renderers (Shelling Out to Tools)", "Sanitization with bluemonday", "Policy Construction", "Lexer Detection", "Rendering Highlighted Code", "Emoji Processing", "End-to-End Example: Rendering a Markdown README", "Related Pages"]}, {"t": "Modules Catalog (Full)", "p": "09-core-modules/modules-catalog-full.html", "h": ["Grouping Legend", "Full Catalog Table", "Grouped Diagram", "Cross-References", "Related Pages"]}, {"t": "Notifications, Mailer & Webhooks", "p": "09-core-modules/notify-mailer-webhook.html", "h": ["Registration", "Dispatch functions", "Fan-out architecture", "Outgoing webhooks", "Data model", "Preparing &amp; queuing a delivery", "Manual test delivery &amp; the REST API", "Queueing &amp; sending", "In-app UI notifications &amp; Server-Sent Events", "Gitea Actions triggers", "Summary: where to look for what", "Related pages"]}, {"t": "Storage, Queue & Caching", "p": "09-core-modules/storage-queue-cache.html", "h": ["Backend Implementations", "Storage Consumers", "Storage Configuration", "Storage Selection Diagram", "Terminology", "Base Queue Implementations", "WorkerPoolQueue", "Manager &amp; Configuration", "Real Queue Consumers", "Repository Indexing via the Queue: Example Flow", "Adapters", "Ephemeral (Request-Scoped) Cache", "Cache Data Flow", "Implementations", "Configuration and Default Access", "Real Usages", "How the Three Systems Interact", "Related Documentation"]}, {"t": "Git Integration", "p": "10-git-integration/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Git Backends & Cat-File Batch Processes", "p": "10-git-integration/git-backends-and-catfile.html", "h": ["Two Backends, One Public API", "Why Two Backends Exist", "The Cat-File Batch Protocol (nogogit)", "Related Pages"]}, {"t": "Git Operations & Server-Side Hooks", "p": "10-git-integration/git-operations-and-hooks.html", "h": ["Why Hooks Exist", "The Hook Installation Pattern (Delegation)", "Step-by-step notes", "HTTP(S) Pushes Follow the Same Hook Pipeline", "Pre-Receive: What Gets Checked", "Post-Receive: What Happens After Acceptance", "Related Pages"]}, {"t": "GitRepo & Repository Access", "p": "10-git-integration/gitrepo-and-repository-access.html", "h": ["Opening a Repository: Two Ways", "Write Serialization", "Related Pages"]}, {"t": "Authentication", "p": "11-authentication/README.html", "h": ["Section Contents", "Auth-Source Resolution Chain at a Glance", "Where to Go Next"]}, {"t": "Authentication Sources", "p": "11-authentication/auth-sources.html", "h": ["Two Distinct Concepts", "WebAuthn / Passkeys as an Authentication Source", "Resolution Diagram", "Request Methods Referenced Above", "Related Pages"]}, {"t": "Authorization Model", "p": "11-authentication/authorization-model.html", "h": ["Resolving the Effective Mode for a Unit", "Top-Level Helpers", "Where Authentication Feeds Into Authorization", "Related Pages"]}, {"t": "Access Tokens & OAuth2 Applications", "p": "11-authentication/tokens-and-oauth-apps.html", "h": ["Personal Access Tokens (PATs)", "Lifecycle", "Scopes", "Scope Enforcement Points", "OAuth2 Applications — Gitea as a Provider", "Authorization Code Flow with PKCE", "Related Endpoints", "Related Pages"]}, {"t": "Two-Factor Authentication & Account Recovery", "p": "11-authentication/two-factor-and-recovery.html", "h": ["TOTP (Time-Based One-Time Password)", "Secret Storage", "Validation — Single-Use Enforcement", "Login Flow", "Scratch (Recovery) Tokens", "WebAuthn / Passkeys", "2FA Assertion Flow (user already identified by password)", "Passkey (Primary, Passwordless) Flow", "Interaction with HTTP Basic Auth", "Disabling 2FA", "Account Recovery — Password Reset Flow", "Related Pages"]}, {"t": "Repository Management", "p": "12-repository-management/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Releases, Wiki & Projects", "p": "12-repository-management/releases-wiki-projects.html", "h": ["Deleting a page / the whole wiki", "Scopes", "Where to Go Next"]}, {"t": "Repository Lifecycle", "p": "12-repository-management/repository-lifecycle.html", "h": ["Overview of Entry Points", "Archive / Unarchive", "Lifecycle State Diagram", "Sync scheduling", "Where mirrors intersect with the rest of the lifecycle"]}, {"t": "Issues & Pull Requests", "p": "13-issues-pullrequests/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Branch Protection & Merge", "p": "13-issues-pullrequests/branch-protection-and-merge.html", "h": ["Manual Merge (Marking as Merged Without Gitea Performing It)", "Related Pages"]}, {"t": "Code Review & Comments", "p": "13-issues-pullrequests/code-review-and-comments.html", "h": ["Inline code comments", "Comment invalidation on new pushes", "Dismissing Reviews", "Suggested Changes / Line Comments in Practice", "The Merge-Box / PR State Machine", "Related Pages"]}, {"t": "Issue Tracking Workflow", "p": "13-issues-pullrequests/issue-tracking-workflow.html", "h": ["Label templates", "Closing / Reopening", "Related Pages"]}, {"t": "Actions & CI", "p": "14-actions-ci/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Actions Architecture", "p": "14-actions-ci/actions-architecture.html", "h": ["High-Level Execution Flow", "Workflow Detection and Parsing", "Listing and validating workflow files", "GitHub Actions Compatibility Layer", "Runner Registration &amp; Connect-RPC Protocol", "Route registration", "Authentication interceptor", "Registration flow", "Artifact Storage", "Commit Status Reporting", "Secrets &amp; Variables Scoping", "Precedence", "Fork pull request restriction", "Runtime tokens vs. stored secrets", "Scoped Workflows", "Related Pages"]}, {"t": "Packages & Registry", "p": "15-packages-registry/README.html", "h": ["Pages in this Section", "Quick Orientation"]}, {"t": "Package Registry Database Schema", "p": "15-packages-registry/database-schema.html", "h": ["Entity-Relationship Overview", "Table Reference", "Supporting tables", "Ecosystem-specific model packages", "Related Pages"]}, {"t": "Package Upload / Download Flow", "p": "15-packages-registry/package-flow.html", "h": ["High-Level Architecture", "Upload Sequence", "Key steps in code", "Download Sequence", "Deletion Flow", "Related Pages"]}, {"t": "Protocol Adapters", "p": "15-packages-registry/protocol-adapters.html", "h": ["Anatomy of an Adapter", "Index-Rebuilding Adapters", "Repository signing (GPG)", "Cargo: sparse index over a Git repository, not a flat file", "Manifest-Graph Adapter: Container (OCI)", "Related Pages"]}, {"t": "Shared Infrastructure", "p": "15-packages-registry/shared-infrastructure.html", "h": ["Sharded key layout", "Core operations", "Putting It Together", "Related Pages"]}, {"t": "Supported Package Ecosystems", "p": "15-packages-registry/supported-ecosystems.html", "h": ["Ecosystem Reference Table", "Where Ecosystem Code Lives", "Authentication", "Related Pages"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "16-cli-admin/cli-command-reference-index.html", "h": ["Full Alphabetical Command Table", "Command Count Cross-Check", "Where to Go Next"]}, {"t": "CLI & Admin Operations", "p": "16-cli-admin/cli-commands.html", "h": ["Entry Point &amp; App Assembly", "Full Command Tree", "Graceful Restart &amp; Shutdown", "Shared matching logic", "Subcommands", "Summary Table — All Top-Level Commands", "Related Pages"]}, {"t": "Running Gitea as a System Service", "p": "16-cli-admin/service-management.html", "h": ["Common Conventions Across All Service Files", "systemd lifecycle mapping", "Choosing Between Init-Managed Restart and Gitea's Own Graceful Restart", "Related Pages"]}, {"t": "Webhooks & Integrations", "p": "16-webhooks-integrations/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Third-Party Integrations", "p": "16-webhooks-integrations/third-party-integrations.html", "h": ["1. OAuth2 application registration", "Registration scopes: user, organization, and instance-wide", "Instance-wide \"builtin\" applications", "Consuming the registration: what a third party does with it", "Revocation &amp; audit surface", "2. External issue tracker &amp; external wiki", "3. Repository migration &amp; mirroring — pulling from other Git hosts", "4. Package registry protocol endpoints — Gitea as a drop-in registry", "5. Inbound integrations: commit statuses from CI systems", "Related pages"]}, {"t": "Webhook Delivery Pipeline", "p": "16-webhooks-integrations/webhook-delivery-pipeline.html", "h": ["Pipeline overview", "Step 1–3: event trigger → payload construction", "Queue setup", "Signing &amp; identification headers", "Retry &amp; backoff behavior", "Sequence diagram", "Related pages"]}, {"t": "Webhook Event Types & Payloads", "p": "16-webhooks-integrations/webhook-event-types-and-payloads.html", "h": ["Shared building blocks", "Related pages"]}, {"t": "Notifications", "p": "17-notifications/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Email Notification Templates", "p": "17-notifications/email-notification-templates.html", "h": ["1. Where the templates live", "4. Choosing recipients", "Related pages"]}, {"t": "Notification Delivery & UI Notifications", "p": "17-notifications/notification-delivery-and-uinotification.html", "h": ["2. Three concrete triggering events", "a) New issue comment", "b) Pull request review", "3. Fan-out diagram", "4. The in-app notification pipeline in detail", "5. Where to look for what", "Related pages"]}, {"t": "Admin Guide", "p": "18-admin-guide/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Admin Panel & Operations", "p": "18-admin-guide/admin-panel-and-operations.html", "h": ["Access Control", "Route Map", "Triggering Operations from the Dashboard", "User, Org, Repo &amp; Package Administration", "System Webhooks &amp; OAuth2 Applications", "Monitor: Cron, Stats, Queues &amp; Diagnostics", "Actions Runners, Variables &amp; Workflows", "Where to Go Next"]}, {"t": "Backup, Restore & Doctor", "p": "18-admin-guide/backup-restore-and-doctor.html", "h": ["Command Shape", "Supported Archive Formats", "What Gets Dumped, in Order", "Restoring from a Dump", "The Full Check Catalog", "Recommended Operational Cadence", "Where to Go Next"]}, {"t": "Monitoring & Observability", "p": "18-admin-guide/monitoring-and-observability.html", "h": ["Enabling It", "The Grafana Monitoring Mixin", "Layout", "Building Dashboards from the Mixin", "The Operator's Toolkit", "Where to Go Next"]}, {"t": "CLI Commands", "p": "19-cli-commands/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "CLI Command Reference Index", "p": "19-cli-commands/cli-command-reference-index.html", "h": []}, {"t": "Frontend & UI", "p": "20-frontend-ui/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Go Templates & Views", "p": "20-frontend-ui/go-templates.html", "h": ["Overview", "Template Rendering Pipeline", "Layered asset filesystem &amp; custom overrides", "Error reporting", "Template Directory Organization", "Template Naming &amp; Composition Conventions", "FuncMap: Template Helper Functions", "Stateless \"Utils\" helper objects", "Mail Templates", "Custom Template Overrides", "1. Full template override (any file)", "Related Pages"]}, {"t": "`web_src/` Directory Map", "p": "20-frontend-ui/web_src-directory-map.html", "h": ["Top-Level Layout", "SVG Icon System", "Frontend Build Pipeline (TS/Vue → Vite/esbuild → Assets → Go)", "See Also"]}, {"t": "Testing & Quality", "p": "21-testing-quality/README.html", "h": []}, {"t": "Unit, Integration, E2E & Fuzz Testing", "p": "21-testing-quality/unit-integration-e2e-fuzz.html", "h": ["The Test Pyramid", "1. Backend Unit Tests", "Structure", "Running backend unit tests", "Single-test selectors", "Coverage", "2. Integration Tests", "Running integration tests", "Single integration test selector", "Running against MySQL / PostgreSQL / MSSQL", "Migration tests", "3. Frontend Unit Tests (Vitest)", "Running frontend unit tests", "4. End-to-End Tests (Playwright)", "Running e2e tests", "5. Fuzz Tests", "Running fuzz tests", "Test Fixtures", "Continuous Integration", "Choosing the Right Test Type"]}, {"t": "Contributing & Development", "p": "22-contributing-development/README.html", "h": []}, {"t": "AI-Assisted Contributions", "p": "22-contributing-development/ai-assisted-contributions.html", "h": ["Build, lint, and test commands", "Code style and content rules", "Commit and PR conventions", "3. How the two policies fit together", "Related Pages"]}, {"t": "Backend Coding Conventions", "p": "22-contributing-development/backend-coding-conventions.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies (Go Modules)", "API v1 conventions", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes", "Related Pages"]}, {"t": "Contribution Workflow & Governance", "p": "22-contributing-development/contribution-workflow.html", "h": ["1. The Fork → Patch → Push → PR Workflow", "Contribution workflow diagram", "Copyright header", "AI-assisted contributions", "Issues", "2. Backend Guidelines Summary", "Package layout and layering rule", "Transactions and XORM pitfalls", "Go module hygiene", "API v1 conventions", "3. Frontend Guidelines Summary", "Framework-mixing rules", "Gitea-specific conventions", "Data fetching, DOM, and visibility helpers", "4. Refactoring Guidelines", "5. Review, CI, and Merge Process", "Pull request format expectations", "PR titles (Conventional Commits)", "Breaking changes", "CI checks"]}, {"t": "Frontend Coding Conventions", "p": "22-contributing-development/frontend-coding-conventions.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS conventions", "Stylelint enforcement", "TypeScript conventions", "ESLint enforcement", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery", "Related Pages"]}, {"t": "Governance & Security", "p": "22-contributing-development/governance-and-security.html", "h": ["1. Code review process", "Milestones", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "2. Contribution roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Roadmap", "Governance compensation", "How this interacts with issue triage and release policy", "Related Pages"]}, {"t": "Issue & PR Templates and Automation", "p": "22-contributing-development/issue-pr-templates-and-automation.html", "h": ["3. Label automation", "4. How it all fits together", "Related Pages"]}, {"t": "Build, CI/CD & Deployment", "p": "build-cicd-deployment/README.html", "h": ["Section Contents", "Where to Go Next"]}, {"t": "Docker & Packaging", "p": "build-cicd-deployment/docker-and-packaging.html", "h": ["Dockerfile Overview", "Multi-Stage Build Diagram", "Rootless vs. Rootful — Key Differences", "s6-overlay Process Supervision (Rootful Only)", "Rootless Entrypoint Flow", "Snapcraft Packaging", "Nix Flake Dev Shell", "Related Pages"]}, {"t": "GitHub Workflows & Actions", "p": "build-cicd-deployment/github-workflows.html", "h": ["Workflow Catalog", "Release Workflows", "Cron / Scheduled Workflows", "Related Pages"]}, {"t": "Makefile & Build System", "p": "build-cicd-deployment/makefile-and-build.html", "h": ["Overview", "Key Variables", "Core Build Targets", "Swagger / OpenAPI Generation", "Lint Targets", "Watch Targets (Live Development)", "Test Targets", "Build Tag System", "Dependency &amp; Update Targets", "Related Pages"]}, {"t": "Setup and requirements", "p": "build-setup.html", "h": ["Requirements", "Go", "Node.js and pnpm", "Make", "Python with uv (optional)", "Git LFS", "Getting the source code", "Installing dependencies"]}, {"t": "Prepare build environment", "p": "build-source.html", "h": ["Choose a branch", "Changing default paths", "Cross Build", "Adding shell autocompletion", "Source Maps"]}, {"t": "Community governance and review process", "p": "community-governance.html", "h": ["Table of contents", "Code review", "Milestone", "Labels", "Reviewing PRs", "Getting PRs merged", "Final call", "Commit messages", "Contribution Roles", "Maintainers", "Mergers", "Technical Oversight Committee (TOC)", "Current TOC members", "Previous TOC/owners members", "Governance Compensation", "Roadmap"]}, {"t": "Development", "p": "development.html", "h": ["Building", "Building continuously", "Formatting, linting and checks", "Building and adding SVGs", "Updating the API", "Creating new configuration options", "Database migrations", "Testing", "IDE configuration", "Visual Studio Code", "GoLand", "Submitting your changes"]}, {"t": "Backend development guidelines", "p": "guidelines-backend.html", "h": ["Background", "Package design", "Package layout", "Dependency direction", "Naming conventions", "Database transactions", "XORM gotchas", "Dependencies", "API v1", "GitHub API compatibility", "Adding and maintaining API routes", "HTTP methods and status codes", "Requirements for API routes"]}, {"t": "Frontend development guidelines", "p": "guidelines-frontend.html", "h": ["Background", "Dependencies", "Framework usage", "Gitea-specific conventions", "CSS", "TypeScript", "Data fetching", "DOM attributes", "Showing and hiding elements", "UI component gallery"]}, {"t": "Refactoring guidelines", "p": "guidelines-refactoring.html", "h": ["Background", "Writing a refactoring PR", "Reviewing and merging"]}, {"t": "Gitea Technical Documentation", "p": "index.html", "h": ["System Architecture at a Glance", "Documentation Map", "Documentation Sections", "Section Contents", "Build, CI/CD &amp; Deployment", "How to Use This Wiki"]}, {"t": "Release management", "p": "release-management.html", "h": ["Backports and Frontports", "What is backported?", "How to backport?", "Format of backport PRs", "Frontports", "Release Cycle", "Cadence", "Release schedule", "Feature freeze", "Patch releases", "End of life (EOL)", "Versions", "Releasing Gitea"]}, {"t": "Testing", "p": "testing.html", "h": ["Unit tests", "Integration tests", "Running against other databases", "Running the database test workflow with Gitea Runner", "End-to-end tests", "Migration tests", "Continuous integration"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+6);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

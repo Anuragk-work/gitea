@@ -1,0 +1,812 @@
+=== FILE: docs/16-cli-admin/cli-commands.md ===
+=== METADATA: format=md ===
+[SUMMARY] # CLI & Admin Operations Gitea ships as a single static binary that acts both as the web application and as the command-line administration tool. Every operational task — starting the web server, running database migrations, managing users, backing up data, regenerating SSH keys, or invoking internal Git hooks — is implemented as a subcommand of the same `gitea` executable, defined under [`cmd/`](../../cmd).
+
+# CLI & Admin Operations
+
+Gitea ships as a single static binary that acts both as the web application and
+as the command-line administration tool. Every operational task — starting the
+web server, running database migrations, managing users, backing up data,
+regenerating SSH keys, or invoking internal Git hooks — is implemented as a
+subcommand of the same `gitea` executable, defined under [`cmd/`](../../cmd).
+
+This page documents the full CLI command tree, the graceful restart/shutdown
+mechanism used by the `web` command, and the `embedded` command used to extract
+assets baked into the binary.
+
+> All CLI commands are built with [`urfave/cli/v3`](https://github.com/urfave/cli).
+> The root `*cli.Command` is assembled in `cmd/main.go`'s `NewMainApp`, and
+> `cmd/main_test.go`/`main.go` in the repository root call `cmd.RunMainApp` to
+> actually execute it.
+
+## Entry Point & App Assembly
+
+The binary's `main.go` (repo root) constructs an `AppVersion` and calls
+`cmd.NewMainApp(appVer)`, then `cmd.RunMainApp(app, os.Args...)`. Inside
+`cmd/main.go`:
+
+- `NewMainApp` creates the root `cli.Command` named `gitea`, sets global flags
+  (`--work-path`/`-w`, `--config`/`-c`, `--custom-path`/`-C`), and appends two
+  groups of subcommands:
+  - **`subCmdWithConfig`** — commands that read `app.ini` and need work-path/
+    custom-path resolution before running: `web`, `serv`, `hook`, `keys`,
+    `dump`, `admin`, `migrate`, `doctor`, `manager`, `embedded`,
+    `migrate-storage`, `dump-repo`, `restore-repo`, `actions`.
+  - **`subCmdStandalone`** — commands that do not depend on the Gitea
+    environment: `config`, `cert`, `generate`, `docs`.
+- `app.DefaultCommand = "web"` — running `gitea` with no arguments starts the
+  web server (`isValidDefaultSubCommand` in `cmd/helper.go` guards against
+  accidentally starting the server when an unknown subcommand is typed).
+- `PrepareSubcommandWithGlobalFlags` wraps each config-dependent command's
+  `Before` hook with `prepareWorkPathAndCustomConf`, which resolves
+  `WorkPath`/`CustomPath`/`CustomConf` from flags, environment variables, or
+  defaults via `setting.InitWorkPathAndCommonConfig`.
+- `cliHelpPrinterNew` intercepts `-h`/`help` output to also print the resolved
+  `AppPath`, `WorkPath`, `CustomPath`, and `ConfigFile` — very useful for
+  debugging "why isn't my config being picked up" issues.
+- `RunMainApp` installs OS signal handling (`installSignals`, SIGINT/SIGTERM)
+  before calling `app.Run`, and normalizes usage errors so they are printed
+  once instead of dumping full help text.
+
+## Full Command Tree
+
+```mermaid
+graph TD
+  gitea["gitea"]
+
+  gitea --> web["web"]
+  gitea --> serv["serv (internal)"]
+  gitea --> hook["hook (internal)"]
+  gitea --> keys["keys (internal)"]
+  gitea --> dump["dump"]
+  gitea --> dumprepo["dump-repo"]
+  gitea --> restorerepo["restore-repo"]
+  gitea --> admin["admin"]
+  gitea --> migrate["migrate"]
+  gitea --> migratestorage["migrate-storage"]
+  gitea --> doctor["doctor"]
+  gitea --> manager["manager"]
+  gitea --> embedded["embedded"]
+  gitea --> actions["actions"]
+  gitea --> config["config"]
+  gitea --> cert["cert"]
+  gitea --> generate["generate"]
+  gitea --> docs["docs"]
+
+  hook --> hookpre["pre-receive"]
+  hook --> hookupdate["update"]
+  hook --> hookpost["post-receive"]
+  hook --> hookproc["proc-receive"]
+
+  admin --> adminuser["user"]
+  admin --> adminrepo["repo-sync-releases"]
+  admin --> adminregen["regenerate"]
+  admin --> adminauth["auth"]
+  admin --> adminsendmail["sendmail"]
+
+  adminuser --> ucreate["create"]
+  adminuser --> ulist["list"]
+  adminuser --> uchangepw["change-password"]
+  adminuser --> udelete["delete"]
+  adminuser --> utoken["generate-access-token"]
+  adminuser --> umustchange["must-change-password"]
+  adminuser --> udisable2fa["disable-2fa"]
+
+  adminregen --> regenhooks["hooks"]
+  adminregen --> regenkeys["keys"]
+
+  adminauth --> authaddoauth["add-oauth / update-oauth"]
+  adminauth --> authaddldap["add-ldap / update-ldap"]
+  adminauth --> authaddldapsimple["add-ldap-simple / update-ldap-simple"]
+  adminauth --> authaddsmtp["add-smtp / update-smtp"]
+  adminauth --> authlist["list"]
+  adminauth --> authdelete["delete"]
+
+  doctor --> doccheck["check"]
+  doctor --> docrecreate["recreate-table"]
+  doctor --> docconvert["convert"]
+
+  manager --> mgshutdown["shutdown"]
+  manager --> mgrestart["restart"]
+  manager --> mgreload["reload-templates"]
+  manager --> mgflush["flush-queues"]
+  manager --> mglogging["logging"]
+  manager --> mgprocesses["processes"]
+
+  mglogging --> logpause["pause"]
+  mglogging --> logresume["resume"]
+  mglogging --> logreopen["release-and-reopen"]
+  mglogging --> logremove["remove"]
+  mglogging --> logadd["add (file / conn)"]
+  mglogging --> logsql["log-sql"]
+
+  embedded --> emblist["list"]
+  embedded --> embview["view"]
+  embedded --> embextract["extract"]
+
+  actions --> actionstoken["generate-runner-token"]
+
+  generate --> gensecret["secret"]
+  generate --> genssh["ssh"]
+  gensecret --> genintoken["INTERNAL_TOKEN"]
+  gensecret --> genjwt["JWT_SECRET"]
+  gensecret --> genseckey["SECRET_KEY"]
+  genssh --> genkey["key"]
+  genssh --> genhostkeys["host-keys"]
+
+  config --> configeditini["edit-ini"]
+```
+
+## `gitea web` — Starting the Server
+
+`cmd/web.go` defines the `web` command (also the default command). Key flags:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--port` / `-p` | `3000` | Overrides `HTTP_PORT` for this run |
+| `--install-port` | `3000` | Port used for the install wizard when Gitea isn't yet installed |
+| `--pid` / `-P` | `/run/gitea.pid` | Path to write the PID file |
+| `--quiet` / `-q` | off | Suppress all but fatal logs before logging is configured |
+| `--verbose` | off | TRACE-level logs before logging is configured |
+
+`runWeb` (in `cmd/web.go`) executes this sequence:
+
+1. Validate that no stray positional command was passed (`isValidDefaultSubCommand`).
+2. Create a cancellable `context.Context` and call `graceful.InitManager(ctx)` —
+   this is the single graceful-lifecycle manager for the process.
+3. Detect whether this process is a restarted child
+   (`os.Getppid() > 1 && LISTEN_FDS set`) purely for logging purposes.
+4. Optionally write the PID file (`createPIDFile`).
+5. Initialize the HTML template renderer (`templates.PageRenderer()`).
+6. If Gitea is **not installed** (`setting.InstallLock == false`), call
+   `serveInstall` which serves only the install wizard routes
+   (`routers.InitWebInstallPage` + `install.Routes()`).
+7. Otherwise call `serveInstalled`, which performs legacy-asset warnings,
+   calls `routers.InitWebInstalled`, checks `AppDataPath`, cleans up the temp
+   dir, and finally builds the full Chi router via `routers.NormalRoutes()`
+   and calls `listen(webRoutes, true)`.
+8. Optionally starts a debug `pprof`/`fgprof` HTTP server on
+   `localhost:6060` when `setting.EnablePprof` is true.
+
+`listen()` dispatches to a protocol-specific runner based on `setting.Protocol`:
+
+| Protocol | Function | Notes |
+|----------|----------|-------|
+| `http` | `runHTTP` (network `tcp`) | Standard HTTP, optionally proxy-protocol aware |
+| `https` | `runHTTPS` or `runACME` | ACME/Let's Encrypt handled by `cmd/web_acme.go`, manual TLS by `cmd/web_https.go` |
+| `fcgi` | `runFCGI` (network `tcp`) | FastCGI over TCP |
+| `http+unix` | `runHTTP` (network `unix`) | Unix domain socket |
+| `fcgi+unix` | `runFCGI` (network `unix`) | FastCGI over Unix socket |
+
+If HTTPS redirection is configured (`RedirectOtherPort`), a secondary
+`runHTTPRedirector` goroutine listens on the plain HTTP port and 307-redirects
+all requests to `AppURL`.
+
+> See [Web Routers & Server-Rendered UI](../06-web-routers/web-routes.md) for
+> what `routers.NormalRoutes()` actually builds, and
+> [Running Gitea](../03-getting-started/running-gitea.md) for day-to-day
+> operational guidance.
+
+## Graceful Restart & Shutdown
+
+Gitea implements a "hot restart" mechanism similar to nginx/`endless`, allowing
+`SIGHUP` to spawn a replacement process that inherits open listen sockets
+without dropping in-flight connections. This is implemented in
+`modules/graceful/` and wired into the CLI via `cmd/web_graceful.go`.
+
+### Runtime wiring (`cmd/web_graceful.go`)
+
+- `runHTTP` simply forwards to `graceful.HTTPListenAndServe`.
+- `runFCGI` builds a `graceful.NewServer("tcp"|"unix", addr, name)` and calls
+  `fcgiServer.ListenAndServe(...)`, stripping `AppSubURL` from incoming paths.
+- `NoHTTPRedirector()` / `NoInstallListener()` call
+  `graceful.GetManager().InformCleanup()` to tell the manager that an expected
+  listener slot will not be used, so socket-inheritance bookkeeping stays
+  consistent (see `numberOfServersToCreate` below).
+
+### The `graceful.Manager` (`modules/graceful/manager.go`)
+
+The manager is a process-wide singleton (`graceful.GetManager()` /
+`graceful.InitManager(ctx)`) that tracks a small state machine:
+
+```mermaid
+stateDiagram-v2
+  [*] --> stateInit
+  stateInit --> stateRunning
+  stateRunning --> stateShuttingDown: doShutdown()
+  stateShuttingDown --> stateTerminate: doTerminate()
+  stateTerminate --> [*]
+```
+
+Key mechanics:
+
+- **`numberOfServersToCreate = 4`** — Gitea expects up to 4 listening
+  services to be created per process (main HTTP/HTTPS listener, install
+  listener, HTTP redirect fallback, built-in SSH listener). Any code path that
+  decides *not* to create one of these must call `InformCleanup()` so the
+  manager knows all sockets have been accounted for before closing unused
+  inherited file descriptors.
+- **`RunWithShutdownContext(run func(context.Context))`** — used by long-running
+  components (e.g. the HTTP server, SSH server) to register themselves in the
+  `runningServerWaitGroup` and receive a context that is canceled at shutdown.
+- **`RunAtShutdown` / `RunAtTerminate`** — register cleanup callbacks that fire
+  during the shutdown or terminate phases respectively (each wrapped with
+  panic recovery).
+- **`doShutdown()`** transitions `stateRunning -> stateShuttingDown`, cancels
+  the shutdown context, runs all `toRunAtShutdown` callbacks, and — if
+  `setting.GracefulHammerTime >= 0` — schedules `doHammerTime` after that
+  duration to forcibly cancel the "hammer" context for connections that
+  haven't finished. It also waits on `runningServerWaitGroup`, then calls
+  `doTerminate()`.
+- **`doHammerTime(d)`** cancels `hammerCtx` after `d`, causing any code
+  watching `IsHammer()` to abort immediately (used for connections that
+  refuse to close gracefully).
+- **`doTerminate()`** transitions to `stateTerminate`, cancels
+  `terminateCtx`, and runs all `toRunAtTerminate` callbacks — this is the last
+  phase before the process context (`managerCtx`) itself is canceled and
+  `Done()` unblocks, letting `runWeb` return.
+
+### OS signal handling (`modules/graceful/manager_unix.go`)
+
+On Unix platforms, `Manager.start()` spawns `handleSignals`, which listens for:
+
+| Signal | Effect |
+|--------|--------|
+| `SIGHUP` | `DoGracefulRestart()` — fork a replacement process |
+| `SIGUSR1` | Release and reopen log files (log rotation) |
+| `SIGUSR2` | `DoImmediateHammer()` — force-terminate immediately |
+| `SIGINT` / `SIGTERM` | `DoGracefulShutdown()` — graceful shutdown, no restart |
+| `SIGTSTP` | Logged only, no action |
+
+It also participates in the **systemd notify protocol**: it reports
+`READY=1`, `MAINPID=<pid>`, `STOPPING=1`/status messages, and — if
+`WATCHDOG_USEC` is set — periodically pings the systemd watchdog.
+
+### Restart mechanics (`modules/graceful/restart_unix.go`)
+
+`DoGracefulRestart()`:
+
+1. If `setting.GracefulRestartable` is false, it just performs a normal
+   `doShutdown()` (this is the "systemd manages restarts" mode, e.g. via
+   `systemctl restart`).
+2. Otherwise it calls `doFork()`, which:
+   - Sets a `forked` guard (only one fork attempt per process).
+   - Rewrites log file paths to include the PID (`RestartLogsWithPIDSuffix`)
+     so the old and new process don't clobber each other's logs during the
+     handoff window.
+   - Calls `RestartProcess()`.
+3. After forking, the **parent immediately calls `doShutdown()`** — the design
+   deliberately does not keep the old process alive, both processes never run
+   concurrently for long (this avoids issues like leveldb file locks being
+   held by two processes at once).
+
+`RestartProcess()`:
+
+1. Collects all currently active listeners (`getActiveListeners()`).
+2. Extracts each listener's `*os.File` (via a `filer` interface all Gitea
+   listeners implement) so the fds can be passed to the child.
+3. For `*net.UnixListener`, disables "unlink on close" so the socket file
+   isn't removed out from under the new process.
+4. Resolves the original binary path with `exec.LookPath(os.Args[0])` — this
+   means a `SIGHUP` after a binary upgrade-in-place will start the *new*
+   binary.
+5. Builds the child's environment: copies `os.Environ()`, replaces
+   `LISTEN_FDS` with the new fd count, and forwards `NOTIFY_SOCKET` and
+   `WATCHDOG_USEC` if set.
+6. Calls `os.StartProcess` with `Files: [stdin, stdout, stderr, ...listenerFDs]`
+   so the child inherits the sockets starting at fd 3 (`startFD` in
+   `net_unix.go`).
+7. Releases the child process handle immediately (`process.Release()`) — the
+   parent does not wait for it.
+
+The child process (started with `LISTEN_FDS > 0`) detects it is a child in
+`Manager.start()` (`g.isChild = len(os.Getenv("LISTEN_FDS")) > 0 && os.Getppid() > 1`)
+and reuses the inherited sockets instead of binding new ones
+(`getProvidedFDs`/`GetListener` in `net_unix.go`), giving effectively
+zero-downtime restarts.
+
+```mermaid
+sequenceDiagram
+  participant Old as Old gitea process
+  participant OS as OS
+  participant New as New gitea process
+
+  Note over Old: SIGHUP received
+  Old->>Old: handleSignals -> DoGracefulRestart()
+  Old->>Old: RestartLogsWithPIDSuffix()
+  Old->>OS: os.StartProcess(argv0, env+LISTEN_FDS, files=[stdin,stdout,stderr,...listenerFDs])
+  OS->>New: fork/exec with inherited listener fds
+  New->>New: isChild = true, reuse inherited sockets
+  New->>New: notify(readyMsg) once numberOfServersToCreate sockets accounted for
+  Old->>Old: doShutdown() -> drains connections -> doTerminate()
+  Old->>Old: process exits
+  New->>New: continues serving requests on the same sockets
+```
+
+On **Windows** (`modules/graceful/manager_windows.go` / `net_windows.go`),
+socket-fd inheritance via `exec` isn't available, so graceful restart is not
+supported — `manager restart` explicitly documents this limitation, and
+Windows service managers (e.g. NSSM) are expected to handle process restarts
+instead.
+
+### `gitea manager` — controlling a running process
+
+Unlike the signal-based mechanism above (which requires OS-level access to
+send signals), `cmd/manager.go` implements remote-control operations by
+calling **the running instance's internal HTTP API**
+(`modules/private/manager.go`), authenticated with the shared
+`INTERNAL_TOKEN`, over `setting.LocalURL`. This lets an admin run
+`gitea manager shutdown` (for example, from inside a container or over SSH)
+without needing the numeric PID.
+
+| Subcommand | Internal endpoint | Effect |
+|------------|-------------------|--------|
+| `shutdown` | `POST /api/internal/manager/shutdown` | Graceful shutdown, no restart |
+| `restart` | `POST /api/internal/manager/restart` | Graceful restart (subject to `GracefulRestartable`) |
+| `reload-templates` | `POST /api/internal/manager/reload-templates` | Hot-reload Go HTML templates |
+| `flush-queues` | `POST /api/internal/manager/flush-queues` | Flush all in-process queues (`--timeout`, `--non-blocking`) |
+| `logging` | various `/api/internal/manager/...` | Manage log writers at runtime — see below |
+| `processes` | `/api/internal/manager/processes` | Dump/cancel currently tracked processes (`--flat`, `--stacktraces`, `--json`, `--cancel <pid>`) |
+
+`gitea manager logging` (`cmd/manager_logging.go`) supports:
+
+- `pause` / `resume` — pause/resume all log writers.
+- `release-and-reopen` — close and reopen log file handles (for external log
+  rotation tools like `logrotate`).
+- `remove --logger <name>` — remove a named event writer.
+- `add file|conn ...` — dynamically attach a new file or network log writer
+  with level, flags, expression filter, rotation (`--rotate`, `--max-size`,
+  `--daily`, `--max-days`, `--compress`), or connection settings
+  (`--reconnect`, `--protocol`, `--address`).
+- `log-sql on|off` — toggle SQL statement logging at runtime.
+
+All `manager` subcommands share a `--debug` flag and call `setup(ctx, debug)`
+(from `cmd/serv.go`) before issuing the internal request, and
+`handleCliResponseExtra` to surface any server-side error/user message.
+
+## `gitea admin` — Administrative Operations
+
+`cmd/admin.go` defines the `admin` command with five subcommand groups:
+
+```mermaid
+graph LR
+  admin --> user
+  admin --> repo-sync-releases
+  admin --> regenerate
+  admin --> auth
+  admin --> sendmail
+```
+
+### `admin user` (`cmd/admin_user*.go`)
+
+| Subcommand | File | Purpose |
+|------------|------|---------|
+| `create` | `admin_user_create.go` | Create a user; flags include `--username`/`--name`, `--email` (required), `--password`, `--random-password[-length]`, `--admin`, `--must-change-password`, `--access-token[-name/-scopes]`, `--restricted`, `--user-type` (`individual`/`bot`), `--fullname` |
+| `list` | `admin_user_list.go` | List users in a tabular format |
+| `change-password` | `admin_user_change_password.go` | Set a new password for a user |
+| `delete` | `admin_user_delete.go` | Delete a user by username/ID/email |
+| `generate-access-token` | `admin_user_generate_access_token.go` | Create a personal access token for a user |
+| `must-change-password` | `admin_user_must_change_password.go` | Force/unforce password change at next login |
+| `disable-2fa` | `admin_user_disable_2fa.go` | Disable two-factor auth for a user |
+
+`runCreateUser` (in `admin_user_create.go`) calls `setting.LoadSettings()`
+first (full settings load, needed for org/visibility defaults), validates
+`--user-type` against `individual`/`bot`, and rejects `--password`/
+`--random-password` for bot users.
+
+### `admin repo-sync-releases`
+
+Iterates every repository page-by-page (`repo_model.SearchRepositoryByName`),
+opens each git repo, and calls `repo_module.SyncReleasesWithTags` to
+reconcile the `release` DB table with actual git tags — useful after manual
+tag manipulation or a bulk import.
+
+### `admin regenerate` (`cmd/admin_regenerate.go`)
+
+| Subcommand | Effect |
+|------------|--------|
+| `hooks` | `repo_service.SyncRepositoryHooks` — rewrites all repositories' `.git/hooks/*` files to match the currently installed Gitea binary/config |
+| `keys` | `asymkey_service.RewriteAllPublicKeys` — regenerates the SSH `authorized_keys` file from the DB |
+
+### `admin auth` (`cmd/admin_auth*.go`)
+
+Manage external authentication sources without going through the web UI —
+useful for scripted deployments:
+
+| Subcommand | File |
+|------------|------|
+| `add-oauth` / `update-oauth` | `admin_auth_oauth.go` |
+| `add-ldap` / `update-ldap` (bind-DN mode) | `admin_auth_ldap.go` |
+| `add-ldap-simple` / `update-ldap-simple` (simple-auth mode) | `admin_auth_ldap.go` |
+| `add-smtp` / `update-smtp` | `admin_auth_smtp.go` |
+| `list` | `admin_auth.go` — tabular list of `auth_model.Source` rows (ID, Name, Type, Enabled), configurable column formatting via `--min-width`, `--tab-width`, `--padding`, `--pad-char`, `--vertical-bars` |
+| `delete --id <id>` | `admin_auth.go` — deletes via `auth_service.DeleteSource` |
+
+See [Authentication & Authorization](../08-services/auth-providers.md) for the
+underlying provider implementations.
+
+### `admin sendmail`
+
+`--title` (required), `--content`, `--force` to skip the confirmation prompt.
+Calls `private.SendEmail` over the internal API to broadcast a message to
+every registered user.
+
+## `gitea doctor` — Diagnostics & Maintenance
+
+`cmd/doctor.go` defines three subcommands:
+
+### `doctor check`
+
+Runs a registry of diagnostic checks (`services/doctor`, `doctor.Checks`).
+Flags:
+
+| Flag | Purpose |
+|------|---------|
+| `--list` | Print all available checks (name, title, whether it's a default check) |
+| `--default` | Run only checks marked `IsDefault` (this is the behavior with no flags at all) |
+| `--run <name>,...` | Run specific named checks (repeatable / comma-separated); combine with `--default` to also run defaults |
+| `--all` | Run every registered check |
+| `--fix` | Allow checks to automatically repair problems, not just report them |
+| `--log-file <path\|->` | Write verbose diagnostic output to a file or stdout |
+| `--color` / `-H` | Force-enable colorized output |
+
+### `doctor recreate-table [TABLE]...`
+
+Uses Xorm's schema-sync facilities (`migrate_base.RecreateTables`) to drop and
+recreate one or more tables from their current Go struct definitions, copying
+existing data across — useful when a database's on-disk schema has drifted
+from what current migrations expect (e.g. manually altered columns).
+Requires `--debug` for verbose SQL logging. Runs `migrations.EnsureUpToDate`
+first to guarantee the migration ladder has already been applied.
+
+### `doctor convert`
+
+Defined in `cmd/doctor_convert.go` — converts the existing database's table
+character set/collation (primarily used for MySQL: converting all tables to
+`utf8mb4`).
+
+See [Data Layer — Migrations](../05-database-models/migrations.md) for more on
+the migration ladder that `doctor` interacts with.
+
+## `gitea dump` / `dump-repo` / `restore-repo` — Backup & Restore
+
+### `gitea dump` (`cmd/dump.go`)
+
+Produces a single archive (default `gitea-dump-{time}.zip`, or `-` for
+stdout) containing the database, custom config, repositories, LFS data,
+attachments, package data, search index, and logs, using
+`gitea.dev/modules/dump.NewDumper`.
+
+| Flag | Purpose |
+|------|---------|
+| `--file` / `-f` | Output file name, or `-` for stdout |
+| `--type` | Output format (see `dump.SupportedOutputTypes`, e.g. `zip`) |
+| `--verbose` / `-V`, `--quiet` / `-q` | Mutually exclusive log verbosity controls |
+| `--tempdir` / `-t` | Where to stage temp files during the dump |
+| `--database` / `-d` | Force a specific SQL dialect for the DB dump |
+| `--skip-repository` / `-R` | Skip repositories |
+| `--skip-log` / `-L` | Skip log files |
+| `--skip-custom-dir` | Skip the `custom/` directory |
+| `--skip-lfs-data` | Skip LFS object storage |
+| `--skip-attachment-data` | Skip issue/PR attachments |
+| `--skip-package-data` | Skip the package registry storage |
+| `--skip-index` | Skip the bleve search index |
+| `--skip-db` | Skip the database dump entirely |
+
+`runDump` requires Gitea to already be installed (`setting.MustInstalled()`),
+initializes the DB engine and storage subsystem, then streams everything
+through `dump.NewDumper` into the chosen output.
+
+### `gitea dump-repo` (`cmd/dump_repo.go`)
+
+Dumps a **single repository** (optionally from an external `git`/`github`/
+`gitea`/`gitlab` remote, cloned with `--clone_addr`, `--auth_username`/
+`--auth_password`/`--auth_token`) to a local directory (`--repo_dir`), used by
+the standalone migration tooling that powers repository migration ("New
+Migration" in the web UI) without going through the server.
+
+### `gitea restore-repo` (`cmd/restore_repo.go`)
+
+The inverse operation: restores a previously dumped repository directory
+(`--repo_dir`) back into a live Gitea instance under a given
+`--owner_name`/`--repo_name`, with optional `--units` filtering and
+`--validation` (sanity-check file contents before loading).
+
+## `gitea migrate` / `migrate-storage`
+
+### `gitea migrate` (`cmd/migrate.go`)
+
+Runs the full `versioned_migration.Migrate` ladder against the configured
+database via `db.InitEngineWithMigration`. This is the same migration path
+that runs automatically on `web` startup, but exposed standalone so scripts
+can migrate the schema (e.g. before running `admin user create`) without
+starting the HTTP server. See
+[Data Layer — Migrations](../05-database-models/migrations.md) for the
+migration implementation.
+
+### `gitea migrate-storage` (`cmd/migrate_storage.go`)
+
+Copies stored blobs from whatever storage backend `app.ini` currently
+configures to a **new** backend specified entirely via CLI flags (it does not
+mutate `app.ini` — that's a manual follow-up step).
+
+| Flag | Purpose |
+|------|---------|
+| `--type` / `-t` | What kind of data to migrate: `attachments`, `lfs`, `avatars`, `repo-avatars`, `repo-archivers`, `packages`, `actions-log`, `actions-artifacts` |
+| `--storage` / `-s` | Target storage backend: `local` (default), `minio`, `azureblob` |
+| `--path` / `-p` | Target local path (when `--storage local`) |
+| `--minio-*` | Minio endpoint/access key/secret/bucket/location/base-path/SSL/insecure-skip-verify/checksum-algorithm/bucket-lookup-type |
+| `--azureblob-*` | Azure Blob endpoint/account name/account key/container |
+
+Internally it iterates every relevant DB model (`actions_model`, `git_model`,
+`packages_model`, `repo_model`, `user_model`) to enumerate existing blobs, then
+copies each object from the old `storage.Storage` to the newly-constructed one.
+See [Storage, Queue & Caching](../09-core-modules/storage-queue-cache.md) for
+background on the storage abstraction being migrated.
+
+## `gitea keys` — SSH Authorized-Keys Lookup (internal)
+
+`cmd/keys.go`'s `NewKeysCommand()` is `Hidden: true` — it is invoked
+automatically by `sshd`'s `AuthorizedKeysCommand` directive, **not** by
+administrators directly. Given `--username`, `--type`, and `--content`
+(base64 SSH key material), it calls
+`private.AuthorizedPublicKeyByContent` over the internal API and prints the
+resulting `command="gitea serv ..." ...` authorized_keys line that `sshd`
+should treat as authoritative for that key. If `--username` doesn't match
+`--expected` (defaults to `git`), it silently returns nothing.
+
+## `gitea serv` — Git-Over-SSH Entry Point (internal)
+
+`cmd/serv.go`'s `serv` command is the program that Gitea's generated
+`authorized_keys` entries point `sshd` at
+(`command="/path/to/gitea serv --config=... key-N"`). It is also `Hidden: true`.
+
+`runServ`:
+
+1. Calls `setup(ctx, debug)` (shared with `hook`/`keys`) which sets up a
+   console logger, verifies `setting.RepoRootPath` is accessible, and runs
+   `git.InitSimple()`.
+2. Bails out early if `setting.SSH.Disabled`.
+3. Parses the SSH command line (`SSH_ORIGINAL_COMMAND`) with
+   `shellquote.Split`, expecting one of the Git verbs:
+   `git-upload-pack`, `git-receive-pack`, `git-upload-archive`, or an LFS
+   verb (`git-lfs-authenticate`, `git-lfs-transfer`).
+4. `getAccessMode(verb, lfsVerb)` maps the verb to the
+   `perm.AccessMode` required (`Read` for upload-pack/upload-archive/LFS
+   download, `Write` for receive-pack/LFS upload); unrecognized verbs are
+   explicitly rejected rather than silently defaulting to `AccessModeNone`.
+5. Calls the internal `/api/internal/serv/...` endpoint to authorize the
+   request against the DB (deploy keys, user keys, repo permissions), then
+   execs the appropriate `git` subprocess (or delegates to
+   `services/lfs`/`modules/lfstransfer` for LFS SSH transfer) with the
+   environment variables that `hook` commands later read
+   (`GITEA_REPO_USER_NAME`, `GITEA_PUSHER_ID`, `GITEA_PR_ID`,
+   `GITEA_DEPLOY_KEY_ID`, `GITEA_ACTIONS_TASK_ID`, etc. — see
+   `repo_module.Env*` constants).
+
+## `gitea hook` — Git Hook Delegation (internal)
+
+`cmd/hook.go`'s `hook` command (also `Hidden: true`) is what Gitea installs
+as the actual executable behind every repository's
+`.git/hooks/{pre-receive,update,post-receive,proc-receive}` script (each
+generated hook script simply execs `gitea hook <name> --config=...`).
+
+| Subcommand | Function | Notes |
+|------------|----------|-------|
+| `pre-receive` | `runHookPreReceive` | Reads `<old> <new> <ref>` triples from stdin in batches of `hookBatchSize=500`, builds a `private.HookOptions` (pusher ID, PR ID, deploy key ID, Actions task ID, quarantine/alt-object-dir env, git push options) from environment variables set by `serv`, and calls `private.HookPreReceive` per batch to run protected-branch/permission checks server-side. Supports `git.DefaultFeatures().SupportProcReceive` for delayed permission checks and `setting.Git.VerbosePush[Delay]` for progress dots streamed back to the pushing client. |
+| `update` | `runHookUpdate` | Deliberately lightweight — invoked once *per ref* by git, so it avoids any heavy DB/network calls that pre/post-receive can batch instead. |
+| `post-receive` | `runHookPostReceive` | Notifies Gitea of completed ref updates (triggers webhooks, Actions triggers, issue-closing keyword scanning, etc. via the internal API) |
+| `proc-receive` | `runHookProcReceive` | Implements git's newer (2.29+) `proc-receive` protocol, used for server-side operations like creating pull requests directly from `git push` (e.g. `git push origin HEAD:refs/for/main`) |
+
+All four accept a `--debug` flag. Because git hook stdout/stderr is piped
+directly back to the pushing client, `PrepareConsoleLoggerLevel(log.FATAL)` is
+used as the `Before` hook for the whole `hook` command tree — any accidental
+non-fatal log line written to stdout would corrupt the git wire protocol and
+hang the client, so only fatal errors are allowed to reach the console logger
+by default.
+
+See [Git Internals & LFS](../09-core-modules/git-module.md) and
+[LFS & Git Hooks](../09-core-modules/lfs-and-hooks.md) for the repository-side
+mechanics these hooks trigger.
+
+## `gitea actions` — Actions Runner Tokens
+
+`cmd/actions.go` currently exposes one subcommand:
+
+- `generate-runner-token` (alias `grt`) — `--scope {owner}[/{repo}]` (empty
+  for a global/instance-wide runner token). Calls
+  `private.GenerateActionsRunnerToken` and prints the resulting registration
+  token, used with `act_runner register --instance ... --token ...`.
+
+See [Actions (CI/CD) Architecture](../14-actions-ci/actions-architecture.md)
+for how runners consume this token.
+
+## `gitea cert` — Self-Signed TLS Certificates
+
+`cmd/cert.go`'s `cert` command is a close port of Go's standard-library
+`crypto/tls` certificate generator example. Flags:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--host` | required | Comma-separated hostnames/IPs the cert covers |
+| `--ecdsa-curve` | `""` (RSA) | `P224`/`P256`/`P384`/`P521`, or empty for RSA |
+| `--rsa-bits` | `3072` | RSA key size (ignored if ECDSA curve set) |
+| `--start-date` | now | `Jan 2 15:04:05 2006`-formatted validity start |
+| `--duration` | `365 * 24h` | Certificate validity period |
+| `--ca` | false | Mark the certificate as its own CA |
+| `--out` | `cert.pem` | Output certificate path |
+| `--keyout` | `key.pem` | Output private key path |
+
+Produces `cert.pem`/`key.pem` suitable for `CERT_FILE`/`KEY_FILE` in
+`app.ini` under `[server] PROTOCOL = https` for local/dev HTTPS testing (not
+intended to replace a real CA-issued certificate in production).
+
+## `gitea generate` — Secrets & SSH Keys
+
+`cmd/generate.go` groups two subcommand families:
+
+- **`generate secret`**:
+  - `INTERNAL_TOKEN` — a fresh `INTERNAL_TOKEN` (used to authenticate CLI ↔
+    server internal API calls, e.g. `manager`, `keys`, `serv`, `hook`).
+  - `JWT_SECRET` (alias `LFS_JWT_SECRET`) — the LFS SSH-transfer JWT signing
+    secret.
+  - `SECRET_KEY` — the general app-level `SECRET_KEY` used for encryption at
+    rest (secrets, 2FA, OAuth client secrets, etc.).
+- **`generate ssh`**:
+  - `key --file <path> [--type ed25519|...] [--bits N]` — generates a new SSH
+    keypair (used for e.g. the built-in Gitea SSH server's host key, or a
+    deploy key), with an interactive overwrite confirmation via `confirm()`.
+  - `host-keys --dir <path>` — generates the full set of default host key
+    types (RSA, ECDSA, Ed25519) if they don't already exist, via
+    `ssh.InitDefaultHostKeys`.
+
+## `gitea config edit-ini` — Config File Automation
+
+`cmd/config.go` provides a config-management helper mainly aimed at
+containerized/Helm-chart deployments that need to reconstruct `app.ini` from
+environment variables on every boot:
+
+| Flag | Purpose |
+|------|---------|
+| `--config` (global) | Input INI file (required) |
+| `--config-keep-keys` | A template INI file whose *keys* (not values) define exactly which keys to retain from the input; everything else is dropped |
+| `--apply-env` | Apply all `GITEA__section_name__KEY_NAME[__FILE]` environment variables onto the config |
+| `--out` | Output file path |
+| `--in-place` | Overwrite the input file (ignored if `--out` given) |
+
+This command backs the `environment-to-ini` helper script referenced in
+Gitea's official Docker images and is described in detail in
+[Configuration (`app.ini`)](../03-getting-started/configuration-app-ini.md).
+
+## `gitea embedded` — Extracting Baked-In Assets
+
+Gitea's release binaries embed static assets (`options/`, `public/`,
+`templates/`) directly into the executable via Go's `embed` package (see the
+`options`, `public`, and `templates` modules' `BuiltinAssets()` functions).
+`cmd/embedded.go` exposes tooling to inspect and extract these without
+needing the original source tree — useful for customizing templates/locale
+files against an official release binary.
+
+### Shared matching logic
+
+`initEmbeddedExtractor` compiles the command's positional arguments as glob
+patterns (defaulting to `**` — everything) via `modules/glob`, then walks
+three asset layers and records every match into a package-level
+`matchedAssetFiles []assetFile` slice:
+
+```mermaid
+graph LR
+  A["options.BuiltinAssets()"] --> D[assetfs.Layered]
+  B["public.BuiltinAssets()"] --> D
+  C["templates.BuiltinAssets()"] --> D
+  D --> E["collectAssetFilesByPattern()"]
+  E -->|"pattern matches path/name"| F["matchedAssetFiles"]
+```
+
+Each layer is namespaced by prefix (`options/...`, `public/...`,
+`templates/...`) when matching against user-supplied glob patterns, e.g.
+`gitea embedded list 'templates/repo/**'`.
+
+### Subcommands
+
+| Subcommand | Flags | Behavior |
+|------------|-------|----------|
+| `list [PATTERN...]` | `--include-vendored`/`--vendor` | Prints the path of every matched embedded file |
+| `view [PATTERN]` | `--include-vendored` | Requires the pattern to match **exactly one** file; writes its raw bytes to stdout |
+| `extract [PATTERN...]` | `--include-vendored`, `--overwrite`, `--rename`, `--custom`, `--destination`/`--dest-dir` | Writes every matched file to disk under the destination directory, preserving its relative path |
+
+`--include-vendored` is needed to also match files under `public/vendor/...`
+(third-party frontend libraries), which are excluded by default to avoid
+accidentally extracting megabytes of vendored JS/CSS.
+
+`extract`'s destination resolution order:
+
+1. `--destination`/`--dest-dir` if set.
+2. `setting.CustomPath` if `--custom` is set (i.e. extract straight into the
+   active `custom/` override directory).
+3. Otherwise the current working directory (`.`).
+
+Conflict handling (`extractAsset`):
+
+- Default (`--overwrite`/`--rename` both false): skip existing files with a
+  message.
+- `--overwrite`: replace in place.
+- `--rename`: move the existing file to `<name>.bak` first (preserving its
+  original file mode), then write the new content.
+
+Typical use: after upgrading Gitea, run
+`gitea embedded extract --custom templates/repo/issue/view_content/comments.tmpl`
+to pull a specific default template into `custom/templates/...` for local
+overriding, or `gitea embedded list 'public/assets/img/**'` to audit which
+image assets ship built-in.
+
+## `gitea docs` — Self-Documenting CLI
+
+`cmd/docs.go` renders CLI help for the *entire* command tree using
+`github.com/urfave/cli-docs/v3`:
+
+- `--man` — output man-page (`.1`) formatted docs instead of Markdown.
+- `--output`/`-o <path>` — write to a file instead of stdout.
+
+This is how Gitea's official CLI reference documentation and man pages are
+generated from the same `cli.Command` definitions documented on this page,
+guaranteeing the reference docs never drift from the actual flags.
+
+## Cross-Cutting Helpers (`cmd/helper.go`)
+
+A handful of small utilities are shared across nearly every subcommand:
+
+- **`initDB(ctx)`** — calls `setting.MustInstalled()`, `setting.LoadDBSetting()`,
+  `setting.InitSQLLoggersForCli(log.INFO)`, and `db.InitEngine(ctx)`. Used by
+  any command that talks directly to the database (`admin`, `doctor`, etc.).
+- **`setupConsoleLogger(level, colorize, out)`** — replaces the default
+  logger's writers with a single console writer; `out` must be `os.Stdout` or
+  `os.Stderr`.
+- **`PrepareConsoleLoggerLevel(defaultLevel)`** — the shared `Before` hook
+  factory: escalates to `TRACE` on `--debug`/`--verbose`, drops to `FATAL` on
+  `--quiet`, otherwise uses `defaultLevel`. Different commands pick different
+  defaults — `web` defaults to `INFO`, while `serv`/`hook`/`keys` default to
+  `FATAL` to avoid corrupting the git/ssh wire protocol.
+- **`confirm(stdin, stdout, msg, args...)`** — simple `y`/`yes` interactive
+  confirmation prompt, used by destructive or overwrite-risking commands
+  (`sendmail`, `generate ssh key`).
+- **`installSignals()`** — installs a `SIGINT`/`SIGTERM` handler that cancels
+  a `context.Context`, used as the top-level context for `RunMainApp`.
+- **`isValidDefaultSubCommand(cmd)`** — guards the implicit default `web`
+  command from accidentally triggering when a user mistypes a subcommand
+  name.
+
+## Summary Table — All Top-Level Commands
+
+| Command | Config required? | Internal only? | Purpose |
+|---------|:---:|:---:|---------|
+| `web` | Yes | No | Start the HTTP(S)/FCGI web server (default command) |
+| `serv` | Yes | Yes | Git-over-SSH command dispatcher, invoked by `sshd` |
+| `hook` | Yes | Yes | Git hook delegate (`pre-receive`/`update`/`post-receive`/`proc-receive`) |
+| `keys` | Yes | Yes | SSH `authorized_keys` command lookup, invoked by `sshd` |
+| `dump` | Yes | No | Full backup archive |
+| `dump-repo` | Yes | No | Dump a single repository (local or remote) |
+| `restore-repo` | Yes | No | Restore a single repository dump |
+| `admin` | Yes | No | User/auth/hooks/keys/release admin operations |
+| `migrate` | Yes | No | Run pending DB migrations |
+| `migrate-storage` | Yes | No | Move stored blobs between storage backends |
+| `doctor` | Yes | No | Diagnostics, table recreation, charset conversion |
+| `manager` | Yes | No | Remote-control a running instance via internal API |
+| `embedded` | Yes | No | List/view/extract embedded assets |
+| `actions` | Yes | No | Generate Actions runner registration tokens |
+| `config` | No | No | INI file templating/environment-variable merging |
+| `cert` | No | No | Generate a self-signed TLS certificate |
+| `generate` | No | No | Generate secrets/SSH keys |
+| `docs` | No | No | Render CLI reference documentation |
+
+## Related Pages
+
+- [Running Gitea as a System Service](service-management.md) — systemd/SysV
+  init/OpenRC/BSD/SMF/`launchd`/Supervisor definitions that invoke `gitea web`,
+  and how OS-level restart policy interacts with `graceful.Manager`
+- [Getting Started — Running Gitea](../03-getting-started/running-gitea.md)
+- [Configuration (`app.ini`)](../03-getting-started/configuration-app-ini.md)
+- [Data Layer — Migrations](../05-database-models/migrations.md)
+- [Storage, Queue & Caching](../09-core-modules/storage-queue-cache.md)
+- [Git Internals & LFS](../09-core-modules/git-module.md)
+- [Actions (CI/CD) Architecture](../14-actions-ci/actions-architecture.md)

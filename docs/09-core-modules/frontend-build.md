@@ -1,0 +1,488 @@
+# Frontend Build Pipeline
+
+Gitea's web UI is built from TypeScript, Vue single-file components, and CSS sources under
+`web_src/`, and compiled by [Vite](https://vitejs.dev/) into static assets that are either
+served directly from `public/assets/` in development, or embedded into the `gitea` binary via
+Go's `bindata` build tag for release builds. This page documents the build pipeline itself —
+for a catalog of the actual feature modules, see [Frontend Features](frontend-features.md).
+
+## High-Level Pipeline
+
+```mermaid
+flowchart LR
+    subgraph Sources
+        TS["web_src/js/**/*.ts, *.vue"]
+        CSS["web_src/css/**/*.css"]
+        FOM["web_src/fomantic (prebuilt Fomantic UI)"]
+    end
+
+    subgraph Build["Vite build (rolldown/oxc + esbuild)"]
+        VITE["vite.config.ts"]
+        TW["tailwindcss via PostCSS"]
+        VUEP["@vitejs/plugin-vue"]
+        LIC["rolldown-license-plugin"]
+    end
+
+    subgraph Output
+        MANI["public/assets/.vite/manifest.json"]
+        JS["public/assets/js/*.[hash].js"]
+        CSSO["public/assets/css/*.[hash].css"]
+        FONTS["public/assets/fonts/*"]
+        LICTXT["public/assets/licenses.txt"]
+    end
+
+    subgraph Go
+        DYN["modules/public/public_dynamic.go<br/>(serves public/ directly, default)"]
+        BIN["modules/public/public_bindata.go<br/>(//go:build bindata, go:embed bindata.dat)"]
+        GEN["build/generate-bindata.go"]
+    end
+
+    TS --> VITE
+    CSS --> TW --> VITE
+    FOM -.imported by index.ts.-> VITE
+    VITE --> VUEP
+    VITE --> LIC
+    VITE --> MANI
+    VITE --> JS
+    VITE --> CSSO
+    VITE --> FONTS
+    VITE --> LICTXT
+
+    JS --> DYN
+    CSSO --> DYN
+    JS -- "make generate-bindata / -tags bindata" --> GEN --> BIN
+
+    DYN -->|"assetfs.Local"| BROWSER["Browser (index.html-less, Go html/template renders HTML shell)"]
+    BIN -->|"assetfs.Bindata"| BROWSER
+```
+
+`make frontend` (`Makefile` target `frontend: $(FRONTEND_DEST)`) runs `pnpm exec vite build`
+whenever any file under `web_src/js`, `web_src/css`, `vite.config.ts`, `tailwind.config.ts`, or
+`pnpm-lock.yaml` changes (tracked via `FRONTEND_SOURCES` / `FRONTEND_CONFIGS` in the `Makefile`).
+The build writes into `public/assets/` and touches `public/assets/.vite/manifest.json` as the
+target/sentinel file.
+
+> Gitea's Go server never runs Vite's own HTML transform — `vite.config.ts` sets
+> `appType: 'custom'` because the Go `html/template` layer renders all pages; Vite (or the
+> bindata-embedded assets) is only responsible for producing JS/CSS/font/image assets and a
+> manifest that Go's asset-loading code (`modules/assetfs`, referenced from templates) uses to
+> resolve hashed filenames.
+
+## `vite.config.ts` in Detail
+
+The config is defined in `vite.config.ts` at the repository root and is intentionally low-level
+— it does not use most of Vite's default HTML/dev-server assumptions because Gitea's server-side
+Go templates own the page shell.
+
+### Multiple entry points
+
+`rolldownOptions.input` in the main `build` config declares the top-level bundle entries:
+
+```ts
+rolldownOptions: {
+  input: {
+    index: join(import.meta.dirname, 'web_src/js/index.ts'),
+    swagger: join(import.meta.dirname, 'web_src/js/swagger.ts'),
+    'external-render-frontend': join(import.meta.dirname, 'web_src/js/external-render-frontend.ts'),
+    'eventsource.sharedworker': join(import.meta.dirname, 'web_src/js/eventsource.sharedworker.ts'),
+    devtest: join(import.meta.dirname, 'web_src/css/devtest.css'),
+    ...themes, // one entry per web_src/css/themes/*.css file
+  },
+  ...
+}
+```
+
+* `index.ts` — the main bundle loaded on every page (imports Fomantic UI's prebuilt JS, the
+  aggregated `index.css`, and registers every "feature" init function — see
+  [Frontend Features](frontend-features.md)).
+* `swagger.ts` — a separate bundle for the API documentation page (`/api/swagger`), kept apart
+  from `index.ts` so `swagger-ui-dist` (a large dependency) is not shipped to every page.
+* `external-render-frontend.ts` — the JS injected into the sandboxed `<iframe>` used to render
+  externally-rendered content (e.g. rendered files that need script execution isolation); see
+  `modules/public` and `web_src/js/markup/render-iframe.ts`.
+* `eventsource.sharedworker.ts` — built as a `SharedWorker` script that de-duplicates
+  Server-Sent-Events connections for notification polling across browser tabs.
+* `devtest` and per-theme CSS entries (`themes['theme-gitea-light']`, etc.) — each theme file
+  under `web_src/css/themes/*.css` is discovered dynamically with `globSync` and registered as
+  its own build entry so themes can be swapped without reloading the whole bundle.
+
+### IIFE entries: `iife.ts` and `external-render-helper.ts`
+
+Two files are *not* part of the normal ES-module graph: `web_src/js/iife.ts` and
+`web_src/js/external-render-helper.ts`. These need to run synchronously and very early
+(before the DOM is fully parsed, or inside a sandboxed iframe with no module loader), so
+`vite.config.ts` defines a custom `iifePlugin()`:
+
+* In **development**, the plugin intercepts requests for `/web_src/js/iife.ts` in Vite's dev
+  server middleware, builds the file on demand with `vite build`'s programmatic `build()` API
+  (`lib.formats: ['iife']`), caches the compiled code/sourcemap in memory, and triggers a
+  `full-reload` websocket message when any of its dependency modules change on disk.
+* In **production**, `writeBundle()` re-runs the same IIFE-mode build and manually patches the
+  emitted `.vite/manifest.json` so the Go template helpers can resolve the hashed IIFE filename
+  the same way as any other manifest entry.
+
+This lets `iife.ts` be referenced from a `<script>` tag directly in the HTML `<head>` (for
+critical-path bootstrapping) while everything else uses standard ES module `<script type=module>`
+loading through the manifest.
+
+### Build options and `sourcemap` strategy
+
+```ts
+build: {
+  outDir,                                 // public/assets
+  emptyOutDir: false,                     // never wipe the directory (bindata staging safety)
+  sourcemap: enableSourcemap !== 'false',
+  target: 'es2020',
+  minify: isProduction ? 'oxc' : false,   // Rolldown's built-in oxc minifier
+  cssMinify: isProduction ? 'esbuild' : false,
+  chunkSizeWarningLimit: Infinity,
+  assetsInlineLimit: 32768,
+  reportCompressedSize: false,
+  ...
+}
+```
+
+`ENABLE_SOURCEMAP` controls how much sourcemap data ships:
+
+| Value | Meaning |
+|---|---|
+| `true` | Sourcemaps for **every** JS/CSS chunk. Default in `NODE_ENV=development`. |
+| `reduced` | Sourcemaps only for the handful of "standalone" entry chunks (`js/index.*`, `js/iife.*`, `js/swagger.*`, `js/external-render-frontend.*`, `js/external-render-helper.*`, `js/eventsource.sharedworker.*`). Default in production. |
+| `false` | No sourcemaps at all. |
+
+The `reducedSourcemapPlugin()` implements the `reduced` mode: after the bundle is written, it
+globs `{js,css}/*.map` in the output directory and deletes any map file whose corresponding
+chunk is not one of the "standalone" entry prefixes — this keeps production release tarballs
+small while still allowing meaningful stack traces for the handful of entry bundles most likely
+to be debugged in the field.
+
+### Output file naming
+
+`assetFileNames` in the `output` block routes emitted files into subfolders by type
+(`js/[name].[hash:8].js`, `css/[name].[hash:8].css`, `fonts/[name].[hash:8].[ext]`, or a generic
+fallback), and both `entryFileNames`/`chunkFileNames` follow the `js/[name].[hash:8].js` pattern.
+This predictable `js/`, `css/`, `fonts/` layout is depended on by the comment
+`// HINT: VITE-OUTPUT-DIR: all outputted JS files are in "js" directory` in `vite.config.ts`, and
+is why `FRONTEND_DEST_ENTRIES` in the `Makefile` only needs to clean
+`public/assets/{js,css,fonts,.vite}`.
+
+### Vue integration
+
+`@vitejs/plugin-vue` compiles `.vue` single-file components (see
+[Frontend Features](frontend-features.md#vue-components) for the catalog). The plugin is
+configured with a custom-element allowlist so Vue does not warn about (or try to compile as Vue
+components) Gitea's own web components and third-party custom elements:
+
+```ts
+const webComponents = new Set([
+  'overflow-menu', 'relative-time',       // ours, web_src/js/webcomponents
+  'markdown-toolbar', 'text-expander',    // from @github/* dependencies
+]);
+...
+vuePlugin({
+  template: {compilerOptions: {isCustomElement: (tag) => webComponents.has(tag)}},
+})
+```
+
+`define` also fixes Vue's global feature flags for production builds
+(`__VUE_OPTIONS_API__: true`, `__VUE_PROD_DEVTOOLS__: false`,
+`__VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false`) to shrink the bundle and disable devtools hooks
+in shipped code.
+
+### Other notable plugins
+
+| Plugin | Purpose |
+|---|---|
+| `stringPlugin()` (from `vite-string-plugin`) | Allows importing files as raw strings (e.g. `?raw`-style imports used by embedded snippets). |
+| `filterCssUrlPlugin()` | Strips legacy `woff`/`ttf` `url()` fallbacks from KaTeX's CSS, keeping only `woff2` to shrink math-rendering CSS. |
+| `viteDevServerPortPlugin()` | Writes the dev server's actual listening port to `public/assets/.vite/dev-port` so the Go backend can discover and reverse-proxy to Vite in `make watch` mode. |
+| `failOnWarningsPlugin()` (CI only) | Fails the Rolldown build if any plugin emits a `warn`-level log, enforced only when `env.CI` is set. |
+| `licensePlugin()` / dev-licenses stub | See [License aggregation](#license-aggregation) below. |
+
+### Dev server security
+
+The `server.fs` config in `vite.config.ts` explicitly allowlists only
+`['assets', 'node_modules', 'public', 'web_src']` for Vite's filesystem access, with an inline
+comment (`VITE-DEV-SERVER-SECURITY`) warning against adding more directories: because Gitea's Go
+web server reverse-proxies the Vite dev server to the public internet during development, an
+unrestricted `/@fs/*` route could otherwise leak files like `app.ini` (which contains
+`INTERNAL_TOKEN` and DB credentials). The dev server also sends `Cache-Control: no-store` on all
+responses to avoid stale-asset bugs while iterating.
+
+### License aggregation
+
+In production builds, `rolldown-license-plugin`'s `licensePlugin()` walks all NPM dependencies
+that end up in the bundle, filters them to a known-safe allowlist of licenses
+(`Apache-2.0`, `0BSD`, `BSD-2/3-Clause`, `MIT`, `ISC`, `CPAL-1.0`, `Unlicense`, `EPL-1.0/2.0`,
+plus an explicit exception for `khroma`), merges them with `assets/go-licenses.json` (Go module
+license text generated separately by `build/generate-go-licenses.go`), and emits a single
+`public/assets/licenses.txt` asset — this is the file linked from Gitea's "About" page. In
+development, a stub plugin just writes a short placeholder message instead, since running the
+full license scan on every dev rebuild would be too slow.
+
+## Tailwind + Fomantic-UI Dual CSS Strategy
+
+Gitea's UI historically used **Fomantic UI** (a Semantic-UI fork) for components (`.ui.button`,
+`.ui.form`, `.ui.dropdown`, etc.) and is incrementally adding **Tailwind CSS** utility classes
+for new layout work, without a full framework rewrite. Both systems are active simultaneously,
+which requires careful configuration to avoid class-name collisions and specificity fights.
+
+### Fomantic UI: prebuilt, vendored JS/CSS
+
+Fomantic UI is *not* compiled by Vite. It's built ahead of time (via the Fomantic build tooling
+configured in `web_src/fomantic/semantic.json` / `theme.config.less`, based on `fomantic-ui` npm
+package sources) into a static, checked-in output under `web_src/fomantic/build/`
+(`web_src/fomantic/build/fomantic.js` and `build/components/*`). `web_src/js/index.ts` simply
+imports the prebuilt bundle:
+
+```ts
+import '../fomantic/build/fomantic.js';
+import '../css/index.css';
+```
+
+Only two Fomantic components are enabled — `api` and `tab` — per
+`web_src/fomantic/semantic.json`'s `"components": ["api", "tab"]` — everything else (dropdown,
+modal, dimmer, transition, etc.) has been reimplemented natively in TypeScript under
+`web_src/js/modules/fomantic/*.ts` (`dropdown.ts`, `modal.ts`, `dimmer.ts`, `tab.ts`,
+`transition.ts`, `base.ts`) to shed jQuery dependency weight and gain type safety, while keeping
+the same CSS class names/behavior so existing server-rendered `.tmpl` markup keeps working
+unmodified.
+
+### Tailwind: prefixed, `important`, restricted content scan
+
+`tailwind.config.ts` configures Tailwind defensively so it can coexist with Fomantic's global
+class names:
+
+```ts
+export default {
+  prefix: 'tw-',
+  important: true, // the frameworks are mixed together, so tailwind needs to override other framework's styles
+  content: [
+    '!./templates/swagger/v1_json.tmpl',
+    '!./templates/user/auth/oidc_wellknown.tmpl',
+    '!**/*_test.go',
+    './{build,models,modules,routers,services}/**/*.go',
+    './templates/**/*.tmpl',
+    './web_src/js/**/*.{ts,js,vue}',
+  ],
+  blocklist: [
+    'transform', 'shadow', 'ring', 'blur', 'grayscale', 'invert', '!invert', 'filter', '!filter',
+    'backdrop-filter',
+    'hidden',                 // conflicts with Fomantic's `.hidden`; use `.tw-hidden` instead
+    '[-a-zA-Z:0-9_.]',
+  ],
+  ...
+}
+```
+
+Key decisions:
+
+* **`prefix: 'tw-'`** — every Tailwind utility is emitted as `tw-<utility>` (e.g. `tw-flex`,
+  `tw-p-4`) so it can never collide with a Fomantic/Semantic UI class of the same name.
+* **`important: true`** — Tailwind utilities are compiled with `!important` because Fomantic's
+  own CSS has fairly high specificity; without this, a `tw-hidden` or `tw-flex` utility could
+  silently lose to a Fomantic rule.
+* **Custom color/spacing scale** derived from CSS variables: `tailwind.config.ts` parses
+  `:root` custom properties out of `web_src/css/themes/theme-gitea-light.css` and
+  `theme-gitea-dark.css` (via `extractRootVars()`, using the `postcss` parser) and maps them into
+  Tailwind's `theme.colors` (e.g. `--color-red` → `tw-bg-red`, `tw-text-red`), so Tailwind
+  utilities automatically respect Gitea's runtime theme switching instead of hardcoding colors.
+* **`content` globs** scan both `.go` files (because some Go code emits HTML with Tailwind
+  classes, e.g. templ-style inline HTML in `routers`/`services`) and `.tmpl` templates and
+  `.ts`/`.vue` frontend sources, so the Tailwind JIT compiler only generates CSS for classes that
+  are actually referenced somewhere in the codebase. The Swagger JSON template and OIDC
+  well-known template are explicitly excluded since they're not HTML.
+* **Custom `.hidden.hidden` utility plugin**: because both jQuery `.hide()`/`.show()` and
+  Fomantic's own `.hidden` class fight for the ability to hide elements, Tailwind's plugin API is
+  used to hand-author a `.hidden.hidden { display: none }` rule (doubled selector for extra
+  specificity) that is exposed as the project convention `tw-hidden` (defined in
+  `web_src/css/helpers.css`), and application code is expected to use the
+  `showElem`/`hideElem`/`toggleElem` helpers in `web_src/js/utils/dom.ts` rather than jQuery show/hide.
+
+### Integration point: PostCSS
+
+Tailwind is wired into the Vite pipeline purely through PostCSS, configured directly in
+`vite.config.ts`:
+
+```ts
+css: {
+  transformer: 'postcss',
+  postcss: {
+    plugins: [tailwindcss(tailwindConfig)],
+  },
+},
+```
+
+This means every `.css` file processed by Vite (including `web_src/css/index.css`, which ends
+with `@tailwind utilities;`) is run through the Tailwind PostCSS plugin, which only emits the
+`utilities` layer (no `base`/`components` layers, since Fomantic already supplies resets and
+component styles) — hence the `@tailwind utilities;` directive being the *only* Tailwind
+directive present in `index.css`.
+
+## TypeScript Configuration (`tsconfig.json`)
+
+`tsconfig.json` targets modern JS output and enables the full `strict` family of compiler
+checks:
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["dom", "esnext", "webworker"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "exactOptionalPropertyTypes": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node", "vite/client", "vitest/globals", "./web_src/js/globals.d.ts", "./types.d.ts"]
+  }
+}
+```
+
+Notable choices:
+
+* **`noEmit: true`** — TypeScript is used purely for type-checking (`tsc --noEmit`, run via
+  `vue-tsc` for `.vue` files too); Vite/Rolldown (via `esbuild`/`oxc` transforms) does the actual
+  JS emission, so `tsconfig.json` never controls output format directly.
+* **`moduleResolution: bundler`** and **`allowImportingTsExtensions: true`** — allow source files
+  to `import '../utils.ts'` with an explicit `.ts` extension (Vite requires or tolerates this in
+  ESM mode), which is the convention used throughout `web_src/js`.
+* **`verbatimModuleSyntax: true`** and **`isolatedModules: true`** — enforce that every file can
+  be transpiled independently (a requirement for fast single-file transpilers like esbuild/oxc)
+  and that type-only imports use explicit `import type`.
+* **`lib: ["dom", "esnext", "webworker"]`** — the codebase spans normal DOM code, a
+  `SharedWorker` (`eventsource.sharedworker.ts`), and modern ES features, so all three lib sets
+  are included project-wide rather than split per-file.
+* **`types`** pulls in `vitest/globals` (so test files get `describe`/`it`/`expect` without
+  imports) plus two hand-written ambient declaration files: `web_src/js/globals.d.ts` (declares
+  the shape of `window.config`, jQuery/Fomantic extensions, `window.localUserSettings`, etc.) and
+  root `types.d.ts`.
+* **`include`** covers `web_src/js/**/*`, root config files (`${configDir}/*`, `${configDir}/.*`
+  — i.e. `vite.config.ts`, `eslint.config.ts`, etc.), Playwright E2E tests
+  (`tests/e2e/**/*`), and `tools/**/*` (the standalone Node scripts like
+  `generate-svg.ts`), so one `tsconfig.json` type-checks the whole non-Go TypeScript surface of
+  the repository.
+
+Type-checking itself is run separately from the Vite build — see `make lint-js` / the
+`checks-frontend`/`lint-frontend` Makefile targets, which run ESLint (see
+`ESLINT_FILES := web_src/js tools *.ts tests/e2e` in the `Makefile`) and Stylelint
+(`STYLELINT_FILES := web_src/css web_src/js/components/*.vue`) as separate steps, not
+`vite build` itself.
+
+## esbuild Usage
+
+Although Vite 8's production bundler is Rolldown (a Rust-based bundler, visible via
+`Rolldown.RolldownOptions`/`Rolldown.Plugin` types imported in `vite.config.ts`), **esbuild**
+still appears in two specific places:
+
+1. **CSS minification** — `cssMinify: isProduction ? 'esbuild' : false` in `vite.config.ts`
+   explicitly selects esbuild's CSS minifier (as opposed to Rolldown's own `oxc` minifier, which
+   is used for JS via `minify: isProduction ? 'oxc' : false`).
+2. **Transitive dependency of Vite itself** — Vite's dev-server transform pipeline and various
+   plugins (`vite-string-plugin`, `@vitejs/plugin-vue`) depend on `esbuild` (pinned at `0.28.1` in
+   `package.json`/`pnpm-lock.yaml`) for on-the-fly TS/JSX stripping in dev mode.
+
+There is no separate hand-written esbuild config file in this project — all esbuild usage is
+delegated to and configured through Vite.
+
+## pnpm Workspace
+
+Package management uses **pnpm**, pinned via `packageManager: "pnpm@11.9.0"` in `package.json`
+and enforced by `engines: {"node": ">= 22.18.0", "pnpm": ">= 11.0.0"}`. `pnpm-workspace.yaml`
+tunes pnpm's install behavior rather than declaring multiple workspace packages (Gitea's frontend
+is a single package, not a multi-package monorepo):
+
+```yaml
+savePrefix: ''
+dedupePeerDependents: false
+updateNotifier: false
+minimumReleaseAge: 0
+
+allowBuilds:
+  '@scarf/scarf': false     # blocks a telemetry-collecting postinstall script
+  core-js: false
+  esbuild: true             # esbuild's postinstall (downloads its native binary) is allowed
+  unrs-resolver: true
+```
+
+`allowBuilds` is pnpm's guard against arbitrary `postinstall` scripts running during
+`pnpm install` — only `esbuild` and `unrs-resolver` (both of which need to fetch/compile native
+binaries) are allowlisted; `@scarf/scarf` (a known telemetry package pulled in transitively) and
+`core-js` are explicitly blocked. `make deps-frontend` / `node_modules` targets in the `Makefile`
+run `pnpm install` (respecting `pnpm-lock.yaml`), and `make lockfile-check` runs
+`pnpm install --frozen-lockfile` then diffs `pnpm-lock.yaml` to fail CI if `package.json` and the
+lockfile have drifted.
+
+## Build Pipeline: TS/Vue Source to Go Binary
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Make as Makefile
+    participant Vite as Vite (Rolldown/esbuild/oxc)
+    participant FS as public/assets/
+    participant Go as Go build
+    participant Bin as gitea binary
+
+    Dev->>Make: make frontend
+    Make->>Make: check FRONTEND_SOURCES/FRONTEND_CONFIGS mtimes
+    Make->>Vite: pnpm exec vite build
+    Vite->>Vite: PostCSS+Tailwind, Vue SFC compile, TS transpile
+    Vite->>Vite: Rolldown bundle + oxc/esbuild minify
+    Vite->>FS: emit js/*.hash.js, css/*.hash.css, fonts/*, .vite/manifest.json, licenses.txt
+    Make->>Make: touch public/assets/.vite/manifest.json
+
+    alt Development / source install
+        Go->>FS: modules/public/public_dynamic.go serves assets/ live from disk (assetfs.Local)
+    else Release build (-tags bindata)
+        Dev->>Make: make generate (build/generate-bindata.go)
+        Make->>Go: embed public/** into modules/public/bindata.dat via go:embed
+        Go->>Bin: modules/public/public_bindata.go (//go:build bindata) compiled in
+        Bin->>Bin: assetfs.Bindata serves assets from embedded FS at runtime
+    end
+```
+
+* **Default (non-bindata) builds** — `modules/public/public_dynamic.go` (guarded by
+  `//go:build !bindata`) calls `assetfs.Local("builtin(static)", setting.StaticRootPath, "public")`,
+  meaning the compiled `gitea` binary reads assets straight from the `public/` directory on disk
+  at runtime — this is what `make backend` (without extra tags) produces, and is convenient for
+  local development/source installs.
+* **bindata release builds** — `modules/public/public_bindata.go` (guarded by
+  `//go:build bindata`) instead does `//go:embed bindata.dat` to compile the entire asset tree
+  directly into the binary as `assetfs.Bindata(...)`. `bindata.dat` itself is produced by
+  `build/generate-bindata.go` (invoked via `go:generate` comments and the `make generate` /
+  release targets), which packs everything under `public/` (i.e. everything Vite just emitted)
+  into a single embeddable blob. This is how official single-binary Gitea releases ship a
+  fully self-contained executable with no external asset directory dependency.
+* Either way, the *inputs* to this Go-side step are always the files Vite wrote into
+  `public/assets/` — the Go build never talks to Vite, TypeScript, or Node directly; it only
+  consumes the finished static output.
+
+## Common Workflows
+
+| Task | Command | Notes |
+|---|---|---|
+| One-off production frontend build | `make frontend` | Runs `pnpm exec vite build`; writes `public/assets/`. |
+| Live dev server with HMR | `make watch-frontend` | `NODE_ENV=development pnpm exec vite --logLevel warn`; runs on `FRONTEND_DEV_SERVER_PORT` (default `3001`), proxied by the Go server via the discovered port file. |
+| Watch both frontend + backend | `make watch` | Runs `tools/watch.sh`, which launches `watch-frontend` and `watch-backend` concurrently and kills both on exit. |
+| Lint JS/TS/Vue | `make lint-js` (part of `lint-frontend`) | ESLint over `web_src/js`, `tools`, root `*.ts`, `tests/e2e`. |
+| Lint CSS | `make lint-css` (part of `lint-frontend`) | Stylelint over `web_src/css` and `.vue` `<style>` blocks. |
+| Unit test frontend | `make test-frontend` | `pnpm exec vitest`, using `happy-dom` (see `vitest.setup.ts`). |
+| Clean built assets | `make clean-all` | Removes `public/assets/{js,css,fonts,.vite}` and `node_modules`. |
+
+## See Also
+
+* [Frontend Features](frontend-features.md) — catalog of feature modules, Vue components, web
+  components, and the "islands of interactivity" init pattern that consumes these built assets.
+* [Core Modules Overview](README.md)

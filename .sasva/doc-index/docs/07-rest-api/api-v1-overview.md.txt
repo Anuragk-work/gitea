@@ -1,0 +1,465 @@
+=== FILE: docs/07-rest-api/api-v1-overview.md ===
+=== METADATA: format=md ===
+[SUMMARY] # REST API v1 Overview Gitea exposes a comprehensive JSON REST API under a single versioned prefix, `/api/v1`. This page describes the versioning strategy, the base URL structure, and how the API's resource groups are organized in the codebase. > Source of truth: [`routers/api/v1/api.go`](../../routers/api/v1/api.go). All routes are registered by the single `Routes()` function in that file, which returns a `*web.Router` mounted by the main router in [`routers/init.go`](../../routers/init.
+
+# REST API v1 Overview
+
+Gitea exposes a comprehensive JSON REST API under a single versioned prefix, `/api/v1`. This page describes the versioning strategy, the base URL structure, and how the API's resource groups are organized in the codebase.
+
+> Source of truth: [`routers/api/v1/api.go`](../../routers/api/v1/api.go). All routes are registered by the single `Routes()` function in that file, which returns a `*web.Router` mounted by the main router in [`routers/init.go`](../../routers/init.go):
+>
+> ```go
+> r.Mount("/api/v1", apiv1.Routes())
+> ```
+
+## Versioning Strategy
+
+Gitea currently ships exactly one stable API version: **v1**. There is no `v2` — the Go package itself is named `v1` (`package v1`) and lives at `routers/api/v1`. Backward compatibility is handled differently depending on the kind of change:
+
+- **Additive changes** (new fields, new endpoints) are made freely and do not bump the version.
+- **Deprecated behavior** is kept working but flagged. For example, the legacy `token=` and `access_token=` query-string authentication methods are still accepted, but every response sets a warning header:
+
+  ```go
+  func checkDeprecatedAuthMethods(ctx *context.APIContext) {
+      if ctx.FormString("token") != "" || ctx.FormString("access_token") != "" {
+          ctx.Resp.Header().Set("X-Gitea-Warning", "token and access_token API authentication is deprecated ...")
+      }
+  }
+  ```
+
+- **Structural/DTO changes** are managed through the `modules/structs` package (see below) — fields are added as optional/`omitempty` wherever possible so that older clients keep working.
+- The generated Swagger/OpenAPI documents (see [API Conventions & Swagger](api-conventions-and-swagger.md)) act as the contract; any accidental breaking change is caught by CI via `swagger-check`/`openapi3-check`.
+
+Because there is only one live version, "versioning" in Gitea is really about **route stability + deprecation headers + generated spec diffing**, rather than parallel `/v1`/`/v2` trees.
+
+## Base URL Structure
+
+Every API request is rooted at:
+
+```
+https://<host>/api/v1/<resource-group>/...
+```
+
+A few endpoints sit directly under `/api/v1` with no resource-group prefix (miscellaneous, public endpoints):
+
+| Path | Purpose |
+|------|---------|
+| `/api/v1/version` | Server version string |
+| `/api/v1/signing-key.gpg`, `/signing-key.pub` | Commit-signing public keys |
+| `/api/v1/markup`, `/markdown`, `/markdown/raw` | Render markup/markdown to HTML |
+| `/api/v1/gitignore/templates`, `/licenses`, `/label/templates` | Static template catalogs |
+| `/api/v1/settings/*` | Publicly-readable instance settings (UI, API, attachment, repository) |
+| `/api/v1/swagger` | Redirects to the interactive Swagger UI at `/api/swagger` |
+| `/api/v1/nodeinfo` | Federation `nodeinfo` document (if enabled) |
+
+All other functionality is nested under a resource-group prefix, e.g. `/api/v1/repos/{owner}/{repo}/issues`.
+
+## Resource Groups
+
+The router file groups endpoints by top-level resource, each implemented by a dedicated sub-package under `routers/api/v1/`:
+
+| Group prefix | Go package | Description |
+|---|---|---|
+| `/repos`, `/repositories/{id}` | `routers/api/v1/repo` | Repositories: CRUD, branches, tags, commits, issues, pulls, releases, hooks, actions, wiki, etc. |
+| `/orgs`, `/teams` | `routers/api/v1/org` | Organizations, teams, org membership, org-level hooks/labels/secrets |
+| `/users`, `/user` | `routers/api/v1/user` | Users, the authenticated user's own resources (`/user/...`), keys, followers, starred repos |
+| `/admin` | `routers/api/v1/admin` | Site-administration-only endpoints: users, orgs, cron, hooks, unadopted repos, runners |
+| top-level misc endpoints | `routers/api/v1/misc` | Markup rendering, license/gitignore/label templates, version |
+| `/notifications` | `routers/api/v1/notify` | Notification-thread inbox for the current user |
+| `/activitypub`, `/nodeinfo` | `routers/api/v1/activitypub` | ActivityPub federation endpoints (currently stubs — `NotImplemented`) |
+| `/packages` (Gitea package management) + package registry endpoints registered elsewhere | `routers/api/v1/packages` and `routers/api/packages/*` | Generic package management API plus format-specific registries (npm, Maven, Composer, Docker, NuGet, etc.) |
+| `/token` | `routers/api/v1/token` | Introspect/delete the token used to authenticate the current request |
+| `/settings` | `routers/api/v1/settings` | Publicly-exposed subset of server configuration |
+
+> The `packages` group is split in two: `routers/api/v1/packages` implements Gitea's own package **management** API (list/delete packages, files, versions — used by the Web UI and CLI), while the actual package-manager-compatible registry protocols (npm, cargo, maven, pypi, docker, etc.) are implemented under `routers/api/packages/*` and mounted separately outside `/api/v1`.
+
+### High-Level Route Tree
+
+```mermaid
+graph TD
+    A["/api/v1"] --> B["/repos/{owner}/{repo}/..."]
+    A --> C["/orgs/{org}/..."]
+    A --> D["/users/{username}/... , /user/..."]
+    A --> E["/admin/..."]
+    A --> F["/notifications/..."]
+    A --> G["/packages/{owner}/..."]
+    A --> H["/activitypub/..."]
+    A --> I["/token"]
+    A --> J["/settings/..."]
+    A --> K["misc: /version /markup /markdown /licenses ..."]
+
+    B --> B1["branches, tags, commits"]
+    B --> B2["issues, comments, labels, milestones"]
+    B --> B3["pulls, reviews"]
+    B --> B4["hooks, actions, wiki, releases"]
+
+    C --> C1["/orgs/{org}/repos"]
+    C --> C2["/orgs/{org}/teams"]
+    C --> C3["/orgs/{org}/members"]
+```
+
+### Repository Group Example
+
+The `/repos` group (see `routers/api/v1/api.go`, `m.Group("/repos", ...)`) is by far the largest. It contains sub-groups for:
+
+- `search`, `migrate`, `generate` (repo creation from template)
+- `{username}/{reponame}` root: get/edit/delete, transfer, forks, topics
+- `actions/{workflows,jobs,secrets,variables,runners}` — CI/CD management
+- `hooks`, `hooks/git` — webhook and server-side git hook management
+- `collaborators`, `teams`, `assignees`, `reviewers` — permission management
+- `branches`, `branch_protections`, `tags` — VCS ref management
+- `issues`, `labels`, `milestones`, `projects` — issue tracking
+- `pulls` — pull request lifecycle (create, merge, review, files, commits)
+- `releases`, `raw/*`, `media/*`, `archive/*` — content delivery
+- `wiki`, `notes`, `contents` — repository content APIs
+
+Each leaf endpoint is wired to a handler function in the matching file under `routers/api/v1/repo/*.go` (e.g. `repo/issue.go`, `repo/pull.go`, `repo/hook.go`).
+
+## API Data Transfer Objects (`modules/structs`)
+
+Every JSON body that the REST API accepts or returns is defined as a plain Go struct in the [`modules/structs`](../../modules/structs) package. This package has **no dependency on the database models** (`models/*`) — it is a pure "wire format" layer, which keeps the public API contract stable even as the internal schema evolves. Struct fields carry `json:"..."` tags for serialization and, for request options, `binding:"..."` tags that drive validation via `gitea.com/go-chi/binding`.
+
+Model → DTO conversion happens in [`services/convert`](../../services/convert) (e.g. `convert.ToRepo`, `convert.ToUser`, `convert.ToAPIIssue`), which is the boundary the request-flow diagram in [API Conventions & Swagger](api-conventions-and-swagger.md#api-request-flow) shows as the `DTO` step.
+
+```mermaid
+graph LR
+    A["models/repo.Repository<br/>(DB row)"] --> B["services/convert.ToRepo()"]
+    B --> C["structs.Repository<br/>(modules/structs/repo.go)"]
+    C --> D["ctx.JSON(200, dto)"]
+
+    E["HTTP JSON body"] --> F["binding.Bind()"]
+    F --> G["structs.EditRepoOption<br/>(*string / *bool pointers)"]
+    G --> H["repo_service.UpdateRepository()"]
+```
+
+> Swagger annotations (`// swagger:model`, `// swagger:enum`, `// swagger:response`) on these structs are what feed the generated spec described in [API Conventions & Swagger](api-conventions-and-swagger.md#swagger--openapi-generation--validation).
+
+### Design Conventions Used Across `modules/structs`
+
+- **Response structs use value types** (`bool`, `string`, `int`) since a "missing" JSON field simply defaults to the zero value on output.
+- **Request/"Option" structs use pointer types** (`*bool`, `*string`, `*int64`) for optional/PATCH-style semantics — `nil` means "leave unchanged", a present-but-empty value means "clear this field". Compare `Repository` (all value fields) with `EditRepoOption` (nearly all pointer fields).
+- **Timestamps** are `time.Time` (or `*time.Time`) annotated with `// swagger:strfmt date-time` so the generated spec marks them as ISO-8601 date-time strings.
+- **Enums** are declared as named string types with `// swagger:enum` (e.g. `StateType`, `ObjectFormatName`, `UserVisibility`) so Swagger renders a fixed set of allowed values instead of an open string.
+- **Validation** is declared inline via `binding:"..."` tags, e.g. `binding:"Required;AlphaDashDot;MaxSize(100)"` — enforced centrally by the `bind[T]()` helper in `routers/api/v1/api.go` before a handler ever runs.
+- **Backward-compatibility shims**: some types implement custom `MarshalJSON` to keep deprecated field names alive alongside new ones — see `User.MarshalJSON` below.
+
+### Repository Domain — `repo.go` (~20 KB)
+
+`modules/structs/repo.go` is the largest single-resource file and models the full lifecycle of a repository.
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Repository` | Response | The canonical repository representation returned by nearly every repo endpoint |
+| `Permission` | Response | `{admin, push, pull}` — the caller's access level, embedded in `Repository.Permissions` |
+| `InternalTracker` / `ExternalTracker` / `ExternalWiki` | Response/Request | Sub-objects describing issue-tracker/wiki configuration |
+| `CreateRepoOption` | Request | Body for `POST /user/repos`, `POST /orgs/{org}/repos`, `POST /admin/users/{username}/repos` |
+| `EditRepoOption` | Request | Body for `PATCH /repos/{owner}/{repo}` — almost entirely `*pointer` fields |
+| `GenerateRepoOption` | Request | Body for `POST /repos/{template_owner}/{template_repo}/generate` |
+| `CreateBranchRepoOption` / `RenameBranchRepoOption` / `UpdateBranchRepoOption` | Request | Branch management payloads |
+| `TransferRepoOption` | Request | Body for `POST /repos/{owner}/{repo}/transfer` |
+| `MigrateRepoOptions` | Request | Body for `POST /repos/migrate` (import from GitHub/GitLab/etc.) |
+| `RepoTransfer` | Response | Pending-transfer sub-object embedded in `Repository.RepoTransfer` |
+| `ObjectFormatName` | Enum | `"sha1"` or `"sha256"` — the repository's git hash algorithm |
+
+```go
+type Repository struct {
+    ID          int64  `json:"id"`
+    Owner       *User  `json:"owner"`
+    Name        string `json:"name"`
+    FullName    string `json:"full_name"`
+    Private     bool   `json:"private"`
+    Fork        bool   `json:"fork"`
+    Parent      *Repository `json:"parent,omitempty"`
+    HTMLURL     string `json:"html_url"`
+    CloneURL    string `json:"clone_url"`
+    SSHURL      string `json:"ssh_url"`
+    Stars       int    `json:"stars_count"`
+    OpenIssues  int    `json:"open_issues_count"`
+    OpenPulls   int    `json:"open_pr_counter"`
+    DefaultBranch string `json:"default_branch"`
+    Archived    bool   `json:"archived"`
+    // swagger:strfmt date-time
+    Created time.Time `json:"created_at"`
+    Permissions *Permission `json:"permissions,omitempty"`
+    InternalTracker *InternalTracker `json:"internal_tracker,omitempty"`
+    ExternalTracker *ExternalTracker `json:"external_tracker,omitempty"`
+    AllowMerge, AllowRebase, AllowSquash, AllowFastForwardOnly bool
+    DefaultMergeStyle string `json:"default_merge_style"`
+    ObjectFormatName ObjectFormatName `json:"object_format_name"`
+    Topics   []string `json:"topics"`
+    Licenses []string `json:"licenses"`
+}
+```
+
+`Repository.Parent` being of the same type demonstrates a recursive DTO — a forked repository embeds its upstream's full `Repository` representation. `EditRepoOption` shows the opposite, PATCH-oriented style:
+
+```go
+type EditRepoOption struct {
+    Name        *string `json:"name,omitempty" binding:"OmitEmpty;AlphaDashDot;MaxSize(100);"`
+    Description *string `json:"description,omitempty" binding:"MaxSize(2048)"`
+    Private     *bool   `json:"private,omitempty"`
+    InternalTracker *InternalTracker `json:"internal_tracker,omitempty"`
+    HasWiki     *bool   `json:"has_wiki,omitempty"`
+    DefaultMergeStyle *string `json:"default_merge_style,omitempty"`
+    Archived    *bool   `json:"archived,omitempty"`
+    MirrorInterval *string `json:"mirror_interval,omitempty"`
+}
+```
+
+Every optional field is a pointer so the handler (`repo.Edit` in `routers/api/v1/repo/repo.go`) can distinguish "field omitted" from "field explicitly reset."
+
+### Webhooks & Events Domain — `hook.go` (~22 KB)
+
+`modules/structs/hook.go` defines both the **webhook management API** (create/edit a webhook subscription) and the **event payload** shapes delivered to webhook URLs (and consumed internally, e.g. by Actions triggers).
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Hook` | Response | A configured webhook (`id`, `type`, `events`, `config`, `active`, timestamps) |
+| `CreateHookOption` / `EditHookOption` | Request | Bodies for `POST/PATCH /repos/{owner}/{repo}/hooks` |
+| `Payloader` | Interface | `JSONPayload() ([]byte, error)` — implemented by every `*Payload` type below |
+| `PayloadUser` / `PayloadCommit` / `PayloadCommitVerification` | Sub-object | Git commit info attached to push/create events |
+| `CreatePayload` / `DeletePayload` / `ForkPayload` | Event payload | Branch/tag create & delete, and repo-fork events |
+| `PushPayload` | Event payload | Full push event: `ref`, `before`/`after` SHAs, `commits[]`, `pusher`, `repository` |
+| `IssuePayload` / `IssueCommentPayload` | Event payload | Issue lifecycle and comment events, keyed by `HookIssueAction` enum |
+| `PullRequestPayload` / `ReviewPayload` | Event payload | PR lifecycle and review events |
+| `ReleasePayload`, `WikiPayload`, `RepositoryPayload`, `PackagePayload` | Event payload | Release, wiki, repository, and package events |
+| `WorkflowDispatchPayload` / `WorkflowCallPayload` / `WorkflowRunPayload` / `WorkflowJobPayload` | Event payload | Gitea Actions workflow lifecycle |
+| `CommitStatusPayload` | Event payload | Commit status (CI) update |
+
+```go
+type Hook struct {
+    ID           int64             `json:"id"`
+    Name         string            `json:"name"`
+    Type         string            `json:"type"` // e.g. gitea, slack, discord
+    BranchFilter string            `json:"branch_filter"`
+    URL          string            `json:"-"`     // hidden from JSON output
+    Config       map[string]string `json:"config"`
+    Events       []string          `json:"events"`
+    Active       bool              `json:"active"`
+    Updated      time.Time         `json:"updated_at"`
+    Created      time.Time         `json:"created_at"`
+}
+```
+
+`URL string `json:"-"`` deliberately excludes the webhook target URL (which may embed secrets) from JSON output; `CreateHookOption.Config` (a `map[string]string`) is where the URL is actually supplied on creation.
+
+Event payloads reuse a single string-enum type to describe "what happened":
+
+```go
+type HookIssueAction string
+
+const (
+    HookIssueOpened          HookIssueAction = "opened"
+    HookIssueClosed          HookIssueAction = "closed"
+    HookIssueReOpened        HookIssueAction = "reopened"
+    HookIssueEdited          HookIssueAction = "edited"
+    HookIssueLabelUpdated    HookIssueAction = "label_updated"
+    HookIssueSynchronized    HookIssueAction = "synchronized"
+    HookIssueReviewed        HookIssueAction = "reviewed"
+    HookIssueReviewRequested HookIssueAction = "review_requested"
+)
+```
+
+And `PushPayload` re-uses `structs.Repository`/`structs.User` directly:
+
+```go
+type PushPayload struct {
+    Ref          string           `json:"ref"`
+    Before       string           `json:"before"`
+    After        string           `json:"after"`
+    Commits      []*PayloadCommit `json:"commits"`
+    TotalCommits int              `json:"total_commits"`
+    HeadCommit   *PayloadCommit   `json:"head_commit"`
+    Repo         *Repository      `json:"repository"`
+    Pusher       *User            `json:"pusher"`
+    Sender       *User            `json:"sender"`
+}
+
+func (p *PushPayload) Branch() string {
+    return strings.ReplaceAll(p.Ref, "refs/heads/", "")
+}
+```
+
+This ensures consistency between "what you get from `GET /repos/{owner}/{repo}`" and "what a webhook tells you about that repository."
+
+### Issues Domain — `issue.go`
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Issue` | Response | Full issue representation, including nested `Labels`, `Milestone`, `Projects`, `Assignees`, and optional `PullRequest` metadata |
+| `PullRequestMeta` | Sub-object | Minimal PR info embedded in `Issue.PullRequest` when the issue is a PR (`merged`, `merged_at`, `draft`, `html_url`) |
+| `RepositoryMeta` | Sub-object | Minimal repo info embedded in `Issue.Repo` for cross-repo issue search results |
+| `CreateIssueOption` / `EditIssueOption` | Request | Bodies for creating/editing issues |
+| `IssueAssigneesOption` | Request | Body for `PUT/DELETE /repos/{owner}/{repo}/issues/{index}/assignees` |
+| `IssueFormField` / `IssueTemplate` / `IssueConfig*` | Response | `.gitea/issue_template/*` parsing results |
+| `IssueMeta` | Response | Lightweight `{id, index, title}` reference used in cross-links |
+| `LockIssueOption` | Request | Body for `PUT /repos/{owner}/{repo}/issues/{index}/lock` |
+| `StateType` | Enum | `"open"` \| `"closed"` |
+
+```go
+type Issue struct {
+    ID          int64         `json:"id"`
+    Index       int64         `json:"number"`
+    Poster      *User         `json:"user"`
+    Title       string        `json:"title"`
+    Body        string        `json:"body"`
+    Labels      []*Label      `json:"labels"`
+    Milestone   *Milestone    `json:"milestone"`
+    Assignees   []*User       `json:"assignees"`
+    State       StateType     `json:"state"`
+    IsLocked    bool          `json:"is_locked"`
+    Comments    int           `json:"comments"`
+    Created     time.Time     `json:"created_at"`
+    Closed      *time.Time    `json:"closed_at"`
+    Deadline    *time.Time    `json:"due_date"`
+    PullRequest *PullRequestMeta `json:"pull_request"`
+    Repo        *RepositoryMeta  `json:"repository"`
+    ContentVersion int        `json:"content_version"`
+}
+```
+
+`Issue.PullRequest != nil` is how API clients distinguish "this is actually a pull request" — Gitea models pull requests as a specialization of issues internally, and this DTO is shared across `/issues` and PR search-style listings. `EditIssueOption.ContentVersion`/`Issue.ContentVersion` implement **optimistic locking**: a client echoes back the version it last saw, and the server rejects the edit on mismatch (protecting against lost updates from concurrent edits).
+
+### Pull Requests Domain — `pull.go`
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `PullRequest` | Response | Full pull-request representation |
+| `PRBranchInfo` | Sub-object | Info about the PR's base or head branch (label, ref, sha, repo) |
+| `ListPullRequestsOptions` | Request (query) | Filters for `GET /repos/{owner}/{repo}/pulls` (state, sort, milestone) |
+| `CreatePullRequestOption` / `EditPullRequestOption` | Request | Bodies for creating/editing a pull request |
+| `ChangedFile` | Response | A single file diff entry for `GET /repos/{owner}/{repo}/pulls/{index}/files` |
+
+```go
+type PullRequest struct {
+    ID       int64     `json:"id"`
+    Index    int64     `json:"number"`
+    Poster   *User     `json:"user"`
+    Title    string    `json:"title"`
+    Assignees []*User  `json:"assignees"`
+    RequestedReviewers      []*User `json:"requested_reviewers"`
+    RequestedReviewersTeams []*Team `json:"requested_reviewers_teams"`
+    State    StateType `json:"state"`
+    Draft    bool      `json:"draft"`
+    Additions    *int  `json:"additions,omitempty"`
+    Deletions    *int  `json:"deletions,omitempty"`
+    ChangedFiles *int  `json:"changed_files,omitempty"`
+    Mergeable    bool  `json:"mergeable"`
+    HasMerged    bool  `json:"merged"`
+    MergedCommitID *string  `json:"merge_commit_sha"`
+    MergedBy       *User    `json:"merged_by"`
+    Base *PRBranchInfo `json:"base"`
+    Head *PRBranchInfo `json:"head"`
+    MergeBase string   `json:"merge_base"`
+    ContentVersion int  `json:"content_version"`
+}
+```
+
+`PullRequest` mirrors many `Issue` fields (title, labels, milestone, assignees, comments) because a PR *is* an issue under the hood — but adds VCS-specific fields (`Base`, `Head`, `Mergeable`, diff stat pointers). The `*int` pointers for `Additions`/`Deletions`/`ChangedFiles` let list endpoints omit expensive diff-stat computation while the single-PR "get" endpoint still returns it.
+
+### Organizations Domain — `org.go`
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Organization` | Response | Full organization representation |
+| `OrganizationPermissions` | Response | Caller's permission flags for an org (`is_owner`, `is_admin`, `can_write`, `can_read`, `can_create_repository`) |
+| `CreateOrgOption` | Request | Body for `POST /orgs`, `POST /admin/users/{username}/orgs` |
+| `EditOrgOption` | Request | Body for `PATCH /orgs/{org}` (pointer fields, PATCH-style) |
+| `RenameOrgOption` | Request | Body for `POST /orgs/{org}/rename` |
+
+```go
+type Organization struct {
+    ID          int64          `json:"id"`
+    Name        string         `json:"name"`
+    FullName    string         `json:"full_name"`
+    Email       string         `json:"email"`
+    AvatarURL   string         `json:"avatar_url"`
+    Visibility  UserVisibility `json:"visibility"` // public, limited, private
+    RepoAdminChangeTeamAccess bool `json:"repo_admin_change_team_access"`
+    UserName    string         `json:"username"` // deprecated
+}
+```
+
+Organizations reuse the `UserVisibility` enum from `user.go`/`visible_type.go` because, internally, an organization *is* a `User` row with `Type = Organization` — `structs.User` vs. `structs.Organization` exists purely to present the right JSON shape to API consumers.
+
+### Users Domain — `user.go`
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `User` | Response | The canonical user representation, embedded by nearly every other DTO (`Issue.Poster`, `Repository.Owner`, `PullRequest.MergedBy`, ...) |
+| `UserSettings` / `UserSettingsOptions` | Response/Request | The authenticated user's own preference settings (`GET/PATCH /user/settings`) |
+| `RenameUserOption` | Request (admin) | Body for `POST /admin/users/{username}/rename` |
+| `UpdateUserAvatarOption` | Request | Body for `POST /user/avatar` |
+| `Badge` / `UserBadge` / `UserBadgeOption` | Response/Request | Admin-managed profile badges |
+
+```go
+type User struct {
+    ID         int64          `json:"id"`
+    UserName   string         `json:"login"`      // login of the user, same as `username`
+    LoginName  string         `json:"login_name"` // external-auth identifier
+    FullName   string         `json:"full_name"`
+    Email      string         `json:"email"`
+    AvatarURL  string         `json:"avatar_url"`
+    IsAdmin    bool           `json:"is_admin"`
+    LastLogin  time.Time      `json:"last_login"`
+    Created    time.Time      `json:"created"`
+    Restricted bool           `json:"restricted"`
+    IsActive   bool           `json:"active"`
+    Visibility UserVisibility `json:"visibility"`
+    Followers    int `json:"followers_count"`
+    Following    int `json:"following_count"`
+    StarredRepos int `json:"starred_repos_count"`
+}
+
+// MarshalJSON implements the json.Marshaler interface for User, adding field(s) for backward compatibility
+func (u User) MarshalJSON() ([]byte, error) {
+    type shadow User
+    return json.Marshal(struct {
+        shadow
+        CompatUserName string `json:"username"`
+    }{shadow(u), u.UserName})
+}
+```
+
+This custom `MarshalJSON` is a good example of Gitea's compatibility strategy: the canonical field is `login`, but a `username` alias is injected into every serialized `User` object so that older API clients keep working without duplicating the field in the struct definition itself.
+
+### Cross-Cutting Enum Types
+
+| Type | File | Values |
+|---|---|---|
+| `StateType` | `issue.go` | `open`, `closed` |
+| `UserVisibility` | `visible_type.go` | `public`, `limited`, `private` |
+| `ObjectFormatName` | `repo.go` | `sha1`, `sha256` |
+| `HookIssueAction` | `hook.go` | `opened`, `closed`, `reopened`, `edited`, `assigned`, `label_updated`, `synchronized`, `reviewed`, `review_requested`, ... |
+
+### Other Domain Files (Quick Reference)
+
+| File | Domain |
+|---|---|
+| `org_team.go`, `org_member.go` | Teams and organization membership |
+| `pull_review.go` | PR review submission and review comments |
+| `issue_comment.go`, `issue_label.go`, `issue_milestone.go`, `issue_reaction.go`, `issue_stopwatch.go`, `issue_tracked_time.go` | Issue sub-resources |
+| `repo_branch.go`, `repo_tag.go`, `repo_commit.go`, `repo_compare.go`, `repo_tree.go`, `repo_file.go`, `repo_refs.go` | Git-level repository content |
+| `repo_collaborator.go`, `repo_key.go`, `repo_topic.go`, `repo_watch.go`, `repo_actions.go`, `repo_note.go`, `repo_wiki.go` | Repository management sub-resources |
+| `release.go`, `attachment.go` | Releases and file attachments |
+| `token.go`, `user_app.go` | Personal access tokens and OAuth2 applications |
+| `user_email.go`, `user_gpgkey.go`, `user_key.go` | User identity/credential management |
+| `package.go` | Gitea package-registry metadata |
+| `secret.go`, `variable.go` | Actions secrets/variables |
+| `admin_user.go` | Admin-only user-management request options |
+| `notifications.go` | Notification thread objects |
+| `activity.go` | User/repo activity feed entries |
+| `project.go` | Projects (kanban boards) |
+| `cron.go`, `task.go` | Background task and cron-job status |
+| `status.go` | Commit status (CI) objects |
+| `mirror.go`, `fork.go` | Mirror and fork configuration |
+| `nodeinfo.go` | ActivityPub NodeInfo document |
+| `miscellaneous.go` | Markup/markdown render options, generic small types |
+| `settings.go` | Publicly exposed server settings |
+
+## Related Pages
+
+- [API Conventions & Swagger](api-conventions-and-swagger.md) — authentication, pagination, error format, and how the Swagger/OpenAPI spec is generated.
+- [Packages & Actions API](packages-and-actions-api.md) — the two non-versioned API surfaces mounted alongside `/api/v1`: `routers/api/packages/*` (npm/Maven/NuGet/Docker/... registry protocols) and `routers/api/actions/*` (runner protocol, artifacts, job summaries). Includes a diagram comparing all three API surfaces.
+- [Web Routers](../06-web-routers/README.md) — how the API router relates to the web (HTML) router mounted in the same chi instance.
+- [Core Modules](../09-core-modules/README.md) — the broader `modules/` layer this API builds on.

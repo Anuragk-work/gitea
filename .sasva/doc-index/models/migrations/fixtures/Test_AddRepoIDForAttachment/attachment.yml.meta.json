@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_AddRepoIDForAttachment/attachment.yml",
+  "format": "yml",
+  "size_bytes": 171,
+  "source_modified": "2026-07-18T06:05:26.815989+00:00",
+  "indexed_at": "2026-07-18T07:39:39.893418+00:00",
+  "text_length": 171,
+  "line_count": 12
+}

@@ -1,0 +1,316 @@
+{
+  "strategic_id": "strat_1784413062253",
+  "task_description": "review and implement /Users/anuragk/Work/sasva-desktop-testing/gitea/sasva-prd/PRD_PSMA-NEW_requirements.md",
+  "total_work_items": 11,
+  "work_items_done": 5,
+  "work_items_in_progress": 0,
+  "work_items_planned": 6,
+  "rounds": [
+    {
+      "round": 1,
+      "status": "done",
+      "work_items": [
+        "Strategy & Discovery"
+      ]
+    },
+    {
+      "round": 2,
+      "status": "done",
+      "work_items": [
+        "Refactor codecopy.ts into codeblocks.ts",
+        "Add material-wrap-text icon asset and registration",
+        "Add code_toggle_wrap locale string",
+        "Implement wrap-toggle button logic and persistence",
+        "Unit tests for codeblocks.ts"
+      ],
+      "plan_file": ".sasva/generated-plans/strategic-strat_1784413062253-round2.plan.md",
+      "started_at": "2026-07-18T23:09:31Z",
+      "duration_seconds": 0,
+      "file_audit": {
+        "round": 2,
+        "planned_files_create": [],
+        "planned_files_modify": [],
+        "actual_files_changed": [
+          ".gitignore"
+        ],
+        "unexpected_changes": [],
+        "missing_expected": [],
+        "summary": "1 file(s) changed (no plan to compare)"
+      }
+    },
+    {
+      "round": 3,
+      "status": "planned",
+      "work_items": [
+        "Wire codeblocks.ts into content.ts orchestrator",
+        "Update mermaid.ts to share button-row helper",
+        "Rename/extend codeblock.css to codeblocks.css",
+        "Devtest page and Go golden-test regression check"
+      ]
+    },
+    {
+      "round": 4,
+      "status": "planned",
+      "work_items": [
+        "Playwright e2e test for wrap toggle",
+        "Full lint/build/test verification and hardening"
+      ]
+    }
+  ],
+  "work_items": [
+    {
+      "name": "Refactor codecopy.ts into codeblocks.ts",
+      "files_modify": 1,
+      "files_create": 1,
+      "complexity": "medium",
+      "status": "done",
+      "round": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "makeCodeCopyButton and initMarkupCodeCopy remain exported with identical signatures from the new module",
+        "codecopy.ts no longer exists; no dangling imports reference it (verified via grep)",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Add material-wrap-text icon asset and registration",
+      "files_modify": 1,
+      "files_create": 1,
+      "complexity": "simple",
+      "status": "done",
+      "round": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "svg('material-wrap-text') returns valid inline SVG markup",
+        "Icon generated into public/assets/img/svg/material-wrap-text.svg via make svg without altering unrelated existing icons",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Add code_toggle_wrap locale string",
+      "files_modify": 2,
+      "files_create": 0,
+      "complexity": "simple",
+      "status": "done",
+      "round": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "locale_en-US.json contains a code_toggle_wrap key with descriptive English text near copy_success",
+        "head_script.tmpl exposes it as window.config.i18n.code_toggle_wrap",
+        "No other locale files are hand-edited",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Implement wrap-toggle button logic and persistence",
+      "files_modify": 1,
+      "files_create": 0,
+      "complexity": "medium",
+      "status": "done",
+      "round": 2,
+      "dependencies": [
+        "Refactor codecopy.ts into codeblocks.ts",
+        "Add material-wrap-text icon asset and registration",
+        "Add code_toggle_wrap locale string"
+      ],
+      "acceptance_criteria": [
+        "Clicking the wrap button toggles the code block's wrap/scroll class immediately with no reload",
+        "Chosen state is written to localUserSettings under a dedicated key and read back correctly on next init call",
+        "No raw localStorage calls are introduced (grep-verifiable)",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Unit tests for codeblocks.ts",
+      "files_modify": 0,
+      "files_create": 1,
+      "complexity": "medium",
+      "status": "done",
+      "round": 2,
+      "dependencies": [
+        "Implement wrap-toggle button logic and persistence"
+      ],
+      "acceptance_criteria": [
+        "New vitest suite covers initial class from stored preference, click toggles class and persists preference, and copy button regression",
+        "pnpm exec vitest run web_src/js/markup/codeblocks.test.ts passes locally",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Wire codeblocks.ts into content.ts orchestrator",
+      "files_modify": 1,
+      "files_create": 0,
+      "complexity": "medium",
+      "status": "planned",
+      "round": 3,
+      "dependencies": [
+        "Refactor codecopy.ts into codeblocks.ts",
+        "Implement wrap-toggle button logic and persistence"
+      ],
+      "acceptance_criteria": [
+        "Every .markup code block renders both copy and wrap buttons after this change",
+        "Truncated markup content still skips all code-block feature init exactly as before",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Update mermaid.ts to share button-row helper",
+      "files_modify": 1,
+      "files_create": 0,
+      "complexity": "medium",
+      "status": "planned",
+      "round": 3,
+      "dependencies": [
+        "Refactor codecopy.ts into codeblocks.ts",
+        "Wire codeblocks.ts into content.ts orchestrator"
+      ],
+      "acceptance_criteria": [
+        "Mermaid diagrams continue to render zoom-in/reset/zoom-out controls with identical behavior; mermaid.test.ts passes unchanged",
+        "Button-row container/class styling is sourced from the shared module with no duplicated CSS/class definitions",
+        "No wrap-toggle button appears on Mermaid diagram canvases",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Rename/extend codeblock.css to codeblocks.css",
+      "files_modify": 2,
+      "files_create": 1,
+      "complexity": "simple",
+      "status": "planned",
+      "round": 3,
+      "dependencies": [
+        "Implement wrap-toggle button logic and persistence",
+        "Wire codeblocks.ts into content.ts orchestrator"
+      ],
+      "acceptance_criteria": [
+        "web_src/css/index.css imports codeblocks.css instead of codeblock.css",
+        "Both copy and wrap buttons are visually positioned correctly and reveal on hover via auto-hide-control",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Devtest page and Go golden-test regression check",
+      "files_modify": 0,
+      "files_create": 0,
+      "complexity": "simple",
+      "status": "planned",
+      "round": 3,
+      "dependencies": [
+        "Wire codeblocks.ts into content.ts orchestrator",
+        "Update mermaid.ts to share button-row helper",
+        "Rename/extend codeblock.css to codeblocks.css"
+      ],
+      "acceptance_criteria": [
+        "templates/devtest/markup-render.tmpl renders without errors and both static wrap states display correctly",
+        "git diff shows zero changes to modules/markup/markdown/**",
+        "modules/markup/markdown/markdown_test.go golden HTML test passes unmodified",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Playwright e2e test for wrap toggle",
+      "files_modify": 0,
+      "files_create": 1,
+      "complexity": "medium",
+      "status": "planned",
+      "round": 4,
+      "dependencies": [
+        "Wire codeblocks.ts into content.ts orchestrator",
+        "Update mermaid.ts to share button-row helper",
+        "Rename/extend codeblock.css to codeblocks.css"
+      ],
+      "acceptance_criteria": [
+        "New Playwright spec creates a repo/issue with a long-line code block using existing e2e helper patterns",
+        "Test asserts the wrap-toggle button is visible and clicking it toggles code-overflow-wrap/code-overflow-scroll on code-block-container",
+        "Test reloads the page and asserts the previously chosen wrap state persists",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    },
+    {
+      "name": "Full lint/build/test verification and hardening",
+      "files_modify": 0,
+      "files_create": 0,
+      "complexity": "simple",
+      "status": "planned",
+      "round": 4,
+      "dependencies": [
+        "Playwright e2e test for wrap toggle"
+      ],
+      "acceptance_criteria": [
+        "make lint-frontend passes with zero new violations",
+        "make test-frontend passes including new codeblocks.test.ts",
+        "Wrap button is keyboard-focusable/activatable and has a non-empty accessible label from code_toggle_wrap",
+        "All pre-existing tests pass",
+        "Build succeeds"
+      ]
+    }
+  ],
+  "created_at": "2026-07-18T00:00:00Z",
+  "updated_at": "2026-07-18T23:14:49Z",
+  "quality_gates_enabled": false,
+  "baseline_gates": {
+    "project_type": "manifest",
+    "round": 0,
+    "gates": {
+      "build": {
+        "status": "pass",
+        "exit_code": 0,
+        "output_tail": "",
+        "command": "bash \"/Users/anuragk/Work/sasva-desktop-testing/gitea/.ws_build_manifest.sh\" build"
+      },
+      "test": {
+        "status": "fail",
+        "exit_code": 1,
+        "output_tail": "/integration/actions_delete_run_test.go:113 +0xacc\ntesting.tRunner(0x307ee80f2d88, 0x10ad8c328)\n\t/Users/anuragk/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4\ncreated by testing.(*T).Run in goroutine 1\n\t/Users/anuragk/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8\nFAIL\tgitea.dev/tests/integration\t40.754s\nok  \tgitea.dev/tests/integration/migration-test\t6.821s\n?   \tgitea.dev/tools\t[no test files]\nFAIL\n",
+        "command": "bash \"/Users/anuragk/Work/sasva-desktop-testing/gitea/.ws_build_manifest.sh\" test",
+        "output_file": "/Users/anuragk/Work/sasva-desktop-testing/gitea/.sasva/gates/test_round0_iter0.log"
+      },
+      "lint": {
+        "status": "pass",
+        "exit_code": 0,
+        "output_tail": "",
+        "command": "bash \"/Users/anuragk/Work/sasva-desktop-testing/gitea/.ws_build_manifest.sh\" lint"
+      },
+      "review": {
+        "status": "skipped",
+        "reason": "no command configured"
+      },
+      "runtime": {
+        "status": "skipped",
+        "reason": "no services_up in manifest"
+      }
+    },
+    "ran_at": "2026-07-18T23:13:11Z",
+    "used_manifest": true,
+    "summary": {
+      "passed": 2,
+      "total": 3,
+      "all_pass": false
+    },
+    "is_baseline": true,
+    "manifest_path": "/Users/anuragk/Work/sasva-desktop-testing/gitea/.ws_build_manifest.sh",
+    "components": [
+      {
+        "name": "root",
+        "type": "go"
+      }
+    ]
+  },
+  "build_manifest_path": "/Users/anuragk/Work/sasva-desktop-testing/gitea/.ws_build_manifest.sh",
+  "build_manifest_components": [
+    {
+      "name": "root",
+      "type": "go"
+    }
+  ]
+}

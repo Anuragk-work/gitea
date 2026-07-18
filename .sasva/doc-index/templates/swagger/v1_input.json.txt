@@ -1,0 +1,10 @@
+=== FILE: templates/swagger/v1_input.json ===
+=== METADATA: format=json ===
+[SUMMARY] { "info": { "version": "{{.SwaggerAppVer}}" }, "basePath": "{{.SwaggerAppSubUrl}}/api/v1" }
+
+{
+  "info": {
+    "version": "{{.SwaggerAppVer}}"
+  },
+  "basePath": "{{.SwaggerAppSubUrl}}/api/v1"
+}

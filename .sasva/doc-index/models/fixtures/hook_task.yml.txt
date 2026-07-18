@@ -1,0 +1,6 @@
+=== FILE: models/fixtures/hook_task.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] [] # DO NOT add more test data in the fixtures, test case should prepare their own test data separately and clearly
+
+[]
+# DO NOT add more test data in the fixtures, test case should prepare their own test data separately and clearly

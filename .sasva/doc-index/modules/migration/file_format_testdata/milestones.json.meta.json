@@ -1,0 +1,9 @@
+{
+  "source": "modules/migration/file_format_testdata/milestones.json",
+  "format": "json",
+  "size_bytes": 526,
+  "source_modified": "2026-07-18T06:05:26.924066+00:00",
+  "indexed_at": "2026-07-18T07:39:40.094265+00:00",
+  "text_length": 526,
+  "line_count": 21
+}

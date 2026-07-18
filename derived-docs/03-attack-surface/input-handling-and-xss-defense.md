@@ -1,0 +1,300 @@
+# Input Handling & XSS Defense
+
+Gitea renders an enormous amount of attacker-influenced content as HTML: repository READMEs,
+wiki pages, issue/PR/comment bodies, commit messages, CSV files, Jupyter notebooks, terminal
+session recordings, and — via admin-configured external tools — essentially arbitrary
+third-party output. This page synthesizes how that pipeline is built, where the actual XSS
+defenses live, and where a scanner operator (Trivy/opengrep) should focus attention when
+looking for injection or sanitizer-bypass issues. It is based entirely on
+[`docs/09-core-modules/markup-engines.md`](../../docs/09-core-modules/markup-engines.md).
+
+> **Why this page exists for a scanner operator:** almost every stored-XSS class of finding in
+> a Git hosting product like Gitea will trace back to either (a) a new renderer/format that
+> forgets to route through the shared sanitizer, or (b) a custom/admin-configured sanitizer
+> rule or external-renderer content mode that weakens the default policy. The sections below
+> map out exactly where those decision points are.
+
+## The Rendering Pipeline at a Glance
+
+All markup formats — Markdown, Org-mode, CSV/TSV, ANSI terminal sessions, Jupyter notebooks,
+and pluggable external renderers — flow through one shared orchestration function,
+`markup.RenderWithRenderer` (`modules/markup/render.go`), described in the
+[Markup Rendering Engines docs](../../docs/09-core-modules/markup-engines.md):
+
+```mermaid
+flowchart LR
+    A["Raw content<br/>(file bytes / DB text)"] --> B["Format detection<br/>DetectRendererTypeByFilename /<br/>DetectRendererTypeByPrefetch"]
+    B --> C["Renderer plugin<br/>Render(ctx, input, output)"]
+    C --> D{"NeedPostProcess?"}
+    D -- yes --> E["PostProcessDefault<br/>links, mentions, issues,<br/>emoji, hashes, code preview"]
+    D -- no --> F["(skip)"]
+    E --> G{"Sanitizer enabled?"}
+    F --> G
+    G -- yes --> H["SanitizeReader<br/>bluemonday policy"]
+    G -- no --> I["(skip: ExternalRenderer<br/>SanitizerDisabled)"]
+    H --> J["Final HTML output"]
+    I --> J
+```
+
+Every registered renderer implements the `markup.Renderer` interface
+(`modules/markup/renderer.go`):
+
+```go
+type Renderer interface {
+    Name() string // markup format name, also the renderer type, also the external tool name
+    FileNamePatterns() []string
+    SanitizerRules() []setting.MarkupSanitizerRule
+    Render(ctx *RenderContext, input io.Reader, output io.Writer) error
+}
+```
+
+Two things are worth calling out for a security review of this design:
+
+1. **Sanitization is opt-out, not opt-in, for built-in renderers.** All built-in renderers
+   (`markdown`, `orgmode`, `csv`, `console`, `jupyter`) always pass through `SanitizeReader`.
+   The *only* way HTML skips sanitization entirely is via an `ExternalRenderer` whose
+   `GetExternalRendererOptions().SanitizerDisabled` is `true` — i.e., an admin explicitly
+   configured a `no-sanitizer` or `iframe` rendering mode for a `[markup.*]` external tool.
+2. **A renderer chooses its own sanitizer policy via `SanitizerRules()`.** Renderers that
+   return non-empty rules (`console`, `csv`) get a dedicated bluemonday policy layered on top
+   of the shared default; renderers with empty rules (`markdown`, `orgmode`) fall back to the
+   single shared default policy. A new/custom renderer that defines `SanitizerRules()` too
+   permissively (e.g., an unanchored regex, or an element/attribute combination that permits
+   event handlers) is a direct route to stored XSS.
+
+## Sanitization with bluemonday
+
+All non-external-renderer HTML — and any HTML re-embedded from an untrusted source inside an
+already-rendered document (see the Jupyter case below) — passes through
+`modules/markup/sanitizer*.go`, a wrapper around
+[`github.com/microcosm-cc/bluemonday`](https://github.com/microcosm-cc/bluemonday).
+
+### Policy Construction
+
+`GetDefaultSanitizer()` lazily builds (once, via `sync.Once`) a `Sanitizer` holding:
+
+```go
+type Sanitizer struct {
+    defaultPolicy     *bluemonday.Policy
+    descriptionPolicy *bluemonday.Policy
+    rendererPolicies  map[string]*bluemonday.Policy // keyed by renderer Name()
+    allowAllRegex     *regexp.Regexp
+}
+```
+
+`SanitizeReader` looks up a per-renderer policy by name, falling back to the default policy:
+
+```go
+func SanitizeReader(r io.Reader, renderer string, w io.Writer) error {
+    policy, exist := GetDefaultSanitizer().rendererPolicies[renderer]
+    if !exist {
+        policy = GetDefaultSanitizer().defaultPolicy
+    }
+    return policy.SanitizeReaderToWriter(r, w)
+}
+```
+
+### Default Policy Highlights (`sanitizer_default.go`)
+
+The default policy starts from `bluemonday.UGCPolicy()` (a "user generated content" baseline)
+and is then extended with a number of Gitea-specific allowances:
+
+| Allowance | Purpose |
+|---|---|
+| SVG icon attributes (`viewBox`, `width`, `height`, `aria-hidden`, `data-attr-class`, path `d`/`fill-rule`) | Inline octicons |
+| `<input type="checkbox">` with `checked`/`disabled`/`data-source-position` | Markdown task lists |
+| `span.class` matching `^\w{0,2}$` | Chroma's short (1–2 letter) syntax-highlighting class names |
+| `span[data-line-number]` | Code preview line numbers |
+| Org-mode list status classes (`unchecked`/`checked`/`indeterminate`) | Org-mode task lists |
+| `color` / `background-color` inline styles on a handful of text elements | Rich text styling |
+| `<video>` playback attributes, `<picture>/<source media/srcset>` | Responsive/theme-aware media |
+| Large MathML element/attribute allowlist | The `math` Goldmark extension |
+| Broad "generally safe" attribute/element allowlist modeled on [html-pipeline](https://github.com/jch/html-pipeline) | General Markdown/HTML content |
+
+Each entry above is a place where the allowlist was deliberately widened past the UGC
+baseline — a useful checklist when reasoning about whether a new sanitizer rule (custom or
+built-in) reintroduces an injection vector (e.g., an element/attribute pairing that could
+carry `on*` event handlers, or an inline style property that enables CSS-based data
+exfiltration).
+
+### URL Scheme Handling — the Key XSS Control
+
+The single most security-relevant piece of the default policy is its URL scheme handling:
+
+- If an admin configures `setting.Markdown.CustomURLSchemes`, **only** those schemes plus
+  `http`/`https` are allowed on links/images.
+- Otherwise, **all schemes are allowed by default** — except `javascript:`, `vbscript:`, and
+  `data:`, which are **explicitly and unconditionally blocked regardless of configuration**:
+
+```go
+disallowScheme := func(*url.URL) bool { return false }
+policy.AllowURLSchemeWithCustomPolicy("javascript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("vbscript", disallowScheme)
+policy.AllowURLSchemeWithCustomPolicy("data", disallowScheme)
+```
+
+> **Scanner note:** because the *default* posture is "allow-all-except-blocklist" rather than
+> a strict allowlist, any regression that removes or narrows this specific blocklist (or any
+> new markup extension that constructs `href`/`src` attributes through a different code path
+> that bypasses this policy) is a high-value target to check for during a code review or SAST
+> pass. `data:` in particular is worth double-checking on any newly added element type, since
+> `data:text/html` URIs are a classic sanitizer-bypass vector if a future rule accidentally
+> re-allows the `data` scheme on a specific element.
+
+### Admin-Configured Custom Rules Must Be Anchored
+
+Both per-renderer (`SanitizerRules()`) and admin-configured (`[markup.sanitizer.*]` ini
+sections, surfaced as `setting.ExternalSanitizerRules`) rules are parsed by
+`addSanitizerRules` (`sanitizer_custom.go`), which **enforces that any `Regexp` rule is fully
+anchored** (`^...$`) before it's allowed to take effect:
+
+```go
+if !strings.HasPrefix(rule.Regexp, "^") || !strings.HasSuffix(rule.Regexp, "$") {
+    panic("Markup sanitizer rule regexp must start with ^ and end with $ to be strict")
+}
+policy.AllowAttrs(rule.AllowAttr).Matching(regexp.MustCompile(rule.Regexp)).OnElements(rule.Element)
+```
+
+This is a deliberate guard against a common bluemonday misconfiguration class: an
+unanchored regex (e.g. `class` instead of `^class$`) can accidentally match attribute values
+that merely *contain* the intended substring, silently permitting attacker-controlled
+surrounding content. Anything that bypasses this `panic()` check — e.g., a code path that
+builds a `bluemonday.Policy` directly instead of going through `addSanitizerRules` — should be
+treated as a sanitizer-bypass risk.
+
+### A Stricter Policy for Plain-Text Fields
+
+There is also a **separate, stricter policy**, `sanitizer_description.go`'s
+`descriptionPolicy`, used for short plain-text fields like repository/organization
+descriptions, where almost no HTML should survive at all. If a form field is *supposed* to be
+plain text (bios, descriptions, display names) but is found rendering through the general
+`defaultPolicy` instead of `descriptionPolicy`, that's a meaningful sanitizer-selection bug
+worth flagging.
+
+## Per-Renderer Risk Notes
+
+| Renderer | Post-processed? | Own `SanitizerRules()`? | Notable risk surface |
+|---|---|---|---|
+| `markdown` (`modules/markup/markdown`) | Yes | No (uses shared default policy) | Built on `goldmark` with `html.WithUnsafe()` enabled at the Goldmark level — raw HTML is allowed *through Goldmark*, meaning bluemonday sanitization is the **only** backstop against injected HTML in Markdown source. |
+| `orgmode` (`modules/markup/orgmode`) | Yes | No | Chroma highlighting is plugged into Org's callback; a panicking highlighter is recovered/logged rather than failing the render. |
+| `csv` (`modules/markup/csv`) | No | Yes — allowlists `table.data-table`, `th/td.line-num` classes | Cells are escaped with `html.EscapeString` before insertion; size/row limits (`setting.UI.CSV.MaxFileSize` / `MaxRows`) guard against resource exhaustion, not just XSS. |
+| `console` (`modules/markup/console`) | No | Yes — allowlists `term-fgNN`/`term-bgNN`/`term-container` span classes | Content-sniffs plain text for ANSI escape sequences to auto-claim files without a `.sh-session` extension — a content-detection heuristic worth fuzzing. |
+| `jupyter` (`modules/markup/jupyter`) | Yes | No (delegates Markdown cells to `markdown`) | See dedicated section below — notebook `text/html` outputs are a classic XSS vector and are explicitly re-sanitized. |
+| `external` (`modules/markup/external`) | Configurable | Configurable | See dedicated section below — the one place sanitization can be turned off entirely. |
+
+### Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML
+
+Jupyter notebook cell outputs can contain arbitrary MIME types, including raw `text/html`.
+The renderer's `text/html` mime handler contains an explicit, commented defensive measure —
+it calls `markup.Sanitize()` (the same default bluemonday policy) on the embedded HTML before
+writing it into the page, specifically because unrestricted CSS classes/attributes like
+`.link-action`/`data-fetch-xxx` can be abused to trigger POST requests from within rendered
+content:
+
+```go
+{"text/html", func(w htmlutil.HTMLWriter, d string) error {
+    // don't allow custom CSS classes/attributes: ".link-action"/"data-fetch-xxx" can send POST requests -> XSS
+    w.WriteFormat(`<div class="cell-output-html">%s</div>`, markup.Sanitize(d))
+    return w.Err()
+}},
+```
+
+This is a good template for reviewing any *other* place in the codebase that re-embeds
+HTML fragments inside already-rendered output: the pattern to look for is "is `markup.Sanitize`
+(or `SanitizeReader`) called on this specific fragment right before it's written," not just "is
+the overall document sanitized somewhere upstream."
+
+### External Renderers: Where Sanitization Can Be Turned Off
+
+`modules/markup/external` is structurally different from the other renderers: instead of one
+fixed renderer, `RegisterRenderers()` (invoked once at start-up from `routers/init.go`, after
+config is loaded) registers:
+
+1. Three fixed, process-free "frontend" renderers that just tell the web UI to load a
+   client-side viewer/iframe: `openapi-swagger`, `viewer-3d`, `asciicast`.
+2. One `Renderer` per `[markup.*]` section in `app.ini`, each of which shells out to an
+   **arbitrary, admin-configured command** and captures its stdout as rendered HTML.
+
+Each external renderer's `RenderContentMode` setting (`sanitized` | `no-sanitizer` | `iframe`)
+maps directly to how much trust is placed in that command's output:
+
+```go
+func (p *Renderer) GetExternalRendererOptions() (ret markup.ExternalRendererOptions) {
+    ret.SanitizerDisabled = p.RenderContentMode == setting.RenderContentModeNoSanitizer || p.RenderContentMode == setting.RenderContentModeIframe
+    ret.DisplayInIframe = p.RenderContentMode == setting.RenderContentModeIframe
+    ret.ContentSandbox = p.RenderContentSandbox
+    return ret
+}
+```
+
+| Mode | Sanitized? | Isolation | Risk |
+|---|---|---|---|
+| `sanitized` (default) | Yes — still passes through bluemonday | Inlined into the page | Lowest risk; equivalent to a built-in renderer. |
+| `no-sanitizer` | **No** — bypasses all HTML sanitization | Inlined into the page | **Highest risk.** Only appropriate for fully trusted, well-audited commands; any injectable input to that command becomes a direct stored-XSS path. |
+| `iframe` | No (implied, since output is never inlined) | Isolated — rendered inside a sandboxed `<iframe data-src="...">` served from a dedicated `/owner/repo/render/...` route (`RenderIFrame` in `render.go`) | Mitigated by browser sandboxing (`ContentSandbox`) rather than server-side sanitization; still worth checking the sandbox attribute value and the served route's own headers (CSP, `X-Frame-Options`) during a review. |
+
+> **⚠️ Source-flagged warning:** the markup-engines documentation explicitly calls out that
+> because `no-sanitizer` mode bypasses all HTML sanitization, **administrators should only
+> configure it for well-audited, trusted rendering commands.** For a Trivy/opengrep review of
+> a specific Gitea deployment, enumerate every `[markup.*]` section in that instance's
+> `app.ini` and check `RENDER_CONTENT_MODE` — any `no-sanitizer` renderer wired to a command
+> that processes attacker-influenced input (e.g., anything derived from repository content) is
+> a priority manual-review target, not something a generic scanner will catch on its own.
+
+## Syntax Highlighting & Charset Handling (Adjacent Hardening)
+
+Two supporting subsystems reduce the attack surface further, per
+[the markup engines docs](../../docs/09-core-modules/markup-engines.md):
+
+- **Chroma-based syntax highlighting** (`modules/highlight`) is shared by `markdown`,
+  `orgmode`, and `jupyter`. Highlighting emits short (1–2 letter) `span.class` values that the
+  default sanitizer policy specifically allowlists (`^\w{0,2}$`) — a tight, low-risk allowance
+  by design rather than an open class allowlist.
+- **Charset/encoding normalization** (`modules/charset`) runs *before* any renderer executes,
+  stripping BOMs and converting content to UTF-8 via a streaming `transform.Reader` (only the
+  leading 16 KiB is buffered to sniff encoding). This ensures no individual renderer has to
+  reason about source encoding — and, indirectly, removes a class of encoding-confusion bugs
+  that have historically been used to smuggle payloads past naive sanitizers.
+- The same `modules/markup/escape*.go`/`ambiguous.go` machinery that powers "invisible/ambiguous
+  Unicode character" highlighting in diffs is a *display* security feature — it reveals
+  homoglyph/invisible-character attacks to human reviewers — but it is layered on top of,
+  rather than part of, the sanitization pipeline itself, and does not by itself prevent
+  injection.
+
+## Trivy / opengrep Focus Checklist
+
+Use this list to translate the synthesis above into concrete scanning/review actions:
+
+- [ ] **Grep for new `Renderer` implementations** and confirm each either has empty
+      `SanitizerRules()` (falls back to the shared default policy) or an intentionally scoped,
+      reviewed rule set — not an ad hoc, overly broad allowlist.
+- [ ] **Check any custom `[markup.sanitizer.*]` config** shipped with a deployment for
+      unanchored regexes or over-broad `AllowAttrs`/`OnElements` combinations (though the
+      `addSanitizerRules` panic should already reject unanchored patterns at load time).
+      Opengrep-class SAST is well-suited to flag any *new* code path that builds a
+      `bluemonday.Policy` without going through `addSanitizerRules`.
+- [ ] **Enumerate `[markup.*]` external renderer sections** in any real deployment's
+      `app.ini` and flag every `RENDER_CONTENT_MODE = no-sanitizer` entry for manual review of
+      the wrapped command and its inputs.
+- [ ] **Watch for any place raw/`text/html`-typed content is re-embedded** into an
+      already-rendered document without an explicit `markup.Sanitize()`/`SanitizeReader` call
+      immediately before insertion (the Jupyter `text/html` handler is the reference-correct
+      pattern).
+- [ ] **Treat `javascript:`/`vbscript:`/`data:` scheme handling as a regression class**: any
+      diff touching `sanitizer_default.go`'s `AllowURLSchemeWithCustomPolicy` calls, or any new
+      code path that emits `href`/`src` attributes without going through the shared sanitizer,
+      deserves careful review even if it passes automated scanning.
+- [ ] **Confirm `setting.Markdown.CustomURLSchemes`** (if configured for a given deployment)
+      doesn't inadvertently include `javascript`/`vbscript`/`data` — although the source
+      indicates these three are blocked unconditionally regardless of configuration, defense
+      in depth still favors verifying the configured allowlist explicitly.
+
+## Cross-References
+
+- [SSRF, Webhooks & Outbound Requests](ssrf-webhooks-and-outbound-requests.md) — the other half
+  of Gitea's "untrusted content becomes a network/browser primitive" attack surface.
+- [Authorization / Permission Model](authorization-permission-model.md) — who is allowed to
+  submit the content that ultimately flows through this rendering pipeline.
+- `docs/09-core-modules/markup-engines.md` — the full source document this page is derived
+  from, including additional detail on renderer registration, file-name/content-sniffing
+  detection, and the end-to-end Markdown README rendering sequence diagram.

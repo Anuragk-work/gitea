@@ -1,0 +1,7 @@
+=== FILE: templates/mail/user/auth/reset_passwd.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] DisplayName: User Display Name Code: The-Reset-Token ResetPwdCodeLives: 24h
+
+DisplayName: User Display Name
+Code: The-Reset-Token
+ResetPwdCodeLives: 24h

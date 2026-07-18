@@ -1,0 +1,7 @@
+=== FILE: templates/mail/repo/transfer.devtest.yml ===
+=== METADATA: format=yml ===
+[SUMMARY] Subject: Repository transfer Link: http://localhost Repo: Repo/Name
+
+Subject: Repository transfer
+Link: http://localhost
+Repo: Repo/Name

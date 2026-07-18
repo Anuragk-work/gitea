@@ -1,0 +1,9 @@
+{
+  "source": "modules/migration/file_format_testdata/issue_b.json",
+  "format": "json",
+  "size_bytes": 30,
+  "source_modified": "2026-07-18T06:05:26.923997+00:00",
+  "indexed_at": "2026-07-18T07:39:40.094716+00:00",
+  "text_length": 30,
+  "line_count": 6
+}

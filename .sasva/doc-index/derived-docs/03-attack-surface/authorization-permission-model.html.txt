@@ -1,0 +1,942 @@
+=== FILE: derived-docs/03-attack-surface/authorization-permission-model.html ===
+=== METADATA: format=html ===
+[SUMMARY] <!DOCTYPE html> <html lang="en" data-theme="dark"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Authorization / Permission Model</title> <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authorization / Permission Model</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-sidebar:#0d1117;--text:#e6edf3;--text-dim:#8b949e;--border:#30363d;--accent:#58a6ff;--accent-dim:#1f6feb;--code-bg:#1c2128;--hover:#21262d}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;display:flex;min-height:100vh}main{flex:1;max-width:900px;padding:40px 48px;overflow-x:auto}h1{font-size:2rem;font-weight:700;margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}h2{font-size:1.5rem;font-weight:600;margin-top:32px;margin-bottom:12px;color:var(--text)}h3{font-size:1.2rem;font-weight:600;margin-top:24px;margin-bottom:8px}h4{font-size:1rem;font-weight:600;margin-top:20px;margin-bottom:6px}p{margin-bottom:12px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--code-bg);padding:2px 6px;border-radius:4px;font-size:0.875em;font-family:"SFMono-Regular",Consolas,monospace}pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;position:relative}pre code{background:none;padding:0}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}th{background:var(--bg-card);font-weight:600}tr:nth-child(even){background:rgba(255,255,255,0.02)}blockquote{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;color:var(--text-dim);background:rgba(88,166,255,0.04)}ul,ol{margin:8px 0 12px 24px}li{margin-bottom:4px}.breadcrumb{font-size:0.85rem;color:var(--text-dim);margin-bottom:20px}.breadcrumb a{color:var(--text-dim)}.mermaid,pre.mermaid{background:var(--bg-card);border-radius:8px;padding:16px;margin:16px 0;text-align:center;border:none}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600}.badge-info{background:rgba(88,166,255,0.15);color:var(--accent)}.last-updated{font-size:0.8rem;color:var(--text-dim);margin-top:40px;padding-top:16px;border-top:1px solid var(--border)}.hero{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;margin:24px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:24px 0}.section-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:border-color 0.2s}.section-card:hover{border-color:var(--accent)}.section-card h3{margin-top:0;font-size:1.1rem}.section-card p{font-size:0.9rem;color:var(--text-dim);margin-bottom:8px}.tech-stack{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.tech-badge{background:var(--code-bg);border:1px solid var(--border);padding:4px 12px;border-radius:16px;font-size:0.85rem}.toc-aside{width:200px;min-width:200px;padding:16px 0 16px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;border-left:1px solid var(--border);font-size:0.8rem;scroll-behavior:smooth}.toc-aside .toc-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);font-weight:600;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)}.toc-aside a{display:block;padding:3px 0;color:var(--text-dim);text-decoration:none;transition:color 0.15s}.toc-aside a:hover{color:var(--text)}.toc-aside a.toc-active{color:var(--accent);font-weight:500}.toc-aside a.toc-h3{padding-left:12px;font-size:0.75rem}.page-nav{display:flex;justify-content:space-between;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);gap:16px}.page-nav a{display:block;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color 0.2s;flex:1;max-width:48%}.page-nav a:hover{border-color:var(--accent)}.page-nav .nav-label{font-size:0.75rem;color:var(--text-dim);margin-bottom:4px}.page-nav .nav-title{color:var(--accent);font-weight:500}.page-nav .nav-next{text-align:right}.code-copy{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s}pre:hover .code-copy{opacity:1}.code-copy:hover{color:var(--text);border-color:var(--accent)}.mermaid-expand{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font-size:0.7rem;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10}div:hover>.mermaid-expand{opacity:1}.mermaid-expand:hover{color:var(--accent);border-color:var(--accent)}.mermaid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.mermaid-overlay.open{display:flex}.mermaid-overlay-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:95vw;max-height:95vh;overflow:auto;position:relative}.mermaid-overlay-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.5rem;cursor:pointer;line-height:1}.mermaid-overlay-close:hover{color:var(--text)}.back-to-top{position:fixed;bottom:24px;right:24px;width:36px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;z-index:100}.back-to-top:hover{color:var(--accent);border-color:var(--accent)}h2 .heading-anchor,h3 .heading-anchor{opacity:0;color:var(--text-dim);text-decoration:none;margin-left:6px;font-size:0.8em;transition:opacity 0.15s}h2:hover .heading-anchor,h3:hover .heading-anchor{opacity:1}h2:hover .heading-anchor:hover,h3:hover .heading-anchor:hover{color:var(--accent)}@media print{nav.sidebar,.toc-aside,.back-to-top,.code-copy,.breadcrumb,.page-nav{display:none!important}body{display:block!important}main{max-width:100%!important;padding:20px!important}pre{white-space:pre-wrap!important;word-break:break-all}a{color:#000!important}h1,h2,h3{page-break-after:avoid}}@media(max-width:1200px){.toc-aside{display:none}}@media(max-width:768px){nav.sidebar{display:none}main{padding:20px}}
+nav.sidebar{width:280px;min-width:280px;background:var(--bg-sidebar,var(--bg,#0d1117));border-right:1px solid var(--border,#30363d);padding:16px 0;overflow-y:auto;position:sticky;top:0;height:100vh}nav.sidebar .logo{padding:12px 20px;font-size:1.1rem;font-weight:700;color:var(--accent,#58a6ff);border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}nav.sidebar a{display:block;padding:6px 20px;color:var(--text-dim,#8b949e);text-decoration:none;font-size:0.85rem;transition:all 0.15s}nav.sidebar a:hover{background:var(--hover,#21262d);color:var(--text,#e6edf3)}nav.sidebar a.active{color:var(--accent,#58a6ff);background:rgba(88,166,255,0.08);border-left:2px solid var(--accent,#58a6ff)}nav.sidebar .section-title{padding:14px 20px 6px;margin-top:8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#58a6ff);font-weight:700;border-top:1px solid var(--border,#30363d)}.sidebar-search{padding:8px 12px;border-bottom:1px solid var(--border,#30363d);margin-bottom:8px}.sidebar-search input{width:100%;padding:8px 10px;background:var(--code-bg,#1c2128);border:1px solid var(--border,#30363d);border-radius:6px;color:var(--text,#e6edf3);font-size:0.85rem;outline:none}.sidebar-search input:focus{border-color:var(--accent,#58a6ff)}.search-results{max-height:300px;overflow-y:auto}.search-results a{padding:4px 8px;font-size:0.8rem;border-radius:4px}.search-results .search-heading{font-size:0.75rem;color:var(--text-dim,#8b949e);padding-left:16px}.search-results:empty{display:none}@media(max-width:768px){nav.sidebar{display:none}}
+
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<div class="logo">Documentation</div>
+<div class="sidebar-search">
+<input type="text" id="doc-search" placeholder="Search docs..." autocomplete="off">
+<div id="search-results" class="search-results"></div>
+</div>
+<div id="sidebar-nav-links">
+<a href="../STYLE_GUIDE.html" class="nav-root">Documentation Style & Conventions (Internal Reference)</a>
+<a href="../index.html" class="nav-root">Security Issues: Trivy & Opengrep Scanning Guide for Gitea</a>
+<div class="section-title">Overview</div>
+<a href="../01-overview/security-posture-overview.html">Security Posture Overview</a>
+<div class="section-title">Ci Security Tooling</div>
+<a href="../02-ci-security-tooling/existing-security-tooling-in-ci.html">Existing Security Tooling in CI</a>
+<div class="section-title">Attack Surface</div>
+<a href="../03-attack-surface/authentication-and-sessions.html">Authentication & Session Security</a>
+<a href="../03-attack-surface/authorization-permission-model.html">Authorization / Permission Model</a>
+<a href="../03-attack-surface/input-handling-and-xss-defense.html">Input Handling & XSS Defense</a>
+<a href="../03-attack-surface/ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks & Outbound Requests</a>
+<div class="section-title">Configuration Hardening</div>
+<a href="../04-configuration-hardening/security-relevant-settings.html">Security-Relevant Configuration & Secrets Management</a>
+<div class="section-title">Supply Chain And Container Security</div>
+<a href="../05-supply-chain-and-container-security/build-release-and-container-posture.html">Build, Release & Container Security Posture</a>
+<div class="section-title">Scanning Playbook</div>
+<a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep Against This Repository</a>
+<div class="section-title">Vulnerability Disclosure</div>
+<a href="../07-vulnerability-disclosure/reporting-process.html">Vulnerability Disclosure Process</a>
+</div>
+</nav>
+<main>
+<div class="breadcrumb"><a href="../index.html">Home</a> &rsaquo; <a href="../03-attack-surface/README.html">Attack Surface</a> &rsaquo; Authorization / Permission Model</div>
+<h1>Authorization / Permission Model</h1>
+<h1 id="authorization-permission-model">Authorization / Permission Model</h1>
+<p>This page maps Gitea's authorization system as an <strong>attack surface</strong> — where access-control
+decisions are made, what data structures back them, and where a scanner operator or reviewer
+should focus manual/SAST attention for privilege-escalation or broken-access-control bugs. It
+synthesizes <code>docs/05-database-models/permissions-model.md</code>, <code>docs/05-database-models/repository-model.md</code>,
+<code>docs/05-database-models/user-organization-model.md</code>, <code>docs/06-web-routers/web-routes.md</code>,
+<code>docs/07-rest-api/api-conventions-and-swagger.md</code>, <code>docs/08-services/auth-providers.md</code>,
+<code>docs/08-services/services-catalog.md</code>, and <code>docs/02-architecture/request-lifecycle.md</code>.</p>
+<blockquote>
+<p><strong>Why this matters for scanning:</strong> Trivy will not find logic flaws in an authorization model —
+that requires either manual review or SAST rules (opengrep/Semgrep) tuned to Gitea's specific
+vocabulary (<code>AccessMode</code>, <code>Permission.CanAccess</code>, <code>reqRepoAdmin</code>, <code>tokenRequiresScopes</code>, etc.).
+This page exists to give a scanner operator that vocabulary so custom rules can be written to
+catch missing/incorrect authorization checks in new code (e.g., a new route handler that
+forgets to call <code>reqRepoAdmin</code> or checks the wrong unit type).</p>
+</blockquote>
+<h2 id="the-three-layer-model">The Three-Layer Model<a href="#the-three-layer-model" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>Gitea's authorization design (fully documented in the
+<a href="../../docs/05-database-models/permissions-model.html">Permissions Model</a>) layers three concepts:</p>
+<ol>
+<li><strong><code>AccessMode</code></strong> — a single ordered enum used everywhere to express "how much can this actor do."</li>
+<li><strong><code>Access</code></strong> — a denormalized cache table storing the max access mode a <em>specific user</em> has on a
+   <em>specific repository</em>, avoiding expensive joins on every request.</li>
+<li><strong><code>Permission</code></strong> — a unit-aware struct computed per-request that combines the baseline
+   <code>AccessMode</code> with per-feature (per-<code>unit.Type</code>) overrides from team grants and public-access
+   overlays.</li>
+</ol>
+<pre class="mermaid">graph TD
+    subgraph "Layer 1 — AccessMode enum"
+        None["AccessModeNone (0)"] --> Read["AccessModeRead (1)"]
+        Read --> Write["AccessModeWrite (2)"]
+        Write --> Admin["AccessModeAdmin (3)"]
+        Admin --> Owner["AccessModeOwner (4, internal-only)"]
+    end
+    subgraph "Layer 2 — Access cache table"
+        AccessTbl["Access{UserID, RepoID, Mode}"]
+    end
+    subgraph "Layer 3 — Permission (per-request, unit-aware)"
+        Perm["Permission{AccessMode, unitsMode, everyoneAccessMode, anonymousAccessMode}"]
+    end
+    AccessTbl --> Perm
+    Perm --> CanRead[CanRead / CanAccess]
+    Perm --> CanWrite[CanWrite]
+    Perm --> IsAdminCheck[IsAdmin / IsOwner]</pre>
+<h3 id="layer-1-accessmode">Layer 1 — <code>AccessMode</code><a href="#layer-1-accessmode" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">type AccessMode int
+
+const (
+    AccessModeNone AccessMode = iota // 0: no access
+
+    AccessModeRead  // 1: read access
+    AccessModeWrite // 2: write access
+    AccessModeAdmin // 3: admin access
+    AccessModeOwner // 4: owner access
+)</code></pre>
+<p>Because values are ordered integers, checks like <code>mode &gt;= perm.AccessModeWrite</code> are pervasive.
+<code>ParseAccessMode(s, allowed...)</code> converts user-supplied strings (<code>"read"</code>, <code>"write"</code>, <code>"admin"</code>)
+back into the enum — and <strong><code>"owner"</code> is intentionally excluded from string parsing</strong>, since it's
+an internal-only level that must never be settable via user input (API payloads, forms). This is
+a load-bearing security control: any code path that accidentally allows <code>ParseAccessMode</code> to
+accept <code>"owner"</code> from an untrusted source would be a privilege-escalation bug worth flagging.</p>
+<h3 id="layer-2-the-access-cache-table">Layer 2 — The <code>Access</code> Cache Table<a href="#layer-2-the-access-cache-table" class="heading-anchor" aria-label="Link">#</a></h3>
+<pre class="highlight"><code class="language-go">type Access struct {
+    ID     int64 `xorm:"pk autoincr"`
+    UserID int64 `xorm:"UNIQUE(s)"`
+    RepoID int64 `xorm:"UNIQUE(s)"`
+    Mode   perm.AccessMode
+}</code></pre>
+<p>Important nuance: <code>Access</code> <strong>does not cover the repository owner</strong> — owner access is implicit
+(<code>AccessModeOwner</code> whenever <code>userID == repo.OwnerID</code>), computed on the fly rather than cached.
+Only collaborators and org-team members get rows here. Recalculation is handled by:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>When used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RecalculateAccesses(ctx, repo)</code></td>
+<td>Full recompute — dispatches to team-based or collaborator-based recompute depending on whether the owner is an org</td>
+</tr>
+<tr>
+<td><code>RecalculateTeamAccesses(ctx, repo, ignTeamID)</code></td>
+<td>Recomputes access for an org-owned repo from all its teams' members</td>
+</tr>
+<tr>
+<td><code>RecalculateUserAccess(ctx, repo, uid)</code></td>
+<td>Fast path: recompute for a single user</td>
+</tr>
+</tbody>
+</table>
+<p>A subtlety with security relevance: <code>minModeToKeep</code> means a <strong>public, non-org-owned repo</strong> does
+not persist <code>Access</code> rows below <code>Write</code> (read is already implicit), while <strong>private repos or
+org-owned repos</strong> persist from <code>Read</code> upward, since nothing is implicit there. A bug in this
+threshold logic could either bloat the cache table or, worse, cause a stale/incorrect cached read
+for a private repo.</p>
+<h3 id="layer-3-unit-aware-permission">Layer 3 — Unit-Aware <code>Permission</code><a href="#layer-3-unit-aware-permission" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>The <code>Access</code> table gives one mode per repository, but real authorization is <strong>per-feature</strong>: a
+user might have <code>Write</code> on Issues but only <code>Read</code> on Code (e.g., an external triager). This is
+<code>Permission</code> (<code>models/perm/access/repo_permission.go</code>):</p>
+<pre class="highlight"><code class="language-go">type Permission struct {
+    AccessMode perm_model.AccessMode // baseline mode (repo-wide)
+
+    units     []*repo_model.RepoUnit
+    unitsMode map[unit.Type]perm_model.AccessMode // per-unit override (from team grants)
+
+    everyoneAccessMode  map[unit.Type]perm_model.AccessMode // min mode for any signed-in user
+    anonymousAccessMode map[unit.Type]perm_model.AccessMode // min mode for anonymous visitors
+}</code></pre>
+<p>The resolution function is the single most security-critical piece of logic on this page:</p>
+<pre class="highlight"><code class="language-go">func (p *Permission) UnitAccessMode(unitType unit.Type) perm_model.AccessMode {
+    if m, ok := p.unitsMode[unitType]; ok {
+        return util.Iif(p.AccessMode &gt;= perm_model.AccessModeAdmin, p.AccessMode, m)
+    }
+    unitDefaultAccessMode := p.AccessMode
+    unitDefaultAccessMode = max(unitDefaultAccessMode, p.anonymousAccessMode[unitType])
+    unitDefaultAccessMode = max(unitDefaultAccessMode, p.everyoneAccessMode[unitType])
+    hasUnit := slices.ContainsFunc(p.units, func(u *repo_model.RepoUnit) bool { return u.Type == unitType })
+    return util.Iif(hasUnit, unitDefaultAccessMode, perm_model.AccessModeNone)
+}</code></pre>
+<p>Rules encoded here, as documented in the
+<a href="../../docs/05-database-models/permissions-model.html">Permissions Model</a>:</p>
+<ol>
+<li>A <strong>per-unit override</strong> (from a team's <code>TeamUnit</code> grant) wins — <em>unless</em> the user's baseline is
+   already <code>Admin</code>/<code>Owner</code>, in which case the higher baseline wins (an admin can't be downgraded
+   by a narrower team grant).</li>
+<li>Without an override, fall back to <code>max(baseline, anonymousAccessMode[unit], everyoneAccessMode[unit])</code>
+   — this is how a <code>RepoUnit.AnonymousAccessMode</code>/<code>EveryoneAccessMode</code> setting (e.g. "let anyone
+   read the Wiki") grants access even to users with no explicit relationship to the repo.</li>
+<li>But <strong>only if the repository actually has that unit enabled</strong> (<code>hasUnit</code>) — a disabled unit is
+   always <code>AccessModeNone</code> regardless of overrides. Any bypass of this <code>hasUnit</code> gate would let a
+   user access a feature the repo owner explicitly disabled.</li>
+</ol>
+<p>Convenience wrappers exposed on <code>Permission</code>: <code>CanAccess</code>, <code>CanAccessAny</code>, <code>CanRead</code>, <code>CanReadAny</code>,
+<code>CanWrite</code>, <code>CanReadIssuesOrPulls(isPull)</code>, <code>CanWriteIssuesOrPulls(isPull)</code>, <code>IsOwner()</code>,
+<code>IsAdmin()</code>, <code>HasAnyUnitAccess()</code>, <code>HasAnyUnitPublicAccess()</code>, <code>ReadableUnitTypes()</code>.</p>
+<h2 id="computing-permission-for-a-real-request">Computing Permission for a Real Request<a href="#computing-permission-for-a-real-request" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>GetIndividualUserRepoPermission</code> (wrapped by <code>GetDoerRepoPermission</code>, which additionally detects
+Actions-task "virtual users" and routes to <code>GetActionsUserRepoPermission</code>) is the main entry point
+every handler ultimately calls:</p>
+<pre class="mermaid">flowchart TD
+    Start([GetIndividualUserRepoPermission]) --> LoadUnits[repo.LoadUnits]
+    LoadUnits --> AnonPrivate{user==nil AND repo.IsPrivate?}
+    AnonPrivate -->|yes| NoneA[AccessMode = None, return]
+    AnonPrivate -->|no| CheckCollab[IsCollaborator?]
+    CheckCollab --> OwnerVisible{Owner visible to doer OR isCollaborator?}
+    OwnerVisible -->|no| NoneB[AccessMode = None, return]
+    OwnerVisible -->|yes| AnonPublic{user == nil?}
+    AnonPublic -->|yes| ReadA[AccessMode = Read, return]
+    AnonPublic -->|no| SuperUser{user.IsAdmin OR user.ID==repo.OwnerID?}
+    SuperUser -->|yes| OwnerA[AccessMode = Owner, return]
+    SuperUser -->|no| AccessLvl[accessLevel: read cached Access table]
+    AccessLvl --> IsOrgOwned{repo.Owner.IsOrganization?}
+    IsOrgOwned -->|no| ReturnPlain[return plain user AccessMode]
+    IsOrgOwned -->|yes| MinMode[AccessMode = max over public-repo minimum]
+    MinMode --> GetTeams[GetUserRepoTeams: teams granting access]
+    GetTeams --> NoTeams{no teams?}
+    NoTeams -->|yes| ReturnOrg[return]
+    NoTeams -->|no| OwnerTeam{any team HasAdminAccess?}
+    OwnerTeam -->|yes| OwnerB[AccessMode = Owner, unitsMode = nil, return]
+    OwnerTeam -->|no| PerUnit[compute unitsMode per RepoUnit via UnitAccessModeEx]
+    PerUnit --> Finalize[finalProcessRepoUnitPermission: overlay anonymous/everyone, prune units]
+    Finalize --> Done([Permission ready])</pre>
+<p>Key special cases worth flagging to any reviewer of new authorization code:</p>
+<ul>
+<li><strong>Site admins</strong> and the <strong>repository owner</strong> always short-circuit to <code>AccessModeOwner</code>,
+  bypassing unit checks entirely — this is by design, but any new code path that treats "is admin"
+  differently from this canonical check risks inconsistency.</li>
+<li>Users <strong>blocked from viewing a private owner</strong> (<code>organization.HasOrgOrUserVisible</code>) get <code>None</code>
+  unless the <code>isCollaborator</code> override applies.</li>
+<li>For org-owned repos, if <strong>any</strong> team the user belongs to has <code>HasAdminAccess()</code> (the Owners team,
+  or another team configured with <code>AccessMode &gt;= Admin</code>), the entire <code>unitsMode</code> map is cleared
+  and <code>AccessMode = Owner</code> — admin teams always get full access to every unit, sidestepping
+  per-unit team grants entirely.</li>
+<li>Otherwise, <code>unitsMode[u.Type]</code> is the <strong>max across all the user's teams'</strong> <code>UnitAccessModeEx</code>
+  results for that unit — <code>Team.UnitAccessModeEx</code> reads the <code>TeamUnit</code> row, falling back to the
+  team's overall <code>AccessMode</code> when <code>HasAdminAccess()</code>.</li>
+</ul>
+<h3 id="other-permission-entry-points-surface-for-auditing">Other permission entry points (surface for auditing)<a href="#other-permission-entry-points-surface-for-auditing" class="heading-anchor" aria-label="Link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AccessLevel(ctx, user, repo)</code></td>
+<td>Legacy/simple wrapper returning just the repo-wide <code>AccessMode</code></td>
+</tr>
+<tr>
+<td><code>AccessLevelUnit(ctx, user, repo, unitType)</code></td>
+<td>Same, but for one specific unit</td>
+</tr>
+<tr>
+<td><code>HasAccessUnit(ctx, user, repo, unitType, testMode)</code></td>
+<td>Boolean convenience check</td>
+</tr>
+<tr>
+<td><code>IsUserRepoAdmin</code> / <code>IsUserRealRepoAdmin</code></td>
+<td>Whether the user is (effectively) a repo admin — "real" excludes site-admin escalation</td>
+</tr>
+<tr>
+<td><code>CanBeAssigned(ctx, user, repo)</code></td>
+<td>Whether a user is eligible to be assigned to issues/PRs</td>
+</tr>
+<tr>
+<td><code>GetUsersWithUnitAccess</code> / <code>GetUserIDsWithUnitAccess</code></td>
+<td>Enumerate users with at least a given mode on a unit</td>
+</tr>
+<tr>
+<td><code>CheckRepoUnitUser(ctx, repo, user, unitType)</code></td>
+<td>Boolean shortcut combining <code>GetDoerRepoPermission</code> + <code>CanRead</code></td>
+</tr>
+<tr>
+<td><code>PermissionNoAccess()</code></td>
+<td>Zero-value <code>Permission{AccessMode: AccessModeNone}</code> — the safe default</td>
+</tr>
+<tr>
+<td><code>GetActionsUserRepoPermission</code></td>
+<td>Special-cased permission resolution for CI/Actions "virtual" users, including cross-repo access for same-owner workflows (<code>checkSameOwnerCrossRepoAccess</code>, <code>CanReadWorkflowCrossRepo</code>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Any of these functions being called with a mismatched <code>unitType</code>, or a caller reading
+<code>AccessLevel</code> (repo-wide) when it actually needed <code>AccessLevelUnit</code> (per-feature), is a classic
+class of broken-access-control bug in a system like this. When writing custom opengrep/Semgrep
+rules, consider flagging handler code that calls a repo-wide check but then serves unit-specific
+content (e.g., issues, wiki, packages).</p>
+</blockquote>
+<h2 id="repository-units-the-feature-toggle-surface">Repository Units: The Feature-Toggle Surface<a href="#repository-units-the-feature-toggle-surface" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>As described in the <a href="../../docs/05-database-models/repository-model.html">Repository Model</a>, Gitea
+avoids a sprawl of boolean columns (<code>HasIssues</code>, <code>HasWiki</code>, ...) by modeling each optional feature
+as a <code>RepoUnit</code> row:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TypeCode</code></td>
+<td>1</td>
+<td>Source code browsing</td>
+</tr>
+<tr>
+<td><code>TypeIssues</code></td>
+<td>2</td>
+<td>Native issue tracker</td>
+</tr>
+<tr>
+<td><code>TypePullRequests</code></td>
+<td>3</td>
+<td>Pull requests</td>
+</tr>
+<tr>
+<td><code>TypeReleases</code></td>
+<td>4</td>
+<td>Releases</td>
+</tr>
+<tr>
+<td><code>TypeWiki</code></td>
+<td>5</td>
+<td>Native wiki</td>
+</tr>
+<tr>
+<td><code>TypeExternalWiki</code></td>
+<td>6</td>
+<td>Link to an external wiki (read-only unit, capped at <code>AccessModeRead</code>)</td>
+</tr>
+<tr>
+<td><code>TypeExternalTracker</code></td>
+<td>7</td>
+<td>Link to an external tracker (read-only unit, capped at <code>AccessModeRead</code>)</td>
+</tr>
+<tr>
+<td><code>TypeProjects</code></td>
+<td>8</td>
+<td>Kanban-style projects</td>
+</tr>
+<tr>
+<td><code>TypePackages</code></td>
+<td>9</td>
+<td>Package registry</td>
+</tr>
+<tr>
+<td><code>TypeActions</code></td>
+<td>10</td>
+<td>CI/CD (Actions)</td>
+</tr>
+</tbody>
+</table>
+<pre class="highlight"><code class="language-go">type RepoUnit struct {
+    ID                  int64
+    RepoID              int64              `xorm:"INDEX(s)"`
+    Type                unit.Type          `xorm:"INDEX(s)"`
+    Config              convert.Conversion `xorm:"TEXT"`
+    CreatedUnix         timeutil.TimeStamp `xorm:"INDEX CREATED"`
+    AnonymousAccessMode perm.AccessMode    `xorm:"NOT NULL DEFAULT 0"`
+    EveryoneAccessMode  perm.AccessMode    `xorm:"NOT NULL DEFAULT 0"`
+}</code></pre>
+<p><code>AnonymousAccessMode</code>/<code>EveryoneAccessMode</code> deliberately let a repo owner open a single unit (e.g.
+Wiki) to anonymous visitors or any signed-in user, <strong>independent of the collaborator/team access
+system</strong> — an intentional public-access escape hatch. <code>applyPublicAccessPermission</code> (part of
+<code>finalProcessRepoUnitPermission</code>) is a no-op instance-wide when <code>setting.Repository.ForcePrivate</code>
+is set, which is the configuration knob that should be checked in any hardened, "private-instance
+only" deployment (see the <a href="../04-configuration-hardening/security-relevant-settings.html">Configuration Hardening</a>
+page).</p>
+<p><code>MustGetUnit</code> never errors — it returns a synthetic, defaulted <code>RepoUnit</code> when a unit isn't
+enabled, which is the safe accessor pattern for handler code that shouldn't crash on a disabled
+feature.</p>
+<h2 id="collaborators-teams-and-organizations">Collaborators, Teams, and Organizations<a href="#collaborators-teams-and-organizations" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="collaboration-direct-grants">Collaboration (direct grants)<a href="#collaboration-direct-grants" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>A repository's <code>Collaboration</code> records grant a specific <code>AccessMode</code> to a specific user directly
+on that repo, independent of organization/team membership (referenced in
+<a href="../../docs/05-database-models/repository-model.html">Repository Model</a> and managed by
+<code>services/repository/collaboration.go</code>, per the
+<a href="../../docs/08-services/services-catalog.html">Services Catalog</a>).</p>
+<h3 id="teams-and-teamunit-org-scoped-grants">Teams and <code>TeamUnit</code> (org-scoped grants)<a href="#teams-and-teamunit-org-scoped-grants" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>From <a href="../../docs/05-database-models/user-organization-model.html">User &amp; Organization Model</a>:</p>
+<pre class="highlight"><code class="language-go">const OwnerTeamName = "Owners"
+
+type Team struct {
+    ID                      int64 `xorm:"pk autoincr"`
+    OrgID                   int64 `xorm:"INDEX"`
+    AccessMode              perm.AccessMode    `xorm:"'authorize'"` // team-wide default access mode
+    Units                   []*TeamUnit         `xorm:"-"`
+    IncludesAllRepositories bool                `xorm:"NOT NULL DEFAULT false"`
+    CanCreateOrgRepo        bool                `xorm:"NOT NULL DEFAULT false"`
+    Visibility              structs.VisibleType `xorm:"NOT NULL DEFAULT 2"`
+}
+
+type TeamUnit struct {
+    ID         int64
+    OrgID      int64     `xorm:"INDEX"`
+    TeamID     int64     `xorm:"UNIQUE(s)"`
+    Type       unit.Type `xorm:"UNIQUE(s)"`
+    AccessMode perm.AccessMode
+}</code></pre>
+<p>Security-relevant facts:</p>
+<ul>
+<li>Every organization automatically has an <strong>"Owners" team</strong>; its members get <code>perm.AccessModeOwner</code>
+  on every org repository regardless of per-repo/per-unit configuration. Compromising membership
+  of the Owners team (e.g. via a group-sync misconfiguration, see below) is equivalent to full
+  organization compromise.</li>
+<li><code>Team.HasAdminAccess()</code> (true when <code>AccessMode &gt;= perm.AccessModeAdmin</code>) causes
+  <code>GetUnitNames</code>/<code>GetUnitsMap</code> to short-circuit to <em>every</em> unit at admin level, bypassing
+  per-unit <code>TeamUnit</code> rows entirely.</li>
+<li><code>IncludesAllRepositories</code> grants automatic access to every repo in the org, <strong>current and
+  future</strong>, bypassing the <code>TeamRepo</code> join table — a team configured this way is effectively an
+  org-wide access grant and should be audited carefully.</li>
+<li><code>Team.Visibility</code> (<code>Public</code>/<code>Limited</code>/<code>Private</code>) governs whether non-members can even see the
+  team and its member list (<code>CanNonMemberReadMeta</code>) — a separate, lower-stakes information
+  disclosure control from repo access itself.</li>
+</ul>
+<pre class="mermaid">erDiagram
+    ORGANIZATION ||--o{ TEAM : "has teams"
+    TEAM ||--o{ TEAMUSER : "has members"
+    TEAM ||--o{ TEAMREPO : "granted repos"
+    TEAM ||--o{ TEAMUNIT : "per-unit access mode"
+    REPOSITORY ||--o{ COLLABORATION : "direct collaborator grants"
+    REPOSITORY ||--o{ REPOUNIT : "feature units + public overlays"</pre>
+<h3 id="group-sync-external-identity-provider-team-mapping">Group Sync — external identity provider → Team mapping<a href="#group-sync-external-identity-provider-team-mapping" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>As documented in <a href="../../docs/08-services/auth-providers.html">Auth Providers</a>, LDAP and OAuth2/OIDC
+sources can automatically manage org/team membership from group claims
+(<code>services/auth/source/source_group_sync.go</code>), configured as JSON:</p>
+<pre class="highlight"><code class="language-json">{"cn=my-group,cn=groups,dc=example,dc=org": {"MyGiteaOrganization": ["MyGiteaTeam1", "MyGiteaTeam2"]}}</code></pre>
+<blockquote>
+<p><strong>Attack-surface note:</strong> because Owners-team membership implies full organizational
+<code>AccessModeOwner</code>, any misconfiguration of <code>GroupTeamMap</code> that maps a broad or attacker-influenced
+external group (e.g. a default "all employees" LDAP group, or an OIDC claim an end-user can
+influence) directly to an Owners team, or to any team with <code>HasAdminAccess()</code>, is a critical
+privilege-escalation risk. <code>GroupTeamMapRemoval</code> controls whether membership is revoked when a
+user leaves the source group — if disabled, stale elevated access can persist after an
+organizational change on the identity-provider side. This is exactly the kind of configuration
+issue worth checking for in any <code>app.ini</code>/LDAP-source review that accompanies a security scan.</p>
+</blockquote>
+<h2 id="user-types-and-special-flags">User Types and Special Flags<a href="#user-types-and-special-flags" class="heading-anchor" aria-label="Link">#</a></h2>
+<p>From <a href="../../docs/05-database-models/user-organization-model.html">User &amp; Organization Model</a>, the
+single <code>user</code> table backs individuals, organizations, bots, and federated users, and carries
+several authorization-relevant boolean flags on the same row:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+<th>Security relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IsAdmin</code></td>
+<td>Site administrator</td>
+<td>Bypasses <code>AccessLevel</code>/<code>AccessLevelUnit</code> checks entirely via the <code>SuperUser</code> branch in <code>GetIndividualUserRepoPermission</code></td>
+</tr>
+<tr>
+<td><code>IsRestricted</code></td>
+<td>Only sees explicitly-granted repos/orgs</td>
+<td>A hardening flag for accounts that should not benefit from public-repo implicit-read access</td>
+</tr>
+<tr>
+<td><code>ProhibitLogin</code></td>
+<td>Blocks Web UI login only</td>
+<td>Does <strong>not</strong> block API/token-based access by itself — worth confirming during a review whether this flag is checked consistently across all auth paths</td>
+</tr>
+<tr>
+<td><code>MustChangePassword</code></td>
+<td>Forces password reset</td>
+<td>Enforced by <code>verifyAuthWithOptions</code> per <a href="../../docs/02-architecture/request-lifecycle.html">Request Lifecycle</a></td>
+</tr>
+<tr>
+<td><code>RepoAdminChangeTeamAccess</code> (org-only field, same row)</td>
+<td>Whether repo admins (not just org owners) can change which teams have access to a repo</td>
+<td>A delegation-of-authority setting; if unexpectedly <code>true</code>, repo-level admins effectively gain a slice of org-admin capability</td>
+</tr>
+</tbody>
+</table>
+<p><code>Organization</code> is a <strong>zero-cost type cast</strong> over <code>User</code> (<code>type Organization user_model.User</code>),
+sharing the same table — this design means any authorization bug that fails to distinguish
+"is this User an Organization" (<code>user.IsOrganization()</code>) from "is this User an individual" could
+misapply the wrong permission-resolution branch (individual owner vs. org-team resolution) shown
+in the flowchart above.</p>
+<h2 id="where-this-is-enforced-web-routes-api-and-cli">Where This Is Enforced: Web Routes, API, and CLI<a href="#where-this-is-enforced-web-routes-api-and-cli" class="heading-anchor" aria-label="Link">#</a></h2>
+<h3 id="web-router-guard-functions">Web router guard functions<a href="#web-router-guard-functions" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../../docs/06-web-routers/web-routes.html">Web Router &amp; Server-Rendered UI</a>, route groups
+attach small guard closures as middleware:</p>
+<ul>
+<li><code>reqSignIn</code> / <code>reqSignOut</code> / <code>optSignIn</code> — require/forbid a signed-in doer.</li>
+<li><code>reqUnitAccess(unitType, accessMode, ignoreGlobal)</code> — checks organization/unit-level permission
+  for owner-page sections (projects, code search, etc.).</li>
+<li><code>context.RequireUnitReader(...)</code> / <code>context.RequireUnitWriter(...)</code> — aliased per-feature as
+  <code>reqRepoIssuesOrPullsReader</code>, <code>reqUnitCodeReader</code>, <code>reqRepoAdmin</code>, <code>reqUnitWikiReader/Writer</code>,
+  <code>reqRepoReleaseReader/Writer</code>, <code>reqRepoActionsReader</code>, etc.</li>
+<li>Repository <strong>settings</strong> routes (collaborators, branch/tag protection, webhooks, deploy keys, LFS
+  admin, Actions secrets/variables/runners) are gated by <code>reqSignIn</code> + <code>context.RepoAssignment</code> +
+  <code>reqRepoAdmin</code> as one shared block.</li>
+<li>Organization routes split into a <code>RequireMember</code>/<code>RequireTeamMember</code> group (dashboard, issues,
+  pulls, milestones, teams) and a stricter <code>RequireOwner</code> group (<code>/teams/new</code>, <code>/worktime</code>, and the
+  entire <code>/settings</code> subtree).</li>
+<li>The <strong>admin panel</strong> (<code>/-/admin</code>) is guarded by <code>adminReq</code>, a <code>verifyAuthWithOptions</code>-based
+  site-admin check, wrapping dashboard, user/org/repo/package management, webhooks, auth sources,
+  and global Actions settings.</li>
+</ul>
+<pre class="mermaid">graph TD
+    Route[Incoming route] --> AuthMW[Auth middleware: OAuth2/Basic/ReverseProxy/Session/SSPI]
+    AuthMW --> VerifyOpts["verifyAuthWithOptions VerifyOptions"]
+    VerifyOpts --> AccountChecks["Account state: inactive / ProhibitLogin / MustChangePassword"]
+    AccountChecks --> SignInReq["SignInRequired / SignOutRequired"]
+    SignInReq --> CSRF["CrossOriginProtection.Check (Fetch Metadata)"]
+    CSRF --> AdminReq{"AdminRequired?"}
+    AdminReq -->|yes, not admin| Deny403[403 Forbidden]
+    AdminReq -->|repo-scoped| RepoAssignment["context.RepoAssignment: load repo + Permission"]
+    RepoAssignment --> UnitGuard["reqRepoAdmin / reqUnitXReader / reqUnitXWriter"]
+    UnitGuard -->|pass| Handler[Handler executes]
+    UnitGuard -->|fail| Deny403b[403 Forbidden]</pre>
+<p>For <strong>Git-over-HTTP</strong> specifically (<code>routers/web/githttp.go</code> / <code>routers/web/repo/githttp.go</code>),
+<code>httpBase()</code> computes the required <code>perm.AccessMode</code> from the Git service type — <code>Read</code> for
+<code>git-upload-pack</code> (clone/fetch), <code>Write</code> for <code>git-receive-pack</code> (push) — checks
+<code>context.CheckRepoScopedToken</code> for repo-scoped access tokens, blocks pushes to archived/mirror
+repos, and validates that 2FA-enabled accounts cannot authenticate with plain Basic auth. Actual
+push authorization at the ref level (branch protection, tag protection, force-push rules, PR
+head-branch maintainer-edit rules, LFS quota/size limits) happens <strong>later</strong>, in the server-side
+<code>pre-receive</code> git hook, which calls back into <code>/api/internal/hook/pre-receive</code> — meaning a
+security review of "can this user push" must trace through <strong>both</strong> <code>httpBase()</code> and the
+<code>pre-receive</code> hook handler, not just one.</p>
+<h3 id="rest-api-token-scopes-layered-on-top-of-accessmode">REST API — token scopes layered on top of <code>AccessMode</code><a href="#rest-api-token-scopes-layered-on-top-of-accessmode" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../../docs/07-rest-api/api-conventions-and-swagger.html">API Conventions &amp; Swagger</a>, the API
+adds a <strong>second, independent gate</strong> on top of the repository <code>Permission</code> model: token/OAuth2
+<strong>scopes</strong>.</p>
+<pre class="highlight"><code class="language-go">const (
+    AccessTokenScopeCategoryActivityPub AccessTokenScopeCategory = iota
+    AccessTokenScopeCategoryAdmin
+    AccessTokenScopeCategoryMisc
+    AccessTokenScopeCategoryNotification
+    AccessTokenScopeCategoryOrganization
+    AccessTokenScopeCategoryPackage
+    AccessTokenScopeCategoryIssue
+    AccessTokenScopeCategoryRepository
+    AccessTokenScopeCategoryUser
+)</code></pre>
+<table>
+<thead>
+<tr>
+<th>Middleware</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reqToken()</code></td>
+<td>Caller must be signed in (via any auth method)</td>
+</tr>
+<tr>
+<td><code>reqBasicOrRevProxyAuth()</code></td>
+<td>Only Basic Auth or reverse-proxy auth accepted (token management endpoints)</td>
+</tr>
+<tr>
+<td><code>reqSiteAdmin()</code></td>
+<td>Caller must be a site administrator</td>
+</tr>
+<tr>
+<td><code>reqOwner()</code></td>
+<td>Caller must own the repo (or be a site admin)</td>
+</tr>
+<tr>
+<td><code>reqAdmin()</code></td>
+<td>Caller must be a repo admin/collaborator with admin rights</td>
+</tr>
+<tr>
+<td><code>reqRepoWriter(unitTypes...)</code></td>
+<td>Caller must have write access to specific repo unit(s)</td>
+</tr>
+<tr>
+<td><code>reqRepoReader(unitType)</code></td>
+<td>Caller must have read access to a specific repo unit</td>
+</tr>
+<tr>
+<td><code>reqAnyRepoReader()</code></td>
+<td>Caller must have read access to at least one repo unit</td>
+</tr>
+<tr>
+<td><code>reqOrgOwnership()</code></td>
+<td>Caller must own the organization</td>
+</tr>
+<tr>
+<td><code>reqSelfOrAdmin()</code></td>
+<td>Caller must be the target user or a site admin</td>
+</tr>
+<tr>
+<td><code>individualPermsChecker</code></td>
+<td>Enforces visibility rules (private/limited) on user-scoped endpoints</td>
+</tr>
+</tbody>
+</table>
+<p>Both gates must pass for a token-authenticated request to succeed:</p>
+<pre class="mermaid">graph LR
+    A[auth.Method chain] -->|resolves| B["ctx.Doer (*user_model.User)"]
+    B --> C{Token-based request?}
+    C -->|yes| D["Check AccessTokenScope\n(GetAccessScope / grant.Scope)"]
+    C -->|no| E[Skip scope check — session/basic gets AccessTokenScopeAll]
+    D --> F
+    E --> F["Compute Permission via access.AccessLevel/AccessLevelUnit"]
+    F --> G["Permission.CanAccess(mode, unitType)"]
+    G -->|true| H[Request proceeds]
+    G -->|false| I[403 Forbidden]</pre>
+<p>A token with <code>write:repository</code> scope still cannot write to a repository the user has no write
+access to — and conversely, a fully-privileged user's session cannot bypass a narrowly-scoped
+token's restrictions. <strong><code>AccessTokenScopePublicOnly</code></strong> further restricts a token to public
+resources regardless of other scopes granted; this is enforced ad hoc per-resource (e.g. the
+packages API explicitly rejects non-public owners for public-only tokens) rather than centrally
+— a pattern worth double-checking for completeness whenever a new resource type is added, since a
+missed <code>rejectPublicOnly()</code>/<code>checkTokenPublicOnly()</code> call would silently leak private data to a
+"public-only" token.</p>
+<p><code>Sudo</code> (<code>SudoParam</code>/<code>SudoHeader</code>) lets a site admin perform a request "as" another user —
+admin-only, but any endpoint that fails to gate the <code>sudo()</code> middleware behind an admin check
+would be a direct impersonation vulnerability.</p>
+<h3 id="cli-admin-escalation-paths">CLI / admin escalation paths<a href="#cli-admin-escalation-paths" class="heading-anchor" aria-label="Link">#</a></h3>
+<p>Per <a href="../../docs/16-cli-admin/cli-commands.html">CLI &amp; Admin Operations</a>, several CLI subcommands
+operate entirely outside the web/API authorization stack (they run with the privileges of the
+process/host operator, not an authenticated Gitea user):</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin user create --admin</code></td>
+<td>Creates a user with <code>IsAdmin = true</code> directly</td>
+</tr>
+<tr>
+<td><code>admin user change-password</code></td>
+<td>Sets a new password for any user, no old-password check</td>
+</tr>
+<tr>
+<td><code>admin user generate-access-token</code></td>
+<td>Mints a personal access token for any user</td>
+</tr>
+<tr>
+<td><code>admin user must-change-password</code></td>
+<td>Forces/unforces password change</td>
+</tr>
+<tr>
+<td><code>admin regenerate keys</code></td>
+<td>Rewrites the SSH <code>authorized_keys</code> file from the DB</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>These commands are an intentional break-glass/administration surface, but they mean <strong>host/CLI
+access is equivalent to full application-level admin access</strong> — a fact worth noting explicitly
+in any threat model, since Trivy-class scanning of the deployment environment (container image
+permissions, who can exec into the Gitea container/host) is just as relevant to authorization
+integrity as scanning the application code itself.</p>
+</blockquote>
+<h2 id="user-blocking-as-an-authorization-adjacent-control">User Blocking as an Authorization-Adjacent Control<a href="#user-blocking-as-an-authorization-adjacent-control" class="heading-anchor" aria-label="Link">#</a></h2>
+<p><code>services/user/block.go</code> (per the
+<a href="../../docs/08-services/services-catalog.html">Services Catalog</a>) implements user-to-user blocking:
+<code>BlockUser</code>/<code>UnblockUser</code> unstar/unwatch repos in both directions, cancel pending repo transfers
+between the two users, unassign issues, and remove collaborations
+(<code>unstarRepos</code>, <code>unwatchRepos</code>, <code>cancelRepositoryTransfers</code>, <code>unassignIssues</code>,
+<code>removeCollaborations</code>). <code>CanBlockUser</code>/<code>CanUnblockUser</code> gate the operation itself (e.g. you can't
+block an org you're a member of in a way that would break your own access). Per
+<a href="../../docs/05-database-models/user-organization-model.html">User &amp; Organization Model</a>, the
+underlying <code>Blocking{BlockerID, BlockeeID, Note}</code> table (<code>user_blocking</code>) means blocked users
+"can't star/watch/follow/interact" — <strong>and admins are exempt from being blocked</strong>, which is
+consistent with the site-admin bypass seen throughout the permission model, but is worth calling
+out explicitly since it means blocking is not a security boundary against a malicious admin
+account.</p>
+<h2 id="threat-model-summary">Threat Model Summary<a href="#threat-model-summary" class="heading-anchor" aria-label="Link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Relevant Control</th>
+<th>Where to Look</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Privilege escalation via crafted API payload setting access mode to <code>"owner"</code></td>
+<td><code>ParseAccessMode</code> excludes <code>"owner"</code> from the parseable set</td>
+<td><code>models/perm/access_mode.go</code> (per Permissions Model docs)</td>
+</tr>
+<tr>
+<td>Broken access control: handler checks wrong unit type or repo-wide instead of per-unit mode</td>
+<td><code>Permission.UnitAccessMode</code> / <code>CanAccess</code></td>
+<td><code>models/perm/access/repo_permission.go</code>; audit any new route's guard middleware choice</td>
+</tr>
+<tr>
+<td>Stale/incorrect cached <code>Access</code> row leaking write access after a collaborator is removed</td>
+<td><code>RecalculateUserAccess</code> / <code>refreshAccesses</code> diffing logic</td>
+<td><code>models/perm/access/access.go</code></td>
+</tr>
+<tr>
+<td>Identity-provider group sync granting Owners-team / admin-team membership too broadly</td>
+<td><code>GroupTeamMap</code> / <code>GroupTeamMapRemoval</code> configuration</td>
+<td><code>services/auth/source/source_group_sync.go</code>; review <code>app.ini</code> LDAP/OAuth2 source config</td>
+</tr>
+<tr>
+<td>Token scope bypass (e.g. public-only token reading private data)</td>
+<td><code>tokenRequiresScopes</code>, <code>checkTokenPublicOnly</code>, <code>rejectPublicOnly</code></td>
+<td><code>routers/api/v1/api.go</code>, resource-specific handlers</td>
+</tr>
+<tr>
+<td>Missing <code>reqRepoAdmin</code>/<code>reqSignIn</code> on a new settings route</td>
+<td>Route-group middleware chain</td>
+<td><code>routers/web/web.go</code>, <code>registerWebRoutes</code></td>
+</tr>
+<tr>
+<td>Push authorization bypass at the Git-transport layer</td>
+<td><code>httpBase()</code> + server-side <code>pre-receive</code> hook</td>
+<td><code>routers/web/repo/githttp.go</code>, <code>/api/internal/hook/pre-receive</code></td>
+</tr>
+<tr>
+<td>Impersonation via <code>Sudo</code> header/param without admin check</td>
+<td><code>sudo()</code> middleware</td>
+<td><code>routers/api/v1/api.go</code></td>
+</tr>
+<tr>
+<td>Host/CLI-level admin bypass of application authorization entirely</td>
+<td><code>admin user create --admin</code>, <code>admin regenerate</code></td>
+<td><code>cmd/admin_user_create.go</code>, <code>cmd/admin_regenerate.go</code> — a deployment/host-hardening concern, not fixable in application code</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cross-references">Cross-References<a href="#cross-references" class="heading-anchor" aria-label="Link">#</a></h2>
+<ul>
+<li><a href="authentication-and-sessions.html">Authentication &amp; Sessions</a> — how <code>ctx.Doer</code> is established before any of the above permission checks run.</li>
+<li><a href="input-handling-and-xss-defense.html">Input Handling &amp; XSS Defense</a> — what happens once a request is authorized but contains untrusted content.</li>
+<li><a href="ssrf-webhooks-and-outbound-requests.html">SSRF, Webhooks &amp; Outbound Requests</a> — authorization-adjacent controls on server-initiated outbound requests.</li>
+<li><a href="../04-configuration-hardening/security-relevant-settings.html">Configuration Hardening</a> — <code>ForcePrivate</code>, restricted-user defaults, and other <code>app.ini</code> knobs referenced above.</li>
+<li><a href="../06-scanning-playbook/running-trivy-and-opengrep.html">Running Trivy and Opengrep</a> — how to translate the vocabulary on this page into concrete SAST rule ideas.</li>
+</ul>
+<div class="page-nav">
+<a href="authentication-and-sessions.html"><div class="nav-label">← Previous</div><div class="nav-title">Authentication & Session Security</div></a>
+<a href="input-handling-and-xss-defense.html" class="nav-next"><div class="nav-label">Next →</div><div class="nav-title">Input Handling & XSS Defense</div></a>
+</div>
+<div class="last-updated">Generated by SASVA AI &mdash; 2026-07-14</div>
+</main>
+<aside class="toc-aside">
+<div class="toc-title">On this page</div>
+<a href="#the-three-layer-model" class="" data-anchor="the-three-layer-model">The Three-Layer Model</a>
+<a href="#layer-1-accessmode" class="toc-h3" data-anchor="layer-1-accessmode">Layer 1 — AccessMode</a>
+<a href="#layer-2-the-access-cache-table" class="toc-h3" data-anchor="layer-2-the-access-cache-table">Layer 2 — The Access Cache Table</a>
+<a href="#layer-3-unit-aware-permission" class="toc-h3" data-anchor="layer-3-unit-aware-permission">Layer 3 — Unit-Aware Permission</a>
+<a href="#computing-permission-for-a-real-request" class="" data-anchor="computing-permission-for-a-real-request">Computing Permission for a Real Request</a>
+<a href="#other-permission-entry-points-surface-for-auditing" class="toc-h3" data-anchor="other-permission-entry-points-surface-for-auditing">Other permission entry points (surface for auditing)</a>
+<a href="#repository-units-the-feature-toggle-surface" class="" data-anchor="repository-units-the-feature-toggle-surface">Repository Units: The Feature-Toggle Surface</a>
+<a href="#collaborators-teams-and-organizations" class="" data-anchor="collaborators-teams-and-organizations">Collaborators, Teams, and Organizations</a>
+<a href="#collaboration-direct-grants" class="toc-h3" data-anchor="collaboration-direct-grants">Collaboration (direct grants)</a>
+<a href="#teams-and-teamunit-org-scoped-grants" class="toc-h3" data-anchor="teams-and-teamunit-org-scoped-grants">Teams and TeamUnit (org-scoped grants)</a>
+<a href="#group-sync-external-identity-provider-team-mapping" class="toc-h3" data-anchor="group-sync-external-identity-provider-team-mapping">Group Sync — external identity provider → Team mapping</a>
+<a href="#user-types-and-special-flags" class="" data-anchor="user-types-and-special-flags">User Types and Special Flags</a>
+<a href="#where-this-is-enforced-web-routes-api-and-cli" class="" data-anchor="where-this-is-enforced-web-routes-api-and-cli">Where This Is Enforced: Web Routes, API, and CLI</a>
+<a href="#web-router-guard-functions" class="toc-h3" data-anchor="web-router-guard-functions">Web router guard functions</a>
+<a href="#rest-api-token-scopes-layered-on-top-of-accessmode" class="toc-h3" data-anchor="rest-api-token-scopes-layered-on-top-of-accessmode">REST API — token scopes layered on top of AccessMode</a>
+<a href="#cli-admin-escalation-paths" class="toc-h3" data-anchor="cli-admin-escalation-paths">CLI / admin escalation paths</a>
+<a href="#user-blocking-as-an-authorization-adjacent-control" class="" data-anchor="user-blocking-as-an-authorization-adjacent-control">User Blocking as an Authorization-Adjacent Control</a>
+<a href="#threat-model-summary" class="" data-anchor="threat-model-summary">Threat Model Summary</a>
+<a href="#cross-references" class="" data-anchor="cross-references">Cross-References</a>
+</aside>
+<button class="back-to-top" id="back-to-top" title="Back to top">↑</button>
+<div class="mermaid-overlay" id="mermaid-overlay">
+  <div class="mermaid-overlay-inner" id="mermaid-overlay-inner"></div>
+</div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{useMaxWidth:true,htmlLabels:true},themeVariables:{primaryColor:"#1f6feb",primaryTextColor:"#e6edf3",primaryBorderColor:"#58a6ff",lineColor:"#8b949e",secondaryColor:"#21262d",tertiaryColor:"#161b22"}});
+hljs.highlightAll();
+</script>
+<script>
+(function(){
+  var currentPath = location.pathname;
+  var links = document.querySelectorAll('#sidebar-nav-links a');
+  for(var i=0;i<links.length;i++){
+    var href = links[i].getAttribute('href');
+    if(!href) continue;
+    // Resolve the href to an absolute path for accurate comparison
+    // This handles both relative (../section/page.html) and same-dir (page.html) links
+    var a = document.createElement('a');
+    a.href = href;
+    if(a.pathname === currentPath){
+      links[i].classList.add('active');
+    }
+  }
+  var idx=[{"t": "Security Posture Overview", "p": "01-overview/security-posture-overview.html", "h": ["What Gitea Is, in One Paragraph", "Annotated Security-Control Map", "Threat-Model-at-a-Glance", "Gap Summary: What Trivy and Opengrep Are For", "Navigating This Set", "Quick-Start Checklist for a Scanner Operator", "Cross-References"]}, {"t": "Existing Security Tooling in CI", "p": "02-ci-security-tooling/existing-security-tooling-in-ci.html", "h": ["How CI Is Organized", "Tool Inventory", "Deep Dive: Each Existing Control", "License Scanning — Go and NPM Dependency Trees", "Renovate — Automated Dependency Updates", "Supporting Linters (Indirect Security Value)", "What's Covered vs. What Isn't", "Cross-References"]}, {"t": "Authentication & Session Security", "p": "03-attack-surface/authentication-and-sessions.html", "h": ["Provider Catalog", "Per-Surface Auth Chains", "Session Establishment &amp; Fixation Protection", "Cross-Origin / CSRF Protection", "Basic Auth: the Multi-Credential Fallback Path", "Personal Access Tokens &amp; OAuth2 Scopes", "Scope model", "API authentication schemes (Swagger-declared)", "Remember-Me Cookies (Auth Tokens) — Distinct from Sessions and PATs", "Two-Factor Authentication", "TOTP", "WebAuthn / Passkeys", "Credential-Backend (Source) Details", "Group Sync — External Groups → Teams", "Authentication → Authorization Handoff", "Scanning Guidance for Trivy &amp; Opengrep", "Cross-References"]}, {"t": "Authorization / Permission Model", "p": "03-attack-surface/authorization-permission-model.html", "h": ["The Three-Layer Model", "Computing Permission for a Real Request", "Other permission entry points (surface for auditing)", "Repository Units: The Feature-Toggle Surface", "Collaborators, Teams, and Organizations", "Collaboration (direct grants)", "Group Sync — external identity provider → Team mapping", "User Types and Special Flags", "Where This Is Enforced: Web Routes, API, and CLI", "Web router guard functions", "CLI / admin escalation paths", "User Blocking as an Authorization-Adjacent Control", "Threat Model Summary", "Cross-References"]}, {"t": "Input Handling & XSS Defense", "p": "03-attack-surface/input-handling-and-xss-defense.html", "h": ["The Rendering Pipeline at a Glance", "Sanitization with bluemonday", "Policy Construction", "URL Scheme Handling — the Key XSS Control", "Admin-Configured Custom Rules Must Be Anchored", "A Stricter Policy for Plain-Text Fields", "Per-Renderer Risk Notes", "Jupyter Notebooks: Explicit Re-Sanitization of Embedded HTML", "External Renderers: Where Sanitization Can Be Turned Off", "Syntax Highlighting &amp; Charset Handling (Adjacent Hardening)", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "SSRF, Webhooks & Outbound Requests", "p": "03-attack-surface/ssrf-webhooks-and-outbound-requests.html", "h": ["The Outbound Request Surfaces", "Webhook Fan-Out Architecture", "Data Model", "Preparing &amp; Queuing a Delivery", "What the Allowed Values Mean", "Requester-Specific Payload Transformation", "Manual Test Delivery Bypasses Normal Gating — But Not Host Restrictions", "LFS: JWT-Authenticated Internal HTTP, Not User-Supplied URLs", "Related Outbound-Request Configuration Surfaces", "Trivy / opengrep Focus Checklist", "Cross-References"]}, {"t": "Security-Relevant Configuration & Secrets Management", "p": "04-configuration-hardening/security-relevant-settings.html", "h": ["How Configuration Reaches the Process (and Why It Matters for Secrets)", "HTTP Security Headers", "Session, Cookie, and Remember-Me Security", "LFS, Webhooks, and Other Secret-Bearing Settings", "Dynamic (Runtime-Editable) Settings Are Explicitly Not Security-Sensitive by Design", "Configuration Hardening Checklist", "Cross-References"]}, {"t": "Build, Release & Container Security Posture", "p": "05-supply-chain-and-container-security/build-release-and-container-posture.html", "h": ["Supply Chain Overview", "Release Signing &amp; Integrity", "Signing &amp; Checksum Flow", "Tool &amp; Dependency Version Pinning", "Renovate Bot", "Docker Image Build &amp; Supply-Chain Details", "Container Publishing", "Rootful vs. Rootless — Container Privilege Posture", "s6 Supervision Detail (Rootful Only)", "Secrets &amp; Configuration Injection into Containers", "Distro-Level Service Units (Non-Container Deployments)", "Dependency &amp; Library Governance (Go Module Supply Chain)", "Summary: What's Already Covered vs. What Trivy/opengrep Should Target", "Cross-References"]}, {"t": "Running Trivy and Opengrep Against This Repository", "p": "06-scanning-playbook/running-trivy-and-opengrep.html", "h": ["Why These Two Tools, and Why Together", "Where Each Tool Fits in the Existing Pipeline", "3. SBOM generation — Trivy filling a documented gap", "5. Application-layer SAST — opengrep filling the single largest documented gap", "Concrete opengrep Rule Targets (Synthesized From the Attack-Surface Pages)", "Secret detection", "Weak/incorrect cryptography", "Access-control / authorization logic", "CSRF / auth-bypass surfaces", "Sanitizer / XSS-defense bypass", "SSRF / outbound-request safety", "Dockerfile / container config", "Manual-Review-Only Concerns (Not a Scanner Target)", "Cross-Cutting Configuration &amp; Deployment Scan Targets", "Practical Rollout Checklist", "From Finding to Resolution", "Cross-References"]}, {"t": "Vulnerability Disclosure Process", "p": "07-vulnerability-disclosure/reporting-process.html", "h": ["The Golden Rule: Never File Security Issues Publicly", "Why This Matters for Scanner-Generated Findings", "Reporting Channel and Encryption", "What Counts as a \"Security Issue\" vs. a Regular Bug", "How This Interacts With Existing (Non-Fatal) CI Security Tooling", "Security Fixes in the Release Cycle", "Practical Checklist for Scanner Operators", "Cross-References"]}, {"t": "Documentation Style & Conventions (Internal Reference)", "p": "STYLE_GUIDE.html", "h": ["Purpose of This Documentation Set", "Directory Structure", "Source Material Provenance", "Writing Conventions", "Heading Levels", "Citations", "Cross-Links Within This Wiki", "Mermaid Diagrams", "Tables", "Code Blocks", "Tone &amp; Framing", "Page Template", "Completion Checklist (final phase — verified)"]}, {"t": "Security Issues: Trivy & Opengrep Scanning Guide for Gitea", "p": "index.html", "h": ["Quick Start for Scanner Operators", "Full Navigation", "How This Wiki Is Organized", "Threat Model, at a Glance", "What This Set Covers, Section by Section", "Source Material Provenance"]}];
+  var searchInput=document.getElementById('doc-search');
+  var searchResults=document.getElementById('search-results');
+  var navLinks=document.getElementById('sidebar-nav-links');
+  if(!searchInput||!searchResults||!navLinks)return;
+  var depth=(location.pathname.match(/\//g)||[]).length;
+  var prefix='';
+  var docsIdx=location.pathname.indexOf('/derived-docs/');
+  if(docsIdx>=0){var after=location.pathname.substring(docsIdx+14);var parts=after.split('/');prefix='../'.repeat(Math.max(0,parts.length-1));}
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){searchResults.innerHTML='';navLinks.style.display='';return;}
+    navLinks.style.display='none';
+    var hits=[];
+    for(var i=0;i<idx.length;i++){
+      var item=idx[i];var score=0;
+      if(item.t.toLowerCase().indexOf(q)>=0)score+=10;
+      for(var j=0;j<item.h.length;j++){if(item.h[j].toLowerCase().indexOf(q)>=0)score+=3;}
+      if(score>0)hits.push({item:item,score:score});
+    }
+    hits.sort(function(a,b){return b.score-a.score;});
+    var html='';
+    for(var k=0;k<Math.min(hits.length,15);k++){
+      var h=hits[k].item;
+      html+='<a href="'+prefix+h.p+'">'+h.t+'</a>';
+      var mh=[];for(var m=0;m<h.h.length;m++){if(h.h[m].toLowerCase().indexOf(q)>=0)mh.push(h.h[m]);}
+      for(var n=0;n<Math.min(mh.length,2);n++){html+='<div class="search-heading">↳ '+mh[n]+'</div>';}
+    }
+    if(!hits.length)html='<div style="padding:8px 12px;color:var(--text-dim);font-size:0.8rem">No results</div>';
+    searchResults.innerHTML=html;
+  });
+})();
+</script>
+<script>
+(function(){
+  // Mermaid expand buttons — added AFTER mermaid renders (so button is on wrapper, not inside pre)
+  var overlay=document.getElementById('mermaid-overlay');
+  var overlayInner=document.getElementById('mermaid-overlay-inner');
+  function _addMermaidButtons(){
+    document.querySelectorAll('.mermaid,pre.mermaid').forEach(function(el){
+      if(el.dataset.expandAdded)return;
+      el.dataset.expandAdded='1';
+      // Wrap in a div so the button is a sibling of pre, not inside it
+      var wrapper=document.createElement('div');
+      wrapper.style.cssText='position:relative;display:inline-block;width:100%;';
+      el.parentNode.insertBefore(wrapper,el);
+      wrapper.appendChild(el);
+      var btn=document.createElement('button');
+      btn.className='mermaid-expand';btn.textContent='⛶';btn.title='Expand diagram';
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var clone=el.cloneNode(true);
+        delete clone.dataset.expandAdded;
+        clone.removeAttribute('data-expand-added');
+        clone.style.cssText='background:none;border:none;padding:0;margin:0;text-align:center;min-width:70vw;max-width:90vw;';
+        // Clear overlay content safely, keep close button
+        overlayInner.innerHTML='';
+        var closeBtn=document.createElement('button');
+        closeBtn.className='mermaid-overlay-close';closeBtn.textContent='×';closeBtn.title='Close';
+        closeBtn.addEventListener('click',function(){overlay.classList.remove('open');});
+        overlayInner.appendChild(clone);
+        overlayInner.appendChild(closeBtn);
+        overlay.classList.add('open');
+        // Re-run mermaid on the clone after it's in the DOM
+        setTimeout(function(){
+          if(window.mermaid){
+            try{mermaid.run({nodes:[clone]});}catch(err){}
+          }
+        },50);
+      });
+      wrapper.appendChild(btn);
+    });
+  }
+  // Wait for mermaid to finish rendering before adding buttons (mermaid init runs above)
+  setTimeout(_addMermaidButtons,800);
+  if(overlay){
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')overlay.classList.remove('open');});
+  }
+  // Code copy buttons
+  document.querySelectorAll('pre').forEach(function(pre){
+    if(pre.classList.contains('mermaid'))return;
+    var btn=document.createElement('button');
+    btn.className='code-copy';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var code=pre.querySelector('code');
+      var text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);});
+    });
+    pre.appendChild(btn);
+  });
+  // Back to top
+  var btt=document.getElementById('back-to-top');
+  if(btt){
+    window.addEventListener('scroll',function(){btt.style.display=window.scrollY>300?'flex':'none';});
+    btt.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  }
+  // TOC active scroll tracking
+  var tocLinks=document.querySelectorAll('.toc-aside a[data-anchor]');
+  if(tocLinks.length>0){
+    var headingEls=[];
+    tocLinks.forEach(function(l){var el=document.getElementById(l.dataset.anchor);if(el)headingEls.push({el:el,link:l});});
+    var tocAside=document.querySelector('.toc-aside');
+    var onScroll=function(){
+      var scrollPos=window.scrollY+80;
+      var active=null;
+      for(var i=0;i<headingEls.length;i++){if(headingEls[i].el.offsetTop<=scrollPos)active=headingEls[i];}
+      tocLinks.forEach(function(l){l.classList.remove('toc-active');});
+      if(active){
+        active.link.classList.add('toc-active');
+        // Scroll active link into view within the TOC panel, not the page
+        if(tocAside){
+          var linkTop=active.link.offsetTop-tocAside.offsetTop;
+          var visibleTop=tocAside.scrollTop;
+          var visibleBottom=visibleTop+tocAside.clientHeight;
+          if(linkTop<visibleTop+40||linkTop>visibleBottom-40){
+            tocAside.scrollTop=linkTop-tocAside.clientHeight/2;
+          }
+        }
+      }
+    };
+    window.addEventListener('scroll',onScroll);
+    onScroll();
+    // Prevent TOC links from scrolling the TOC panel to top on click
+    tocLinks.forEach(function(l){
+      l.addEventListener('click',function(e){
+        e.preventDefault();
+        var anchor=l.dataset.anchor;
+        var target=document.getElementById(anchor);
+        if(target){target.scrollIntoView({behavior:'smooth',block:'start'});}
+      });
+    });
+  }
+  // Persist sidebar scroll position across page navigations
+  var sidebarEl=document.querySelector('nav.sidebar');
+  if(sidebarEl){
+    var sidebarKey='sasva-sidebar-scroll';
+    // Restore scroll position on page load
+    var savedScroll=sessionStorage.getItem(sidebarKey);
+    if(savedScroll){sidebarEl.scrollTop=parseInt(savedScroll,10);}
+    // Save scroll position before navigating away
+    document.querySelectorAll('#sidebar-nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){
+        sessionStorage.setItem(sidebarKey,String(sidebarEl.scrollTop));
+      });
+    });
+    // Also scroll active item into view on load
+    var activeLink=sidebarEl.querySelector('a.active');
+    if(activeLink&&!savedScroll){
+      var linkOffset=activeLink.offsetTop-sidebarEl.offsetTop;
+      sidebarEl.scrollTop=Math.max(0,linkOffset-sidebarEl.clientHeight/2);
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+=== FILE: derived-docs/index.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Security Issues: Trivy & Opengrep Scanning Guide for Gitea This documentation set is a **derived, focused reorganization** of Gitea's existing Markdown documentation, built specifically to help a security engineer or scanner operator run **security scanning tools** — such as **[Trivy](https://github.com/aquasecurity/trivy)** (dependency / container / vulnerability scanning) and **[opengrep](https://github.
+
+# Security Issues: Trivy & Opengrep Scanning Guide for Gitea
+
+This documentation set is a **derived, focused reorganization** of Gitea's existing Markdown
+documentation, built specifically to help a security engineer or scanner operator run **security
+scanning tools** — such as **[Trivy](https://github.com/aquasecurity/trivy)** (dependency /
+container / vulnerability scanning) and **[opengrep](https://github.com/opengrep/opengrep)**-class
+static analysis tools (SAST / secret-detection / CI-config linting) — against this codebase, and to
+understand what Gitea already does for security before layering more tooling on top.
+
+> **Source material note:** no literal `security-issues/` documentation directory exists in this
+> workspace. Every page in this set is instead synthesized from Gitea's general Markdown
+> documentation tree — primarily root-level `SECURITY.md`, `CONTRIBUTING.md`, `WORKSPACE_ANALYSIS.md`,
+> and the structured `docs/**/*.md` tree (architecture, services, database models, core modules,
+> configuration, and build/CI/CD docs). See [`STYLE_GUIDE.md`](STYLE_GUIDE.md) for the full
+> source-provenance table and the authoring conventions used throughout this set.
+
+## Quick Start for Scanner Operators
+
+If you just want to point Trivy/opengrep at this repository right now and know what to expect:
+
+1. Read the [Security Posture Overview](01-overview/security-posture-overview.md) for the
+   threat-model summary and the "what's covered vs. what's not" gap table.
+2. Skim [Existing Security Tooling in CI](02-ci-security-tooling/existing-security-tooling-in-ci.md)
+   so new scanning is **additive**, not duplicative, of `govulncheck`, `zizmor`, `actionlint`,
+   `golangci-lint`/`depguard`, license scanning, and Renovate.
+3. Go straight to [Running Trivy and Opengrep](06-scanning-playbook/running-trivy-and-opengrep.md)
+   for concrete integration points in the existing pipeline and a consolidated opengrep
+   rule-target backlog (with source-code pointers, not fabricated examples).
+4. If a scan turns up something real and exploitable, route it through the
+   [Vulnerability Disclosure Process](07-vulnerability-disclosure/reporting-process.md) instead of a
+   public issue.
+
+## Full Navigation
+
+| # | Section | Page | What You'll Find |
+|---|---|---|---|
+| 01 | Overview | [Security Posture Overview](01-overview/security-posture-overview.md) | Executive framing, layered-monolith architecture diagram, threat-model-at-a-glance table, tool-coverage gap analysis, "how to use this wiki" reading paths |
+| 02 | CI Security Tooling | [Existing Security Tooling in CI](02-ci-security-tooling/existing-security-tooling-in-ci.md) | `govulncheck`/`security-check` (non-fatal), `zizmor`+`actionlint` for workflow YAML, `golangci-lint`/`depguard` import denylist, `go-licenses`/`rolldown-license-plugin` license scanning, Renovate pinning |
+| 03 | Attack Surface | [Authentication & Session Security](03-attack-surface/authentication-and-sessions.md) | The `auth.Method` chain, session fixation protection, CSRF (Fetch Metadata) handling, tokens, 2FA, LDAP secret encryption |
+| 03 | Attack Surface | [Authorization / Permission Model](03-attack-surface/authorization-permission-model.md) | `AccessMode` / `Access` table / unit-aware `Permission`, restricted users, org/team roles, API vs. web-route enforcement |
+| 03 | Attack Surface | [Input Handling & XSS Defense](03-attack-surface/input-handling-and-xss-defense.md) | The `bluemonday`-based sanitizer pipeline, URL scheme blocklist, iframe sandboxing, per-renderer sanitizer rules |
+| 03 | Attack Surface | [SSRF, Webhooks & Outbound Requests](03-attack-surface/ssrf-webhooks-and-outbound-requests.md) | `ALLOWED_HOST_LIST`, webhook HMAC signing, LFS JWT auth, migration/OAuth2 outbound-request controls |
+| 04 | Configuration Hardening | [Security-Relevant Settings](04-configuration-hardening/security-relevant-settings.md) | `[security]`/`[cors]` `app.ini` catalog, secret-supply mechanics (`*_FILE`/`*_URI`), HTTP security headers, `SECRET_KEY`/`INTERNAL_TOKEN` |
+| 05 | Supply Chain & Container Security | [Build, Release & Container Posture](05-supply-chain-and-container-security/build-release-and-container-posture.md) | Cosign + GPG dual-signing, Docker rootful/rootless posture, dependency/tool pinning (Renovate), license compliance |
+| 06 | Scanning Playbook | [Running Trivy and Opengrep](06-scanning-playbook/running-trivy-and-opengrep.md) | Where to slot Trivy/opengrep into the existing pipeline, a consolidated opengrep rule-target backlog, secret-scanning target list, triage guidance |
+| 07 | Vulnerability Disclosure | [Vulnerability Disclosure Process](07-vulnerability-disclosure/reporting-process.md) | `security@gitea.io`, PGP key, triage labels/taxonomy, backport/EOL policy for routing real findings |
+| — | Reference | [Documentation Style Guide](STYLE_GUIDE.md) | Internal authoring conventions and full source-provenance table (not part of the reading path, but useful for verifying any claim's origin) |
+
+## How This Wiki Is Organized
+
+```mermaid
+graph TD
+    IDX["index.md<br/>(you are here)"] --> OV["01 Overview<br/>Security Posture"]
+    OV --> CI["02 CI Security Tooling<br/>What's already automated"]
+    CI --> AS1["03 Attack Surface<br/>Authentication & Sessions"]
+    CI --> AS2["03 Attack Surface<br/>Authorization / Permissions"]
+    CI --> AS3["03 Attack Surface<br/>Input Handling & XSS"]
+    CI --> AS4["03 Attack Surface<br/>SSRF / Webhooks / Outbound"]
+    AS1 --> CFG["04 Configuration Hardening<br/>app.ini security settings"]
+    AS2 --> CFG
+    AS3 --> CFG
+    AS4 --> CFG
+    CFG --> SC["05 Supply Chain & Container<br/>Build/Release/Docker posture"]
+    SC --> PLAY["06 Scanning Playbook<br/>Trivy + opengrep integration"]
+    PLAY --> DISC["07 Vulnerability Disclosure<br/>What to do with a finding"]
+```
+
+Each numbered section builds on the ones before it: understand the system → see what's already
+automated → understand the attack surface in Gitea's own vocabulary (`AccessMode`, `bluemonday`
+policy, `ALLOWED_HOST_LIST`, `auth.Method` chain) → see how it's configured/hardened → check the
+supply chain → run the scanners → know what to do with a real finding.
+
+## Threat Model, at a Glance
+
+This table is synthesized from the "Threat Model at a Glance" and "Where Trivy/Opengrep Fit" tables
+in the [Security Posture Overview](01-overview/security-posture-overview.md) — read that page for
+full detail, caveats, and citations.
+
+| Threat Actor | Representative Risk | Primary Existing Mitigation | Deep-Dive Page |
+|---|---|---|---|
+| Unauthenticated external attacker | Auth-chain ordering bugs, session fixation, CSRF on state-changing routes | Ordered `auth.Method` chains, session-ID regeneration on sign-in, Fetch Metadata CSRF check | [Authentication & Sessions](03-attack-surface/authentication-and-sessions.md) |
+| Authenticated low-privilege user | Privilege escalation via a missing/incorrect permission check on a new route | Three-layer `AccessMode`/`Access`/`Permission` model; `"owner"` intentionally excluded from string parsing | [Authorization / Permission Model](03-attack-surface/authorization-permission-model.md) |
+| Malicious repository contributor | Stored XSS via a crafted README/wiki/issue/PR body or an overly permissive custom renderer | `bluemonday`-based sanitizer wired into the shared rendering pipeline (opt-out, not opt-in) | [Input Handling & XSS Defense](03-attack-surface/input-handling-and-xss-defense.md) |
+| Repo/org admin (or attacker who compromises one) | SSRF via a webhook URL, migration source, or OAuth2 client pointed at internal/loopback/cloud-metadata hosts | `ALLOWED_HOST_LIST`, webhook HMAC signing, LFS JWT auth | [SSRF, Webhooks & Outbound Requests](03-attack-surface/ssrf-webhooks-and-outbound-requests.md) |
+| Anyone with read access to config/deployment artifacts | Leaked `SECRET_KEY`, `INTERNAL_TOKEN`, DB/SMTP/LDAP credentials in plaintext | `*_FILE`/`*_URI` secret indirection, `ClearEnvConfigKeys()` env scrubbing | [Security-Relevant Settings](04-configuration-hardening/security-relevant-settings.md) |
+| Supply-chain attacker | Poisoned dependency, tampered release artifact, unpinned build tool | Cosign + GPG dual-signing, Renovate pinning, `depguard` import denylist, license scanning | [Build, Release & Container Posture](05-supply-chain-and-container-security/build-release-and-container-posture.md) |
+| Anyone relying on CI to catch known-vulnerable dependencies | A known Go CVE reaching `main` because `security-check` (`govulncheck`) is non-fatal | Partial — `govulncheck` runs but doesn't block merge | [Existing Security Tooling in CI](02-ci-security-tooling/existing-security-tooling-in-ci.md) |
+
+## What This Set Covers, Section by Section
+
+1. **[Security Posture Overview](01-overview/security-posture-overview.md)** — a threat-model-at-a-
+   glance summary and an annotated architecture diagram showing where security controls sit in
+   Gitea's layered-monolith backend (`routers/` → `services/` → `models/` → `xorm`, plus a shared
+   `modules/` layer, and a Vue 3/TypeScript frontend). Also includes a "what Trivy/opengrep would add
+   vs. what's already covered" gap table and suggested reading paths.
+2. **[Existing Security Tooling in CI](02-ci-security-tooling/existing-security-tooling-in-ci.md)** —
+   what's already automated (`govulncheck`, `zizmor`, `actionlint`, `golangci-lint`/`depguard`,
+   license scanning via `go-licenses`/`rolldown-license-plugin`, Renovate) so new scans don't
+   duplicate coverage, and explicitly flags the `govulncheck` non-fatal gap.
+3. **Attack surface**, in four pages:
+   - **[Authentication & Session Security](03-attack-surface/authentication-and-sessions.md)** —
+     the auth chain, session/token handling, 2FA, LDAP secret encryption.
+   - **[Authorization / Permission Model](03-attack-surface/authorization-permission-model.md)** —
+     `AccessMode`/`Access`/`Permission`, org/team roles, restricted users.
+   - **[Input Handling & XSS Defense](03-attack-surface/input-handling-and-xss-defense.md)** — HTML
+     sanitization (`bluemonday`), URL scheme blocklist, iframe sandboxing.
+   - **[SSRF, Webhooks & Outbound Requests](03-attack-surface/ssrf-webhooks-and-outbound-requests.md)**
+     — `ALLOWED_HOST_LIST`, webhook signing, LFS JWT auth.
+4. **[Security-Relevant Settings](04-configuration-hardening/security-relevant-settings.md)** — the
+   `[security]`/`[cors]` settings catalog and other security-relevant `app.ini` configuration,
+   including secret-supply mechanics and HTTP security headers.
+5. **[Build, Release & Container Posture](05-supply-chain-and-container-security/build-release-and-container-posture.md)**
+   — release signing, Docker/rootless container posture, dependency pinning, and license compliance.
+6. **[Running Trivy and Opengrep](06-scanning-playbook/running-trivy-and-opengrep.md)** — concrete
+   guidance for slotting Trivy and opengrep into this repository's existing pipeline, and mapping
+   findings back to the attack-surface pages above, plus a consolidated rule-target backlog.
+7. **[Vulnerability Disclosure Process](07-vulnerability-disclosure/reporting-process.md)** — the
+   official process (per `SECURITY.md`) for routing any real, exploitable finding responsibly
+   instead of filing a public issue.
+
+## Source Material Provenance
+
+Every page in this set traces back to specific files in Gitea's own documentation tree — never to
+guesses or invented content. The full provenance table lives in [`STYLE_GUIDE.md`](STYLE_GUIDE.md#source-material-provenance);
+the headline sources are:
+
+| Source | What it contributes |
+|---|---|
+| `SECURITY.md` | Vulnerability disclosure process, PGP key |
+| `CONTRIBUTING.md` | `security issue` label/triage routing |
+| `WORKSPACE_ANALYSIS.md` | Architecture, forbidden/required libraries (`depguard`), coding conventions |
+| `docs/build-cicd-deployment/makefile-and-build.md` | `security-check`/`govulncheck`, `lint-actions`/`zizmor`/`actionlint`, `lint-go`/`golangci-lint` |
+| `docs/build-cicd-deployment/github-workflows.md` | CI workflow catalog, release signing, Renovate, `zizmor` suppression pattern |
+| `docs/build-cicd-deployment/docker-and-packaging.md` | Dockerfile posture, `uv`-managed lint tools |
+| `docs/08-services/auth-providers.md` | Auth chain, tokens, 2FA, LDAP secret encryption |
+| `docs/05-database-models/permissions-model.md` | `AccessMode`/`Access`/`Permission` model |
+| `docs/09-core-modules/markup-engines.md` | HTML sanitization / XSS defense |
+| `docs/09-core-modules/notify-mailer-webhook.md` | Webhook signing, SSRF protection |
+| `docs/09-core-modules/lfs-and-hooks.md` | LFS JWT auth, credential-safe logging |
+| `docs/04-configuration/settings-catalog.md`, `docs/03-getting-started/configuration-app-ini.md` | `[security]`/`[cors]` settings |
+| `docs/02-architecture/deployment-topologies.md` | Container privilege-dropping |
+| `docs/11-authentication/README.md` | Auth docs index |
+
+> **Note on gaps:** where the source documentation is silent on a topic (e.g., no documented npm/pnpm
+> audit step, no SBOM generation, no dedicated Dockerfile linter), the affected page says so
+> explicitly rather than guessing — these silences are themselves useful signal for a scanner
+> operator deciding where Trivy/opengrep add the most net-new coverage.
+
+---
+
+*This page is the entry point for the entire `security-issues` derived documentation set. Start with
+the [Security Posture Overview](01-overview/security-posture-overview.md) if you're new here, or jump
+directly to the [Scanning Playbook](06-scanning-playbook/running-trivy-and-opengrep.md) if you already
+know Gitea's architecture and just need integration guidance.*

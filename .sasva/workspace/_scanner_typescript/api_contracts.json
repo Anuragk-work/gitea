@@ -1,0 +1,2315 @@
+{
+  "rest_endpoints": [],
+  "event_handlers": [
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "vite.config.ts",
+      "handler": "vite.config"
+    },
+    {
+      "event": "listening",
+      "action": "subscribe",
+      "file": "vite.config.ts",
+      "handler": "vite.config"
+    },
+    {
+      "event": "connect",
+      "action": "subscribe",
+      "file": "web_src/js/eventsource.sharedworker.ts",
+      "handler": "eventsource.sharedworker"
+    },
+    {
+      "event": "message",
+      "action": "subscribe",
+      "file": "web_src/js/eventsource.sharedworker.ts",
+      "handler": "eventsource.sharedworker"
+    },
+    {
+      "event": "DOMContentLoaded",
+      "action": "subscribe",
+      "file": "web_src/js/external-render-helper.ts",
+      "handler": "external-render-helper"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/external-render-helper.ts",
+      "handler": "external-render-helper"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/common.ts",
+      "handler": "common"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/config.ts",
+      "handler": "config"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/config.ts",
+      "handler": "config"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/users.ts",
+      "handler": "users"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/admin/users.ts",
+      "handler": "users"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/citation.ts",
+      "handler": "citation"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/citation.ts",
+      "handler": "citation"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/citation.ts",
+      "handler": "citation"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/citation.ts",
+      "handler": "citation"
+    },
+    {
+      "event": "color-changed",
+      "action": "subscribe",
+      "file": "web_src/js/features/colorpicker.ts",
+      "handler": "colorpicker"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/colorpicker.ts",
+      "handler": "colorpicker"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/colorpicker.ts",
+      "handler": "colorpicker"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/colorpicker.ts",
+      "handler": "colorpicker"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-actions-permissions.ts",
+      "handler": "common-actions-permissions"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-actions-permissions.ts",
+      "handler": "common-actions-permissions"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-fetch-action.ts",
+      "handler": "common-fetch-action"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-fetch-action.ts",
+      "handler": "common-fetch-action"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-form.ts",
+      "handler": "common-form"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-issue-list.ts",
+      "handler": "common-issue-list"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-issue-list.ts",
+      "handler": "common-issue-list"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-organization.ts",
+      "handler": "common-organization"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-page.ts",
+      "handler": "common-page"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/common-page.ts",
+      "handler": "common-page"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "processing",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "queuecomplete",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "submit",
+      "action": "publish",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+      "handler": "ComboMarkdownEditor"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/Cropper.ts",
+      "handler": "Cropper"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/EditorMarkdown.ts",
+      "handler": "EditorMarkdown"
+    },
+    {
+      "event": "paste",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/EditorUpload.ts",
+      "handler": "EditorUpload"
+    },
+    {
+      "event": "drop",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/EditorUpload.ts",
+      "handler": "EditorUpload"
+    },
+    {
+      "event": "paste",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/EditorUpload.ts",
+      "handler": "EditorUpload"
+    },
+    {
+      "event": "drop",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/EditorUpload.ts",
+      "handler": "EditorUpload"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/LabelEdit.ts",
+      "handler": "LabelEdit"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/LabelEdit.ts",
+      "handler": "LabelEdit"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/LabelEdit.ts",
+      "handler": "LabelEdit"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/ScopedWorkflows.ts",
+      "handler": "ScopedWorkflows"
+    },
+    {
+      "event": "text-expander-change",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/TextExpander.ts",
+      "handler": "TextExpander"
+    },
+    {
+      "event": "text-expander-value",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/TextExpander.ts",
+      "handler": "TextExpander"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/WebHookEditor.ts",
+      "handler": "WebHookEditor"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/WebHookEditor.ts",
+      "handler": "WebHookEditor"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/WebHookEditor.ts",
+      "handler": "WebHookEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/comp/WebHookEditor.ts",
+      "handler": "WebHookEditor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "success",
+      "action": "subscribe",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "removedfile",
+      "action": "subscribe",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "addedfile",
+      "action": "publish",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "complete",
+      "action": "publish",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "thumbnail",
+      "action": "publish",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/features/dropzone.ts",
+      "handler": "dropzone"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/features/imagediff.ts",
+      "handler": "imagediff"
+    },
+    {
+      "event": "mousemove",
+      "action": "subscribe",
+      "file": "web_src/js/features/imagediff.ts",
+      "handler": "imagediff"
+    },
+    {
+      "event": "mouseup",
+      "action": "subscribe",
+      "file": "web_src/js/features/imagediff.ts",
+      "handler": "imagediff"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/imagediff.ts",
+      "handler": "imagediff"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/install.ts",
+      "handler": "install"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/install.ts",
+      "handler": "install"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/install.ts",
+      "handler": "install"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/install.ts",
+      "handler": "install"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/oauth2-settings.ts",
+      "handler": "oauth2-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/org-team.ts",
+      "handler": "org-team"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/pull-view-file.ts",
+      "handler": "pull-view-file"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/pull-view-file.ts",
+      "handler": "pull-view-file"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/pull-view-file.ts",
+      "handler": "pull-view-file"
+    },
+    {
+      "event": "mouseleave",
+      "action": "subscribe",
+      "file": "web_src/js/features/ref-issue.ts",
+      "handler": "ref-issue"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-actions.ts",
+      "handler": "repo-actions"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-branch.ts",
+      "handler": "repo-branch"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-branch.ts",
+      "handler": "repo-branch"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-code.ts",
+      "handler": "repo-code"
+    },
+    {
+      "event": "hashchange",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-code.ts",
+      "handler": "repo-code"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-commit.ts",
+      "handler": "repo-commit"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-common.ts",
+      "handler": "repo-common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-common.ts",
+      "handler": "repo-common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-common.ts",
+      "handler": "repo-common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-common.ts",
+      "handler": "repo-common"
+    },
+    {
+      "event": "focus",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-common.ts",
+      "handler": "repo-common"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-diff-commit.ts",
+      "handler": "repo-diff-commit"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-diff.ts",
+      "handler": "repo-diff"
+    },
+    {
+      "event": "hashchange",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-diff.ts",
+      "handler": "repo-diff"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-editor.ts",
+      "handler": "repo-editor"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-graph.ts",
+      "handler": "repo-graph"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-graph.ts",
+      "handler": "repo-graph"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-home.ts",
+      "handler": "repo-home"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-home.ts",
+      "handler": "repo-home"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-home.ts",
+      "handler": "repo-home"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-edit.ts",
+      "handler": "repo-issue-edit"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-edit.ts",
+      "handler": "repo-issue-edit"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-edit.ts",
+      "handler": "repo-issue-edit"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "handler": "repo-issue-list"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "handler": "repo-issue-list"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "handler": "repo-issue-list"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "handler": "repo-issue-list"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "handler": "repo-issue-list"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-sidebar.ts",
+      "handler": "repo-issue-sidebar"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-sidebar.ts",
+      "handler": "repo-issue-sidebar"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-sidebar.ts",
+      "handler": "repo-issue-sidebar"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue-sidebar.ts",
+      "handler": "repo-issue-sidebar"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "focus",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-issue.ts",
+      "handler": "repo-issue"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-legacy.ts",
+      "handler": "repo-legacy"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migrate.ts",
+      "handler": "repo-migrate"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-migration.ts",
+      "handler": "repo-migration"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-milestone.ts",
+      "handler": "repo-milestone"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-new.ts",
+      "handler": "repo-new"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-new.ts",
+      "handler": "repo-new"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-new.ts",
+      "handler": "repo-new"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-new.ts",
+      "handler": "repo-new"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-new.ts",
+      "handler": "repo-new"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-projects.ts",
+      "handler": "repo-projects"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-projects.ts",
+      "handler": "repo-projects"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-projects.ts",
+      "handler": "repo-projects"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-projects.ts",
+      "handler": "repo-projects"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-release.ts",
+      "handler": "repo-release"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-release.ts",
+      "handler": "repo-release"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-search.ts",
+      "handler": "repo-search"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-settings.ts",
+      "handler": "repo-settings"
+    },
+    {
+      "event": "submit",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-wiki.ts",
+      "handler": "repo-wiki"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/features/repo-wiki.ts",
+      "handler": "repo-wiki"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/sshkey-helper.ts",
+      "handler": "sshkey-helper"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/tablesort.ts",
+      "handler": "tablesort"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/user-auth-webauthn.ts",
+      "handler": "user-auth-webauthn"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/user-auth-webauthn.ts",
+      "handler": "user-auth-webauthn"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/features/user-auth.ts",
+      "handler": "user-auth"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/features/user-settings.ts",
+      "handler": "user-settings"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/markup/anchors.ts",
+      "handler": "anchors"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/markup/mermaid.ts",
+      "handler": "mermaid"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/markup/mermaid.ts",
+      "handler": "mermaid"
+    },
+    {
+      "event": "mousemove",
+      "action": "subscribe",
+      "file": "web_src/js/markup/mermaid.ts",
+      "handler": "mermaid"
+    },
+    {
+      "event": "mouseup",
+      "action": "subscribe",
+      "file": "web_src/js/markup/mermaid.ts",
+      "handler": "mermaid"
+    },
+    {
+      "event": "load",
+      "action": "subscribe",
+      "file": "web_src/js/markup/mermaid.ts",
+      "handler": "mermaid"
+    },
+    {
+      "event": "message",
+      "action": "subscribe",
+      "file": "web_src/js/markup/render-iframe.ts",
+      "handler": "render-iframe"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/markup/tasklist.ts",
+      "handler": "tasklist"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/markup/tasklist.ts",
+      "handler": "tasklist"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/clipboard.ts",
+      "handler": "clipboard"
+    },
+    {
+      "event": "pointerover",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "handler": "command-palette"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "handler": "command-palette"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "handler": "command-palette"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "handler": "command-palette"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "handler": "command-palette"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "scroll",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "scroll",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "blur",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "resize",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "handler": "context-menu"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "handler": "main"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "keyup",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "blur",
+      "action": "subscribe",
+      "file": "web_src/js/modules/codeeditor/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/devtest.ts",
+      "handler": "devtest"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/devtest.ts",
+      "handler": "devtest"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/devtest.ts",
+      "handler": "devtest"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/devtest.ts",
+      "handler": "devtest"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/devtest.ts",
+      "handler": "devtest"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "keyup",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "focus",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "blur",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "mouseup",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "handler": "dropdown"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/fomantic/tab.ts",
+      "handler": "tab"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/observer.ts",
+      "handler": "observer"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "focus",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "blur",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "mousedown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/search.ts",
+      "handler": "search"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/modules/shortcut.ts",
+      "handler": "shortcut"
+    },
+    {
+      "event": "focusin",
+      "action": "subscribe",
+      "file": "web_src/js/modules/shortcut.ts",
+      "handler": "shortcut"
+    },
+    {
+      "event": "focusout",
+      "action": "subscribe",
+      "file": "web_src/js/modules/shortcut.ts",
+      "handler": "shortcut"
+    },
+    {
+      "event": "mouseover",
+      "action": "subscribe",
+      "file": "web_src/js/modules/tippy.ts",
+      "handler": "tippy"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/modules/toast.ts",
+      "handler": "toast"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/modules/worker.ts",
+      "handler": "worker"
+    },
+    {
+      "event": "messageerror",
+      "action": "subscribe",
+      "file": "web_src/js/modules/worker.ts",
+      "handler": "worker"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/modules/worker.ts",
+      "handler": "worker"
+    },
+    {
+      "event": "beforeunload",
+      "action": "subscribe",
+      "file": "web_src/js/modules/worker.ts",
+      "handler": "worker"
+    },
+    {
+      "event": "message",
+      "action": "subscribe",
+      "file": "web_src/js/modules/worker.ts",
+      "handler": "worker"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/render/swagger.ts",
+      "handler": "swagger"
+    },
+    {
+      "event": "load",
+      "action": "subscribe",
+      "file": "web_src/js/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "load",
+      "action": "subscribe",
+      "file": "web_src/js/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/utils.ts",
+      "handler": "utils"
+    },
+    {
+      "event": "DOMContentLoaded",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "mousemove",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "input",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "reset",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "load",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "error",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "animationend",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "visibilitychange",
+      "action": "subscribe",
+      "file": "web_src/js/utils/dom.ts",
+      "handler": "dom"
+    },
+    {
+      "event": "change",
+      "action": "subscribe",
+      "file": "web_src/js/webcomponents/index.ts",
+      "handler": "index"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/webcomponents/overflow-menu.ts",
+      "handler": "overflow-menu"
+    },
+    {
+      "event": "keydown",
+      "action": "subscribe",
+      "file": "web_src/js/webcomponents/overflow-menu.ts",
+      "handler": "overflow-menu"
+    },
+    {
+      "event": "click",
+      "action": "subscribe",
+      "file": "web_src/js/webcomponents/overflow-menu.ts",
+      "handler": "overflow-menu"
+    }
+  ],
+  "db_access": [
+    {
+      "file": "tests/e2e/issue-project.test.ts",
+      "type": "read",
+      "handler": "issue-project.test"
+    },
+    {
+      "file": "tests/e2e/utils.ts",
+      "type": "write",
+      "handler": "utils"
+    },
+    {
+      "file": "tools/ci-tools.ts",
+      "type": "read",
+      "handler": "ci-tools"
+    },
+    {
+      "file": "vite.config.ts",
+      "type": "read",
+      "handler": "vite.config"
+    },
+    {
+      "file": "web_src/js/components/ActionRunView.ts",
+      "type": "read",
+      "handler": "ActionRunView"
+    },
+    {
+      "file": "web_src/js/components/WorkflowGraph.utils.test.ts",
+      "type": "read",
+      "handler": "WorkflowGraph.utils.test"
+    },
+    {
+      "file": "web_src/js/components/WorkflowGraph.utils.ts",
+      "type": "write",
+      "handler": "WorkflowGraph.utils"
+    },
+    {
+      "file": "web_src/js/features/admin/common.ts",
+      "type": "read",
+      "handler": "common"
+    },
+    {
+      "file": "web_src/js/features/common-fetch-action.ts",
+      "type": "read",
+      "handler": "common-fetch-action"
+    },
+    {
+      "file": "web_src/js/features/common-issue-list.ts",
+      "type": "read",
+      "handler": "common-issue-list"
+    },
+    {
+      "file": "web_src/js/features/comp/EditorMarkdown.ts",
+      "type": "read",
+      "handler": "EditorMarkdown"
+    },
+    {
+      "file": "web_src/js/features/file-view.ts",
+      "type": "read",
+      "handler": "file-view"
+    },
+    {
+      "file": "web_src/js/features/repo-diff-commitselect.ts",
+      "type": "read",
+      "handler": "repo-diff-commitselect"
+    },
+    {
+      "file": "web_src/js/features/repo-graph.ts",
+      "type": "write",
+      "handler": "repo-graph"
+    },
+    {
+      "file": "web_src/js/features/repo-home.ts",
+      "type": "read",
+      "handler": "repo-home"
+    },
+    {
+      "file": "web_src/js/features/repo-issue-content.ts",
+      "type": "read",
+      "handler": "repo-issue-content"
+    },
+    {
+      "file": "web_src/js/features/repo-issue-list.ts",
+      "type": "read",
+      "handler": "repo-issue-list"
+    },
+    {
+      "file": "web_src/js/features/repo-issue.ts",
+      "type": "write",
+      "handler": "repo-issue"
+    },
+    {
+      "file": "web_src/js/features/repo-migration.ts",
+      "type": "read",
+      "handler": "repo-migration"
+    },
+    {
+      "file": "web_src/js/features/user-auth-webauthn.ts",
+      "type": "write",
+      "handler": "user-auth-webauthn"
+    },
+    {
+      "file": "web_src/js/markup/mermaid.ts",
+      "type": "read",
+      "handler": "mermaid"
+    },
+    {
+      "file": "web_src/js/modules/clipboard.ts",
+      "type": "write",
+      "handler": "clipboard"
+    },
+    {
+      "file": "web_src/js/modules/codeeditor/command-palette.ts",
+      "type": "read",
+      "handler": "command-palette"
+    },
+    {
+      "file": "web_src/js/modules/codeeditor/context-menu.ts",
+      "type": "write",
+      "handler": "context-menu"
+    },
+    {
+      "file": "web_src/js/modules/codeeditor/main.ts",
+      "type": "read",
+      "handler": "main"
+    },
+    {
+      "file": "web_src/js/modules/fomantic/base.ts",
+      "type": "read",
+      "handler": "base"
+    },
+    {
+      "file": "web_src/js/modules/fomantic/dropdown.test.ts",
+      "type": "read",
+      "handler": "dropdown.test"
+    },
+    {
+      "file": "web_src/js/modules/fomantic/dropdown.ts",
+      "type": "read",
+      "handler": "dropdown"
+    },
+    {
+      "file": "web_src/js/modules/search.ts",
+      "type": "read",
+      "handler": "search"
+    },
+    {
+      "file": "web_src/js/modules/tippy.ts",
+      "type": "write",
+      "handler": "tippy"
+    },
+    {
+      "file": "web_src/js/render/ansi.ts",
+      "type": "read",
+      "handler": "ansi"
+    },
+    {
+      "file": "web_src/js/render/plugins/frontend-asciicast.ts",
+      "type": "write",
+      "handler": "frontend-asciicast"
+    },
+    {
+      "file": "web_src/js/utils.ts",
+      "type": "read",
+      "handler": "utils"
+    },
+    {
+      "file": "web_src/js/webcomponents/relative-time.ts",
+      "type": "write",
+      "handler": "relative-time"
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "@citation-js/core",
+      "version": "0.7.21",
+      "type": "production"
+    },
+    {
+      "name": "@citation-js/plugin-bibtex",
+      "version": "0.7.21",
+      "type": "production"
+    },
+    {
+      "name": "@citation-js/plugin-csl",
+      "version": "0.7.22",
+      "type": "production"
+    },
+    {
+      "name": "@citation-js/plugin-software-formats",
+      "version": "0.6.2",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/autocomplete",
+      "version": "6.20.3",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/commands",
+      "version": "6.10.4",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/lang-json",
+      "version": "6.0.2",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/lang-markdown",
+      "version": "6.5.0",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/language",
+      "version": "6.12.4",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/language-data",
+      "version": "6.5.2",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/legacy-modes",
+      "version": "6.5.3",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/lint",
+      "version": "6.9.7",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/search",
+      "version": "6.7.1",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/state",
+      "version": "6.7.0",
+      "type": "production"
+    },
+    {
+      "name": "@codemirror/view",
+      "version": "6.43.4",
+      "type": "production"
+    },
+    {
+      "name": "@deltablot/dropzone",
+      "version": "7.4.3",
+      "type": "production"
+    },
+    {
+      "name": "@github/markdown-toolbar-element",
+      "version": "2.2.3",
+      "type": "production"
+    },
+    {
+      "name": "@github/paste-markdown",
+      "version": "1.5.3",
+      "type": "production"
+    },
+    {
+      "name": "@github/text-expander-element",
+      "version": "2.9.4",
+      "type": "production"
+    },
+    {
+      "name": "@lezer/highlight",
+      "version": "1.2.3",
+      "type": "production"
+    },
+    {
+      "name": "@mcaptcha/vanilla-glue",
+      "version": "0.1.0-rc2",
+      "type": "production"
+    },
+    {
+      "name": "@mermaid-js/layout-elk",
+      "version": "0.2.2",
+      "type": "production"
+    },
+    {
+      "name": "@primer/octicons",
+      "version": "19.29.1",
+      "type": "production"
+    },
+    {
+      "name": "@replit/codemirror-indentation-markers",
+      "version": "6.5.3",
+      "type": "production"
+    },
+    {
+      "name": "@replit/codemirror-lang-nix",
+      "version": "6.0.1",
+      "type": "production"
+    },
+    {
+      "name": "@replit/codemirror-lang-svelte",
+      "version": "6.0.0",
+      "type": "production"
+    },
+    {
+      "name": "@replit/codemirror-vscode-keymap",
+      "version": "6.0.2",
+      "type": "production"
+    },
+    {
+      "name": "@resvg/resvg-wasm",
+      "version": "2.6.2",
+      "type": "production"
+    },
+    {
+      "name": "@vitejs/plugin-vue",
+      "version": "6.0.7",
+      "type": "production"
+    },
+    {
+      "name": "ansi_up",
+      "version": "6.0.6",
+      "type": "production"
+    },
+    {
+      "name": "asciinema-player",
+      "version": "3.17.0",
+      "type": "production"
+    },
+    {
+      "name": "chart.js",
+      "version": "4.5.1",
+      "type": "production"
+    },
+    {
+      "name": "chartjs-adapter-dayjs-4",
+      "version": "1.0.4",
+      "type": "production"
+    },
+    {
+      "name": "chartjs-plugin-zoom",
+      "version": "2.2.0",
+      "type": "production"
+    },
+    {
+      "name": "clippie",
+      "version": "4.2.1",
+      "type": "production"
+    },
+    {
+      "name": "codemirror-lang-elixir",
+      "version": "4.0.1",
+      "type": "production"
+    },
+    {
+      "name": "colord",
+      "version": "2.9.3",
+      "type": "production"
+    },
+    {
+      "name": "compare-versions",
+      "version": "6.1.1",
+      "type": "production"
+    },
+    {
+      "name": "cropperjs",
+      "version": "1.6.2",
+      "type": "production"
+    },
+    {
+      "name": "dayjs",
+      "version": "1.11.21",
+      "type": "production"
+    },
+    {
+      "name": "easymde",
+      "version": "2.21.0",
+      "type": "production"
+    },
+    {
+      "name": "esbuild",
+      "version": "0.28.1",
+      "type": "production"
+    },
+    {
+      "name": "idiomorph",
+      "version": "0.7.4",
+      "type": "production"
+    },
+    {
+      "name": "jquery",
+      "version": "4.0.0",
+      "type": "production"
+    },
+    {
+      "name": "js-yaml",
+      "version": "5.2.1",
+      "type": "production"
+    },
+    {
+      "name": "katex",
+      "version": "0.17.0",
+      "type": "production"
+    },
+    {
+      "name": "mermaid",
+      "version": "11.16.0",
+      "type": "production"
+    },
+    {
+      "name": "online-3d-viewer",
+      "version": "0.18.0",
+      "type": "production"
+    },
+    {
+      "name": "pdfobject",
+      "version": "2.3.1",
+      "type": "production"
+    },
+    {
+      "name": "perfect-debounce",
+      "version": "2.1.0",
+      "type": "production"
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.16",
+      "type": "production"
+    },
+    {
+      "name": "rolldown-license-plugin",
+      "version": "3.0.9",
+      "type": "production"
+    },
+    {
+      "name": "sortablejs",
+      "version": "1.15.7",
+      "type": "production"
+    },
+    {
+      "name": "swagger-ui-dist",
+      "version": "5.32.8",
+      "type": "production"
+    },
+    {
+      "name": "tailwindcss",
+      "version": "3.4.19",
+      "type": "production"
+    },
+    {
+      "name": "throttle-debounce",
+      "version": "5.0.2",
+      "type": "production"
+    },
+    {
+      "name": "tippy.js",
+      "version": "6.3.7",
+      "type": "production"
+    },
+    {
+      "name": "toastify-js",
+      "version": "1.12.0",
+      "type": "production"
+    },
+    {
+      "name": "tributejs",
+      "version": "5.1.3",
+      "type": "production"
+    },
+    {
+      "name": "uint8-to-base64",
+      "version": "0.2.1",
+      "type": "production"
+    },
+    {
+      "name": "vanilla-colorful",
+      "version": "0.7.2",
+      "type": "production"
+    },
+    {
+      "name": "vite",
+      "version": "8.1.3",
+      "type": "production"
+    },
+    {
+      "name": "vite-string-plugin",
+      "version": "2.0.5",
+      "type": "production"
+    },
+    {
+      "name": "vue",
+      "version": "3.5.39",
+      "type": "production"
+    },
+    {
+      "name": "vue-chartjs",
+      "version": "5.3.3",
+      "type": "production"
+    },
+    {
+      "name": "@eslint-community/eslint-plugin-eslint-comments",
+      "version": "4.7.2",
+      "type": "dev"
+    },
+    {
+      "name": "@eslint/json",
+      "version": "2.0.1",
+      "type": "dev"
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.61.1",
+      "type": "dev"
+    },
+    {
+      "name": "@stylistic/eslint-plugin",
+      "version": "5.10.0",
+      "type": "dev"
+    },
+    {
+      "name": "@stylistic/stylelint-plugin",
+      "version": "5.2.1",
+      "type": "dev"
+    },
+    {
+      "name": "@types/codemirror",
+      "version": "5.60.17",
+      "type": "dev"
+    },
+    {
+      "name": "@types/jquery",
+      "version": "4.0.1",
+      "type": "dev"
+    },
+    {
+      "name": "@types/katex",
+      "version": "0.16.8",
+      "type": "dev"
+    },
+    {
+      "name": "@types/node",
+      "version": "26.1.0",
+      "type": "dev"
+    },
+    {
+      "name": "@types/pdfobject",
+      "version": "2.2.5",
+      "type": "dev"
+    },
+    {
+      "name": "@types/sortablejs",
+      "version": "1.15.9",
+      "type": "dev"
+    },
+    {
+      "name": "@types/swagger-ui-dist",
+      "version": "3.30.6",
+      "type": "dev"
+    },
+    {
+      "name": "@types/throttle-debounce",
+      "version": "5.0.2",
+      "type": "dev"
+    },
+    {
+      "name": "@types/toastify-js",
+      "version": "1.12.4",
+      "type": "dev"
+    },
+    {
+      "name": "@typescript-eslint/parser",
+      "version": "8.62.1",
+      "type": "dev"
+    },
+    {
+      "name": "@vitejs/plugin-vue",
+      "version": "6.0.7",
+      "type": "dev"
+    },
+    {
+      "name": "@vitest/eslint-plugin",
+      "version": "1.6.20",
+      "type": "dev"
+    },
+    {
+      "name": "eslint",
+      "version": "10.6.0",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-import-resolver-typescript",
+      "version": "4.4.5",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-import-x",
+      "version": "4.17.1",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-playwright",
+      "version": "2.10.4",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-regexp",
+      "version": "3.1.1",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-sonarjs",
+      "version": "4.1.0",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-unicorn",
+      "version": "71.1.0",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-vue",
+      "version": "10.9.2",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-vue-scoped-css",
+      "version": "3.1.1",
+      "type": "dev"
+    },
+    {
+      "name": "eslint-plugin-wc",
+      "version": "3.1.0",
+      "type": "dev"
+    },
+    {
+      "name": "globals",
+      "version": "17.7.0",
+      "type": "dev"
+    },
+    {
+      "name": "happy-dom",
+      "version": "20.10.6",
+      "type": "dev"
+    },
+    {
+      "name": "jiti",
+      "version": "2.7.0",
+      "type": "dev"
+    },
+    {
+      "name": "markdownlint-cli",
+      "version": "0.49.0",
+      "type": "dev"
+    },
+    {
+      "name": "material-icon-theme",
+      "version": "5.36.1",
+      "type": "dev"
+    },
+    {
+      "name": "postcss-html",
+      "version": "1.8.1",
+      "type": "dev"
+    },
+    {
+      "name": "spectral-cli-bundle",
+      "version": "1.0.11",
+      "type": "dev"
+    },
+    {
+      "name": "stylelint",
+      "version": "17.14.0",
+      "type": "dev"
+    },
+    {
+      "name": "stylelint-config-recommended",
+      "version": "18.0.0",
+      "type": "dev"
+    },
+    {
+      "name": "stylelint-declaration-block-no-ignored-properties",
+      "version": "3.0.0",
+      "type": "dev"
+    },
+    {
+      "name": "stylelint-declaration-strict-value",
+      "version": "1.11.1",
+      "type": "dev"
+    },
+    {
+      "name": "stylelint-value-no-unknown-custom-properties",
+      "version": "6.1.1",
+      "type": "dev"
+    },
+    {
+      "name": "svgo",
+      "version": "4.0.1",
+      "type": "dev"
+    },
+    {
+      "name": "typescript",
+      "version": "6.0.3",
+      "type": "dev"
+    },
+    {
+      "name": "typescript-eslint",
+      "version": "8.62.1",
+      "type": "dev"
+    },
+    {
+      "name": "updates",
+      "version": "17.18.2",
+      "type": "dev"
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.9",
+      "type": "dev"
+    },
+    {
+      "name": "vue-tsc",
+      "version": "3.3.6",
+      "type": "dev"
+    }
+  ],
+  "total_endpoints": 0,
+  "total_events": 264
+}

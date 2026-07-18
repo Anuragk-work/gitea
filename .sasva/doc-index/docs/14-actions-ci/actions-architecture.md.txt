@@ -1,0 +1,632 @@
+=== FILE: docs/14-actions-ci/actions-architecture.md ===
+=== METADATA: format=md ===
+[SUMMARY] # Actions Architecture Gitea Actions is a built-in CI/CD system compatible with GitHub Actions workflow syntax. It parses workflow YAML from a repository, decides which workflows a webhook event should trigger, persists runs/jobs/tasks in the database, and hands work off to external **runners** (`act_runner` or compatible clients) over a Connect-RPC protocol.
+
+# Actions Architecture
+
+Gitea Actions is a built-in CI/CD system compatible with GitHub Actions workflow syntax. It parses workflow YAML from a repository, decides which workflows a webhook event should trigger, persists runs/jobs/tasks in the database, and hands work off to external **runners** (`act_runner` or compatible clients) over a Connect-RPC protocol. This page documents the full pipeline: workflow parsing, the data model, the runner protocol, artifact storage, commit status reporting, and secret/variable scoping.
+
+> Gitea Actions purposefully does not execute workflows itself — the Gitea server only detects, schedules, and tracks runs. All actual step execution happens inside a runner process (typically `act_runner`), which polls Gitea over gRPC/Connect-RPC.
+
+## High-Level Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant User as Git client
+    participant Gitea as Gitea server
+    participant DB as Database
+    participant Runner as act_runner
+
+    User->>Gitea: git push
+    Gitea->>Gitea: notifier.go fires PushEvent
+    Gitea->>Gitea: workflowpattern + workflows.go<br/>DetectWorkflows() matches on: push
+    Gitea->>DB: PrepareRunAndInsert()<br/>creates ActionRun + ActionRunAttempt + ActionRunJob rows
+    Gitea->>DB: CreateCommitStatusForRunJobs()<br/>posts "pending" CommitStatus
+    loop Runner polling
+        Runner->>Gitea: FetchTask (Connect-RPC)
+        Gitea->>DB: PickTask() claims a waiting ActionRunJob
+        Gitea-->>Runner: runnerv1.Task (workflow YAML, secrets, vars, context)
+        Runner->>Runner: executes steps in containers/host
+        Runner->>Gitea: UpdateLog (stream stdout/stderr)
+        Gitea->>DB: WriteLogs() appends to DBFS file
+        Runner->>Gitea: UpdateTask (status transitions)
+        Gitea->>DB: UpdateTaskByState()
+        Gitea->>Gitea: CreateCommitStatusForRunJobs()<br/>updates CommitStatus to success/failure
+    end
+    Gitea->>DB: EmitJobsIfReadyByRun()<br/>schedules jobs whose `needs` are satisfied
+```
+
+## Workflow Detection and Parsing
+
+### Listing and validating workflow files
+
+`modules/actions/workflows.go` is the entry point for workflow discovery. Workflow files live under configurable directories:
+
+```go
+// modules/setting/actions.go
+WorkflowDirs:       []string{".gitea/workflows", ".github/workflows"},
+ScopedWorkflowDirs: []string{".gitea/scoped_workflows"},
+```
+
+Key functions:
+
+| Function | Purpose |
+|---|---|
+| `IsWorkflow(path)` | True if `path` is a `.yml`/`.yaml` file under a configured `WorkflowDirs` entry |
+| `IsWorkflowOrScopedWorkflow(path)` | Same, but also matches `ScopedWorkflowDirs` |
+| `ListWorkflows(commit)` | Walks the git tree at `commit` and returns all workflow file entries |
+| `GetContentFromEntry(entry)` | Reads blob content with a 1 MiB read limit (`util.ReadWithLimit`) |
+| `GetEventsFromContent(content)` | Parses the workflow with `act`'s `model.ReadWorkflow`, extracts `on:` triggers via `jobparser.ParseRawOn`, and calls `ValidateWorkflowContent` |
+| `ValidateWorkflowContent(content)` | Runs `jobparser.Parse` purely to surface structural errors (e.g. malformed `run: |` blocks) that the lenient `model.ReadWorkflow` doesn't catch |
+
+`DetectWorkflows` is the main entry called by the notifier. It lists all workflow files at a commit, extracts every `on:` event from each file (a workflow can have multiple triggers), and classifies each into one of three buckets via `detectWorkflowMatch`:
+
+```go
+const (
+    detectMatched       detectResult = iota // event matched; run normally
+    detectNotApplicable                     // event/type doesn't apply; create nothing
+    detectFilteredOut                       // matched but excluded by a branch/paths filter;
+                                             // posts a "skipped" commit status when required
+)
+```
+
+`detectWorkflowMatch` first checks `canGithubEventMatch` (see [GitHub compatibility layer](#github-actions-compatibility-layer)) and then dispatches to an event-specific matcher:
+
+- `matchPushEvent` — evaluates `branches`, `branches-ignore`, `tags`, `tags-ignore`, `paths`, `paths-ignore` filters against the push payload
+- `matchIssuesEvent`, `matchIssueCommentEvent`, `matchPullRequestEvent`, `matchPullRequestReviewEvent`, `matchPullRequestReviewCommentEvent`, `matchReleaseEvent`, `matchPackageEvent`, `matchWorkflowRunEvent` — check `types:` activity filters
+- Events with no activity types (`create`, `delete`, `fork`, `wiki`, `schedule`) always match if the event name matches
+
+Scheduled workflows (`on: schedule`) are collected separately via `DetectScheduledWorkflows` and are handled by `services/actions/schedule_tasks.go`, not by the push-triggered path.
+
+### Branch/tag/path pattern matching (`workflowpattern/`)
+
+`modules/actions/workflowpattern/workflow_pattern.go` implements the glob-based filter semantics GitHub Actions uses for `branches`, `branches-ignore`, `paths`, `paths-ignore`:
+
+```go
+func CompilePatterns(patterns ...string) ([]*WorkflowPattern, error)
+func Skip(sequence []*WorkflowPattern, input []string) bool    // for "positive" filters: branches, paths, tags
+func Filter(sequence []*WorkflowPattern, input []string) bool  // for "-ignore" filters: branches-ignore, paths-ignore
+```
+
+`Skip` returns true (meaning "don't run") only if **every** input string fails to match a positive (non-`!`) pattern, honoring negation (`!file.md`) semantics identical to GitHub's. `Filter` returns true (meaning "matched, exclude") only if **every** input matches at least one ignore pattern. Patterns are compiled with `glob.CompileWorkflow`, Gitea's glob dialect tuned for GitHub-Actions-style globbing (double-star, character classes, etc.).
+
+### Job parsing (`jobparser/`)
+
+While `workflows.go` deals with whole-workflow *triggers*, `modules/actions/jobparser/` (rewritten from `nektos/act`'s parser) turns one workflow YAML document into per-job **`SingleWorkflow`** documents ready to hand to a runner.
+
+`jobparser.Parse(content, options...)` (in `jobparser.go`):
+
+1. Decodes the raw YAML with `act`'s `model.ReadWorkflow` to get canonical job graph info (`Needs()`, matrices).
+2. Re-decodes into the package's own `SingleWorkflow`/`Job`/`Step` structs (`model.go`), which keep most fields as raw `yaml.Node` so they can be selectively re-evaluated.
+3. Expression-evaluates the workflow's `run-name`.
+4. For every job, computes its `matrix` combinations (`getMatrixes`), interpolates `runs-on`, evaluates `continue-on-error`, and **clones** the job once per matrix cell — this is why a matrix job becomes multiple `SingleWorkflow` results, each with a single fully-resolved job.
+5. Returns a `[]*SingleWorkflow` — normally one entry per (job × matrix-cell) pair — which becomes the `WorkflowPayload` stored on each `ActionRunJob` row and sent to runners.
+
+Supporting files:
+
+- `model.go` — `SingleWorkflow`, `Job`, `Step`, `Strategy`, `Defaults`, `ContainerSpec` types; note fields like `RawNeeds`, `RawRunsOn`, `RawContinueOnError` stay as `yaml.Node` until explicitly decoded/evaluated, since they may contain unresolved `${{ }}` expressions.
+- `evaluator.go` / `interpeter.go` — wraps `act`'s `exprparser` to interpolate `${{ github.* }}`, `${{ vars.* }}`, `${{ inputs.* }}`, `${{ needs.*.outputs.* }}` expressions inside strings and YAML nodes.
+- `uses.go` — parses `uses: owner/repo/path@ref` action references (including local `./` and Docker `docker://` forms).
+- `workflow_call.go` — implements **reusable workflows** (`on: workflow_call`, job-level `uses: ./.github/workflows/x.yml`), including input/secret/output propagation contracts consumed by `services/actions/reusable_workflow.go`.
+
+```mermaid
+flowchart LR
+    A[Workflow YAML] --> B["model.ReadWorkflow<br/>(act canonical parse)"]
+    A --> C["yaml.Unmarshal into<br/>jobparser.SingleWorkflow"]
+    C --> D["getMatrixes()<br/>per-job matrix expansion"]
+    D --> E["NewExpressionEvaluator<br/>interpolate runs-on, name, continue-on-error"]
+    E --> F["Clone per matrix cell"]
+    F --> G["[]*SingleWorkflow<br/>one per job×matrix"]
+    G --> H["ActionRunJob.WorkflowPayload<br/>(stored in DB)"]
+```
+
+## GitHub Actions Compatibility Layer
+
+`modules/actions/github.go` maps Gitea's internal webhook event taxonomy (`webhook_module.HookEventType`) onto the GitHub Actions event vocabulary used inside `on:` blocks.
+
+```go
+const (
+    GithubEventPullRequest              = "pull_request"
+    GithubEventPullRequestTarget        = "pull_request_target"
+    GithubEventPullRequestReviewComment = "pull_request_review_comment"
+    GithubEventPullRequestReview        = "pull_request_review"
+    GithubEventRegistryPackage          = "registry_package"
+    GithubEventCreate                   = "create"
+    GithubEventDelete                   = "delete"
+    GithubEventFork                     = "fork"
+    GithubEventPush                     = "push"
+    GithubEventIssues                   = "issues"
+    GithubEventIssueComment             = "issue_comment"
+    GithubEventRelease                  = "release"
+    GithubEventPullRequestComment       = "pull_request_comment"
+    GithubEventGollum                   = "gollum" // Gitea's wiki event
+    GithubEventSchedule                 = "schedule"
+)
+```
+
+Two functions do the actual translation work:
+
+- **`IsDefaultBranchWorkflow(triggedEvent)`** — reports whether an event type only ever triggers workflows on the *default* branch (GitHub's documented behavior for `delete`, `fork`, `issue_comment`, `pull_request_comment`, `gollum`/wiki, `schedule`, `issues`, and `workflow_run`). The notifier (`services/actions/notifier_helper.go`) uses this to fall back to the default branch ref when computing which workflow file version to evaluate.
+- **`canGithubEventMatch(eventName, triggedEvent)`** — the reverse mapping: given the `on:` event name written in YAML, decide whether it should fire for the concrete Gitea `HookEventType` that occurred. This absorbs GitHub's many-to-one relationships, e.g. `issues:` in YAML matches Gitea's `HookEventIssues`, `HookEventIssueAssign`, `HookEventIssueLabel`, and `HookEventIssueMilestone`; `pull_request_review:` matches both approved/rejected/commented review sub-events; `gollum:` (GitHub's wiki-edit event name) maps to Gitea's `HookEventWiki`; `issue_comment:` matches both true issue comments and PR comments (GitHub treats PR comments as `issue_comment` too).
+
+This layer keeps the rest of the codebase — commit status naming, workflow trigger evaluation — speaking GitHub's public vocabulary while Gitea's internal event bus keeps its own richer, more granular event types.
+
+> `ShouldEventCreateCommitStatus` (in `workflows.go`) is a related allowlist that decides which trigger events are allowed to become **required status checks** (`push`, `pull_request`, `pull_request_target`, `pull_request_review`, `pull_request_review_comment`, `release`). Its author's own comment flags that this list must be kept in sync by hand with `services/actions.getCommitStatusEventNameAndCommitID`, which is the authoritative source for which events actually post a status.
+
+## Data Model (`models/actions/`)
+
+```mermaid
+erDiagram
+    ActionRun ||--o{ ActionRunAttempt : "has attempts (reruns)"
+    ActionRunAttempt ||--o{ ActionRunJob : "attempt-scoped jobs"
+    ActionRunJob ||--o| ActionTask : "assigned to a runner"
+    ActionTask ||--o{ ActionTaskStep : "step-level status"
+    ActionRunner ||--o{ ActionTask : "executes"
+    ActionRun ||--o{ ActionArtifact : "produces"
+    ActionRunJob }o--o{ ActionRunJob : "Needs / ParentJobID (reusable workflows)"
+
+    ActionRun {
+        int64 ID
+        int64 RepoID
+        string WorkflowID
+        int64 Index
+        string Ref
+        string CommitSHA
+        HookEventType Event
+        string TriggerEvent
+        Status Status
+        int64 LatestAttemptID
+        bool IsScopedRun
+        int64 WorkflowRepoID
+        string WorkflowCommitSHA
+    }
+    ActionRunAttempt {
+        int64 ID
+        int64 RunID
+        int64 Attempt
+        string ConcurrencyGroup
+        bool ConcurrencyCancel
+        Status Status
+    }
+    ActionRunJob {
+        int64 ID
+        int64 RunID
+        int64 RunAttemptID
+        string JobID
+        string[] Needs
+        string[] RunsOn
+        Status Status
+        int64 TaskID
+        bool IsReusableCaller
+        int64 ParentJobID
+        bytes WorkflowPayload
+    }
+    ActionTask {
+        int64 ID
+        int64 JobID
+        int64 RunnerID
+        Status Status
+        string LogFilename
+        bool LogInStorage
+    }
+    ActionRunner {
+        int64 ID
+        string UUID
+        int64 OwnerID
+        int64 RepoID
+        string[] AgentLabels
+        bool Ephemeral
+        bool IsDisabled
+    }
+    ActionArtifact {
+        int64 ID
+        int64 RunID
+        int64 RunAttemptID
+        string ArtifactName
+        string StoragePath
+        int64 FileSize
+        ArtifactStatus Status
+    }
+```
+
+### ActionRun (`models/actions/run.go`)
+
+An `ActionRun` represents one triggered run of a workflow file. Notable fields:
+
+- `RepoID` + `Index` — unique per-repo, human-visible run number (`xorm:"unique(repo_index)"`)
+- `Event` / `TriggerEvent` — the Gitea webhook event type and the literal `on:` trigger string that matched
+- `IsForkPullRequest` / `NeedApproval` / `ApprovedBy` — the fork-PR approval gate; untrusted fork PRs are held until a maintainer approves them (see `services/actions/approve.go`)
+- `WorkflowRepoID` / `WorkflowCommitSHA` — always populated; for a normal run these equal `(RepoID, CommitSHA)`, but for a **scoped run** (see below) they point to the *source* repo/commit that owns the workflow file
+- `IsScopedRun` — explicit flag distinguishing scoped runs from ordinary repo-level runs
+- `LatestAttemptID` — points at the current `ActionRunAttempt`; `Status`/`Started`/`Stopped` on the run always mirror the latest attempt
+- `RawConcurrency` — the raw, unevaluated `concurrency:` YAML block at workflow level
+
+### ActionRunAttempt (`models/actions/run_attempt.go`)
+
+Introduced to properly support **reruns**: rather than mutating the original run's timing/status in place, each rerun creates a new `ActionRunAttempt` row (unique on `(RunID, Attempt)`), and `ActionRun.LatestAttemptID` is repointed at it. `UpdateRunAttempt` propagates `status`/`started`/`stopped` column changes back up to the parent `ActionRun` — but only if the attempt being updated is still the run's `LatestAttemptID`, guarding against a stale older attempt overwriting a newer rerun's status. Attempts also carry `ConcurrencyGroup`/`ConcurrencyCancel`, the evaluated workflow-level `concurrency:` settings (see `services/actions/concurrency.go`).
+
+### ActionRunJob (`models/actions/run_job.go`)
+
+One row per job × matrix-cell (up to `MaxJobNumPerRun = 256`, mirroring GitHub's own limit). Highlights:
+
+- `WorkflowPayload` — the serialized single-job `jobparser.SingleWorkflow` YAML that gets sent verbatim to the runner
+- `RunAttemptID` / `AttemptJobID` — `AttemptJobID` is stable across reruns for "the same logical job", `RunAttemptID` scopes it to one attempt; a value of `0` in either marks a legacy pre-attempt job
+- `TaskID` / `SourceTaskID` — `TaskID` is the task created in *this* attempt; `SourceTaskID` points at a historical task from an earlier attempt when a rerun chooses to **reuse** that job's prior result instead of re-executing it
+- `TokenPermissions` — explicit `permissions:` from the workflow/job YAML, JSON-encoded (`repo_model.ActionsTokenPermissions`); org/repo-level clamps are applied at token-mint time, not stored here
+- Reusable-workflow-caller fields: `IsReusableCaller`, `IsExpanded`, `CallUses`, `ReusableWorkflowContent`, `CallSecrets` (`""`, `"inherit"`, or a JSON alias map), `CallPayload` — a caller job (`uses: ./.github/workflows/x.yml`) does not itself run on a runner; when expanded, its children are inserted as separate `ActionRunJob` rows with `ParentJobID` pointing back at the caller
+- `ParentJobID` — scopes `needs:` name resolution to siblings sharing the same parent, so reusable-workflow children can't accidentally satisfy `needs:` against unrelated jobs
+- `ConcurrencyGroup` / `ConcurrencyCancel` / `IsConcurrencyEvaluated` — job-level `concurrency:` evaluation results (may depend on other jobs' outputs, hence the "evaluated" flag)
+
+### ActionTask / ActionTaskStep (`models/actions/task.go`, `task_step.go`)
+
+An `ActionTask` is the runner-facing unit of work created when a job is **picked up**. It owns the authentication token the runner uses for the rest of the job's lifetime (`TokenHash`/`TokenSalt`, checked with `crypto/subtle.ConstantTimeCompare`), plus the log-file bookkeeping: `LogFilename`, `LogInStorage`, `LogLength` (line count), `LogSize` (byte size), `LogIndexes` (line-number → byte-offset index for fast seeking).
+
+### Status enum (`models/actions/status.go`)
+
+`Status` is shared by `ActionRun`, `ActionRunAttempt`, `ActionRunJob`, `ActionTask`, and `ActionTaskStep`:
+
+| Value | Name | Notes |
+|---|---|---|
+| 0 | `StatusUnknown` | matches `runnerv1.Result_RESULT_UNSPECIFIED` |
+| 1 | `StatusSuccess` | |
+| 2 | `StatusFailure` | |
+| 3 | `StatusCancelled` | |
+| 4 | `StatusSkipped` | |
+| 5 | `StatusWaiting` | not a runner result — server-side only |
+| 6 | `StatusRunning` | not a runner result |
+| 7 | `StatusBlocked` | waiting on `needs:`; not a runner result |
+| 8 | `StatusCancelling` | transitional state for graceful runner-side cleanup before finalizing |
+
+`Status.AsResult()` / `StatusFromResult()` convert to/from the wire-level `runnerv1.Result` enum used in the Connect-RPC protocol — note that `StatusWaiting`, `StatusRunning`, `StatusBlocked`, and `StatusCancelling` have no `runnerv1.Result` equivalent since they never appear on the wire as a final result.
+
+### ActionRunner (`models/actions/runner.go`)
+
+Runners register at one of three scopes — decided by which registration token was used — and the model comments are explicit that `OwnerID` and `RepoID` must never both be non-zero simultaneously (to keep "belongs to owner" queries unambiguous):
+
+```go
+// It can be:
+//  1. global runner, OwnerID is 0 and RepoID is 0
+//  2. org/user level runner, OwnerID is org/user ID and RepoID is 0
+//  3. repo level runner, OwnerID is 0 and RepoID is repo ID
+```
+
+Runner liveness uses debounced timestamps rather than a write on every poll:
+
+```go
+RunnerOfflineTime       = time.Minute      // no poll within this window -> OFFLINE
+RunnerIdleTime          = 10 * time.Second
+RunnerHeartbeatInterval = 30 * time.Second // min interval between last_online writes
+RunnerActiveInterval    = 5 * time.Second  // min interval between last_active writes
+```
+
+`ShouldPersistLastOnline` / `ShouldPersistLastActive` gate whether a given RPC call actually issues a DB write — this matters because `UpdateLog` can fire many times per second while a runner streams output, and a naive "write timestamp on every RPC" implementation would be a major source of database load at fleet scale (this exact rationale is called out in `routers/api/actions/runner/interceptor.go`).
+
+## Runner Registration & Connect-RPC Protocol
+
+Gitea Actions communicates with runners using **[Connect-RPC](https://connectrpc.com/)** (gRPC-Web-compatible, HTTP/1.1-friendly) generated from Protobuf definitions in the external `gitea.dev/actions-proto-go` module (`runner/v1`). The router-level wiring lives in `routers/api/actions/`.
+
+### Route registration
+
+```go
+// routers/api/actions/actions.go
+func Routes(prefix string) *web.Router {
+    m := web.NewRouter()
+
+    path, handler := ping.NewPingServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    path, handler = runner.NewRunnerServiceHandler()
+    m.Post(path+"*", http.StripPrefix(prefix, handler).ServeHTTP)
+
+    return m
+}
+```
+
+`ping` exposes a trivial health-check RPC service; `runner` (`routers/api/actions/runner/runner.go`) implements the actual `runnerv1connect.RunnerServiceHandler` interface with these RPCs:
+
+| RPC | Purpose |
+|---|---|
+| `Register` | Exchange a registration token for a permanent runner identity + token |
+| `Declare` | Runner reports/updates its version, labels, and capabilities after startup |
+| `FetchTask` | Long-poll style: ask the server for a task, or update the runner's `tasksVersion` cursor |
+| `UpdateTask` | Report task/step status transitions and step outputs |
+| `UpdateLog` | Stream log lines for the running task, with ack-based flow control |
+
+### Authentication interceptor
+
+Every RPC except `Register` is guarded by a Connect **unary interceptor** (`routers/api/actions/runner/interceptor.go`) that authenticates the caller via two custom headers:
+
+```go
+const (
+    uuidHeaderKey  = "x-runner-uuid"
+    tokenHeaderKey = "x-runner-token"
+)
+```
+
+The interceptor loads the `ActionRunner` by UUID, verifies the token hash with a constant-time comparison (`subtle.ConstantTimeCompare`), then — subject to the debounce rules above — updates `last_online` (all methods) and `last_active` (`UpdateTask`/`UpdateLog` only) before injecting the authenticated `*ActionRunner` into the request context via `GetRunner(ctx)`.
+
+### Registration flow
+
+```go
+func (s *Service) Register(ctx, req *connect.Request[runnerv1.RegisterRequest]) (...) {
+    runnerToken, err := actions_model.GetRunnerToken(ctx, req.Msg.Token)
+    // ... validates token is active, owner/repo referenced by the token still exists
+    runner := &actions_model.ActionRunner{
+        UUID:                 gouuid.New().String(),
+        Name:                 name,
+        OwnerID:              runnerToken.OwnerID,
+        RepoID:               runnerToken.RepoID,
+        Version:              req.Msg.Version,
+        AgentLabels:          labels,
+        Ephemeral:            req.Msg.Ephemeral,
+        HasCancellingSupport: hasCancellingSupport,
+    }
+    runner.GenerateAndFillToken()
+    actions_model.CreateRunner(ctx, runner)
+    runnerToken.IsActive = true // registration tokens are one-shot: reused after first registration only if left active by admin
+    actions_model.UpdateRunnerToken(ctx, runnerToken, "is_active")
+    // returns Runner{Id, Uuid, Token, Name, Version, Labels, Ephemeral}
+}
+```
+
+Runner **capabilities** (currently just `"cancelling"`, meaning the runner understands the transitional `StatusCancelling` flow and will run post-step cleanup before finalizing a cancelled task) are advertised as a string list on `Register`/`Declare` requests, and echoed back on `Declare` responses via a header rather than a proto field bump:
+
+```go
+resp.Header().Set("X-Gitea-Actions-Capabilities", actions_model.RunnerCapabilities())
+```
+
+### Task pickup (`FetchTask`)
+
+Task assignment uses a monotonically increasing **tasks version** counter per scope `(OwnerID, RepoID)` to avoid runners busy-polling the database on every request when nothing changed:
+
+```mermaid
+sequenceDiagram
+    participant R as Runner
+    participant S as RunnerService.FetchTask
+    participant DB as DB
+
+    R->>S: FetchTask{tasksVersion: N}
+    S->>DB: GetTasksVersionByScope(ownerID, repoID)
+    alt tasksVersion == latestVersion
+        S-->>R: FetchTaskResponse{task: nil, tasksVersion: N}
+        note over R: nothing changed, runner sleeps and retries
+    else tasksVersion != latestVersion
+        S->>S: actions_service.TryPickTask(runner)
+        alt throttled (too many concurrent picks)
+            S-->>R: FetchTaskResponse{task: nil, tasksVersion: N}
+            note over R: version NOT advanced, retries immediately
+        else task claimed
+            S->>DB: CreateTaskForRunner + buildRunnerTask
+            S-->>R: FetchTaskResponse{task, tasksVersion: latest}
+        end
+    end
+```
+
+`TryPickTask` (`services/actions/task.go`) bounds concurrent pick transactions with a semaphore sized by `setting.Actions.MaxConcurrentTaskPicks` (default 16), guarding against a "thundering herd" when many runners poll simultaneously. When throttled, the response deliberately does **not** advance `tasksVersion`, so the runner retries on its very next poll instead of falling asleep until the next real version bump.
+
+Inside `PickTask`:
+
+1. Disabled runners (`runner.IsDisabled`) never get a task.
+2. Ephemeral runners (single-job, then self-destruct) are checked for an existing unfinished task first; if their one task already finished, the runner row itself is deleted.
+3. `actions_model.CreateTaskForRunner` atomically claims one waiting `ActionRunJob` matching the runner's labels/scope and creates the `ActionTask` row.
+4. `buildRunnerTask` assembles the wire payload: `WorkflowPayload` bytes, `Secrets` (via `secret_model.GetSecretsOfTask`), `Vars` (`GetVariablesOfRun`), `Needs` outputs from upstream jobs (`FindTaskNeeds`), and a `Context` struct built by `GenerateGiteaContext` plus an ephemeral `gitea_runtime_token` (`CreateAuthorizationToken`) scoped to `(task, run, job)`.
+5. If the request's context was cancelled before the response could reach the runner, the claim is released (`ReleaseTaskForRunner`) so another runner can pick it up — never leaving a job silently stuck in "running" with no runner attached.
+6. Commit status is posted/updated (`CreateCommitStatusForRunJobs`) and job/run status-update notifications fire immediately.
+
+### Status & log reporting (`UpdateTask`, `UpdateLog`)
+
+`UpdateTask` (see full code in `routers/api/actions/runner/runner.go`) applies the runner-reported `TaskState` via `actions_model.UpdateTaskByState`, persists any new step **outputs** (size-capped: 255-byte keys, 1 MiB values), reloads the job/run, re-posts the commit status, fires job/run status-update notifications when the task is done, and — if the job produced a final result — calls `EmitJobsIfReadyByRun` to unblock any downstream jobs whose `needs:` are now satisfied.
+
+`UpdateLog` implements incremental, idempotent log streaming:
+
+- The server tracks an **ack index** (`task.LogLength`) — the runner resends unacked rows if a previous `UpdateLog` call's response was lost.
+- Rows the runner previously had acked are trimmed before writing.
+- Once a task calls `NoMore: true`, the log is sealed (`LogInStorage = true`) and transferred from the temporary DBFS append log into permanent object storage (`actions.TransferLogs`); any further append attempts return `codes.AlreadyExists`.
+- Actual line storage during the "live" phase goes through `modules/actions/log.go`'s `WriteLogs`, which appends to a DBFS-backed file (`gitea.dev/models/dbfs`) prefixed `actions_log/` — DBFS is chosen specifically because object storage backends are inefficient to append to, while the underlying database can absorb frequent small appends.
+
+## Artifact Storage
+
+Two generations of artifact protocol coexist:
+
+- **Legacy (v3-ish) chunked upload API** — `routers/api/actions/artifacts.go` + `artifacts_chunks.go`, used by older `actions/upload-artifact`.
+- **GitHub Actions Results API v4** — `routers/api/actions/artifactsv4.go`, a Twirp-style JSON RPC surface (`/twirp/github.actions.results.api.v1.ArtifactService/...`) compatible with modern `actions/upload-artifact@v4`/`download-artifact@v4`.
+
+The v4 flow, documented in the source comments of `artifactsv4.go`, is:
+
+```mermaid
+sequenceDiagram
+    participant Runner
+    participant Gitea as Gitea (ArtifactService)
+    participant Blob as Object Storage
+
+    Runner->>Gitea: CreateArtifact{workflow_run_backend_id, name}
+    Gitea-->>Runner: signedUploadUrl (HMAC-signed, expiring)
+    Runner->>Blob: PUT signedUploadUrl (comp=block, repeated)
+    Runner->>Blob: PUT signedUploadUrl (comp=blockList, XML manifest)
+    Runner->>Gitea: FinalizeArtifact{name, size, hash}
+    Gitea-->>Runner: {ok, artifactId}
+
+    Note over Runner,Gitea: Later, download
+    Runner->>Gitea: ListArtifacts / GetSignedArtifactURL
+    Gitea-->>Runner: signedUrl
+    Runner->>Blob: GET signedUrl (DownloadArtifact)
+```
+
+The signed URLs embed an HMAC signature and expiry, built by `modules/actions/artifacts.go`:
+
+```go
+// BuildSignature builds a hmac signature for the input values.
+// "tag" is an internal pre-defined static string to distinguish the signatures for different purpose.
+func BuildSignature(tag tagType, vals ...string) []byte {
+    m := hmac.New(sha256.New, setting.GetGeneralTokenSigningSecret())
+    // ... writes tag + length-prefixed vals into the HMAC
+    return m.Sum(nil)
+}
+```
+
+This lets the "upload zip content" and "download zip" endpoints remain **unauthenticated** (no runner token needed) while still being cryptographically bound to a specific artifact name, task ID, and expiry — anyone who doesn't hold a valid signature can't upload/download arbitrary artifact blobs.
+
+The `ActionArtifact` model (`models/actions/artifact.go`) tracks per-artifact upload/expiry state via `ArtifactStatus`:
+
+```go
+const (
+    ArtifactStatusUploadPending   ArtifactStatus = iota + 1 // upload started, not confirmed
+    ArtifactStatusUploadConfirmed                           // finalized, ready for download
+    ArtifactStatusUploadError                                // upload failed
+    ArtifactStatusExpired                                    // past retention period
+    ArtifactStatusPendingDeletion                            // marked for cleanup
+    ArtifactStatusDeleted                                    // cleanup complete
+)
+```
+
+Content can additionally carry a `ContentEncodingOrType` marker (`ContentEncodingV3Gzip = "gzip"` or `ContentTypeZip = "application/zip"`) distinguishing legacy per-file gzip streams from full zip archives, which matters when re-serving individual files from within a workflow run versus a full artifact download. `services/actions/artifacts.go` and `services/actions/cleanup.go` implement expiry sweeping and storage reclamation.
+
+## Commit Status Reporting
+
+Two complementary pieces post and render GitHub-style commit statuses for Actions runs.
+
+### Posting a status (`services/actions/commit_status.go`)
+
+`CreateCommitStatusForRunJobs(ctx, run, jobs...)` is called at every job-status transition point: run insertion (`PrepareRunAndInsert`), job pickup (`PickTask`), and task update (`UpdateTask`). It:
+
+1. Skips scheduled/cron runs (`run.ScheduleID != 0`) — cron jobs don't map onto a PR/commit check.
+2. Resolves the `(event, commitID)` pair via `getCommitStatusEventNameAndCommitID`, which switches on `run.Event` to pull the right commit SHA out of the stored event payload (e.g. `HookEventPush` → `HeadCommit.ID` from the push payload).
+3. For a **scoped run** (workflow physically defined in another repository, see below), computes a source-repo prefix (`ScopedStatusContextPrefix`) so the status context clearly identifies where the workflow came from.
+4. Builds the context name using `WorkflowStatusContextName` / `ScopedWorkflowStatusContextName` from `modules/actions/workflows.go`:
+
+```go
+// "<workflow display name> / <job name> (<event>)"
+func WorkflowStatusContextName(displayName, jobName, event string) string {
+    return strings.TrimSpace(fmt.Sprintf("%s / %s (%s)", displayName, jobName, event))
+}
+// "<source repo prefix>: <display> / <job> (<event>)"
+func ScopedWorkflowStatusContextName(prefix, displayName, jobName, event string) string {
+    return strings.TrimSpace(fmt.Sprintf("%s: %s", prefix, WorkflowStatusContextName(displayName, jobName, event)))
+}
+```
+
+This context string is exactly what becomes a branch protection "required status check" name in the repo settings UI.
+
+### Rendering a live status (`modules/actions/commit_status_info.go`)
+
+Rendering commit-status icons (e.g. on the commits list or PR checks tab) needs the *current* job status, but the `CommitStatus` row's own `State` field is a point-in-time snapshot written when the status was created — it can go stale while the job keeps running. `GetCommitActionsStatusMap` bridges this gap:
+
+```go
+type CommitActionsStatusMap map[int64]actions_model.Status
+
+func GetCommitActionsStatusMap(ctx context.Context, statuses []*git_model.CommitStatus) CommitActionsStatusMap
+```
+
+For every `CommitStatus` row whose `TargetURL` parses as a Gitea-Actions run URL (`ParseGiteaActionsTargetURL`), it batch-loads the current `ActionRunJob.Status` and returns a `CommitStatus.ID → live Status` map. `CommitActionsStatusMap.IconStatus(status)` is then used purely for icon selection — non-Actions statuses (external CI, API-created statuses) fall through untouched and keep rendering from their stored `State`.
+
+## Secrets & Variables Scoping
+
+Both secrets and variables follow the same three-tier ownership model used by runners: **global** (`OwnerID=0, RepoID=0`), **org/user** (`OwnerID=owner, RepoID=0`), and **repo** (`OwnerID=0, RepoID=repo`) — with the model comments explicitly forbidding both IDs being non-zero at once to keep "belongs to" lookups unambiguous. Note: unlike variables, Gitea deliberately does **not** support global secrets (`models/secret/secret.go` requires at least one of `OwnerID`/`RepoID` to be non-zero), "for security reasons, admin may not be aware that the secrets could be stolen by any user when setting them as global."
+
+> Gitea has **no separate "environment" scope** for Actions secrets/variables (unlike GitHub Environments). The only tiers that exist are org/user and repo (plus global for variables only). A workflow's `environment:` key is accepted for compatibility but does not currently gate secret visibility in Gitea — secret scoping is driven entirely by `OwnerID`/`RepoID`, the fork-PR check, and the reusable-workflow `secrets:` policy documented below.
+
+### Write path: `services/secrets` (org/user/repo secret management)
+
+All secret **mutations** — as opposed to the read path used at task-dispatch time (`GetSecretsOfTask`, covered above) — funnel through the small, scope-agnostic `services/secrets` package (`services/secrets/secrets.go`, `services/secrets/validation.go`). It intentionally has no knowledge of *which* scope (org, user, or repo) it is operating at; the caller decides that by which `(ownerID, repoID)` pair it passes in:
+
+```go
+// services/secrets/secrets.go
+func CreateOrUpdateSecret(ctx context.Context, ownerID, repoID int64, name, data, description string) (*secret_model.Secret, bool, error)
+func DeleteSecretByID(ctx context.Context, ownerID, repoID, secretID int64) error
+func DeleteSecretByName(ctx context.Context, ownerID, repoID int64, name string) error
+```
+
+`CreateOrUpdateSecret` first runs `ValidateName` (`services/secrets/validation.go`), which enforces the same naming rules GitHub Actions uses: names must match `^[A-Z_][A-Z0-9_]*$` (case-insensitive), must not start with the reserved `GITHUB_`/`GITEA_` prefix (case-insensitive, so `github_foo` is also rejected), and must not be the literal name `CI` (always implicitly `true` in Actions runs). It then looks up any existing secret at that exact `(ownerID, repoID, name)` via `db.Find[secret_model.Secret]` — if none exists it calls `secret_model.InsertEncryptedSecret` (new row, data encrypted at rest), otherwise it calls `secret_model.UpdateSecret` on the existing row's ID (update in place, preserving the secret's ID and audit history). `DeleteSecretByID`/`DeleteSecretByName` both first resolve to exactly one matching row via `FindSecretsOptions` and return `secret_model.ErrSecretNotFound{}` if zero or more than one row matches, then delete by primary key.
+
+This single service package is reused by every scope's controller, which is what keeps org/repo/env-style secrets management consistent across the codebase:
+
+| Caller | Scope | `(ownerID, repoID)` passed |
+|---|---|---|
+| `routers/api/v1/org/action.go` (`Action.CreateOrUpdateSecret`) | Org-level API (`PUT /orgs/{org}/actions/secrets/{secretname}`) | `(ctx.Org.Organization.ID, 0)` |
+| `routers/api/v1/user/action.go` | User-level API (`PUT /user/actions/secrets/{secretname}`) | `(ctx.Doer.ID, 0)` |
+| `routers/api/v1/repo/action.go` | Repo-level API (`PUT /repos/{owner}/{repo}/actions/secrets/{secretname}`) | `(0, repo.ID)` |
+| `routers/web/shared/secrets/secrets.go` (`PerformSecretsPost`/`PerformSecretsDelete`) | Web UI settings pages (org settings, user settings, repo settings — the same handlers are mounted at all three scopes with a different `(ownerID, repoID)` closed over by the calling router) | caller-supplied |
+
+Because `FindSecretsOptions.ToConds()` (`models/secret/secret.go`) special-cases `RepoID != 0` by forcing `OwnerID` to `0` in the query, a caller can safely always pass both IDs (one of which is `0`) without accidentally matching secrets from the wrong scope — this is the same "belongs to" disambiguation guard called out for `ActionRunner` and `ActionRun` above. `CountWrongRepoLevelSecrets`/`UpdateWrongRepoLevelSecrets` (also in `models/secret/secret.go`) exist as a one-time repair migration for legacy rows that had `OwnerID` set on what should have been a pure repo-level secret.
+
+### Precedence
+
+`GetVariablesOfRun` (`models/actions/variable.go`) resolves variables with **repo > org/user > global** precedence, by simply iterating global, then owner, then repo variables into the same map (later writes win):
+
+```go
+for _, v := range append(globalVariables, append(ownerVariables, repoVariables...)...) {
+    variables[v.Name] = v.Data
+}
+```
+
+Secrets (`GetSecretsOfTask`, `models/secret/secret.go`) follow the same idea but only across **owner + repo** (no global tier), and always seed two auto-generated tokens first:
+
+```go
+baseSecrets["GITHUB_TOKEN"] = task.Token
+baseSecrets["GITEA_TOKEN"] = task.Token
+```
+
+### Fork pull request restriction
+
+If the run is a fork pull request (`task.Job.Run.IsForkPullRequest`) and the trigger wasn't `pull_request_target` (which intentionally runs in base-branch context and is therefore trusted), **only** the two auto-tokens are exposed — all user-defined secrets are withheld to prevent a malicious fork PR from exfiltrating repository secrets.
+
+### Reusable workflow scoping (`getScopedSecretsForJob`)
+
+For jobs with a non-zero `ParentJobID` (children of a reusable-workflow caller), secret visibility recurses up the caller chain and applies each caller's declared `secrets:` policy stored on `CallSecrets`:
+
+```go
+func getScopedSecretsForJob(ctx context.Context, job *actions_model.ActionRunJob, baseSecrets map[string]string) (map[string]string, error) {
+    if job.ParentJobID == 0 {
+        return baseSecrets, nil
+    }
+    caller, _ := actions_model.GetRunJobByRunAndID(ctx, job.RunID, job.ParentJobID)
+    parentScope, _ := getScopedSecretsForJob(ctx, caller, baseSecrets)
+
+    if caller.CallSecrets == jobparser.SecretsInherit {
+        return parentScope, nil // "secrets: inherit" — pass everything through unchanged
+    }
+    // otherwise: only auto-tokens + explicitly aliased secrets are exposed
+    scoped := map[string]string{"GITHUB_TOKEN": baseSecrets["GITHUB_TOKEN"], ...}
+    // ... maps aliases from caller.CallSecrets JSON object
+}
+```
+
+This means a reusable workflow caller with no `secrets:` section (or an explicit alias mapping) creates a hard secret boundary: the callee only ever sees the auto-generated tokens plus whatever was explicitly named, never the caller's full secret set — unless the caller wrote `secrets: inherit`.
+
+### Runtime tokens vs. stored secrets
+
+Beyond user secrets, every task gets a short-lived **Gitea runtime token** (`gitea_runtime_token`, minted per `(task, run, job)` by `CreateAuthorizationToken` in `services/actions/context.go`/`auth.go`) injected into the task context alongside the classic `token`/`GITHUB_TOKEN`. This is the credential the `actions/checkout`-equivalent and Gitea API calls from within a workflow actually use, distinct from any user-configured secret.
+
+## Scoped Workflows
+
+Gitea Actions supports **scoped workflows**: workflow files that live in a `.gitea/scoped_workflows` directory of a *different* ("source") repository but can be triggered by events in a *consuming* repository, letting an organization centralize CI templates. The relevant pieces:
+
+- `modules/actions/scoped_workflows.go` — `ListScopedWorkflows`/`ParseScopedWorkflows` read and parse workflow files from the source repo's `SCOPED_WORKFLOW_DIRS`; `MatchScopedWorkflows` evaluates them against a consuming event using the exact same `workflowpattern` matching logic as ordinary workflows.
+- `models/actions/scoped_workflow.go` — the mapping between source and consumer repos, plus `ScopedStatusContextPrefix` used to disambiguate commit-status context names.
+- `services/actions/scoped_workflow_cache.go` — caches parsed scoped-workflow metadata to avoid re-parsing on every event.
+- On `ActionRun`, `IsScopedRun`, `WorkflowRepoID`, and `WorkflowCommitSHA` distinguish a scoped run from a normal one; `WorkflowLink()` includes `scoped_workflow_source_repo_id` in the generated URL so the UI can disambiguate two differently-sourced workflows that happen to share a file name.
+
+## Job Scheduling and Dependency Resolution (`services/actions/job_emitter.go`)
+
+Jobs with `needs:` dependencies start life as `StatusBlocked` and only transition to `StatusWaiting` (eligible for `FetchTask` pickup) once their dependencies finish. This is handled by an internal debounced queue:
+
+```go
+var jobEmitterQueue *queue.WorkerPoolQueue[*jobUpdate]
+
+func EmitJobsIfReadyByRun(runID int64) error {
+    err := jobEmitterQueue.Push(&jobUpdate{RunID: runID})
+    if errors.Is(err, queue.ErrAlreadyInQueue) {
+        return nil // coalesce: a check is already pending for this run
+    }
+    return err
+}
+```
+
+The queue handler (`jobEmitterQueueHandler` → `checkJobsByRunID`) re-evaluates, inside one DB transaction, which blocked jobs in the run can now proceed (`checkJobsOfCurrentRunAttempt`) and whether workflow-level concurrency cancellation needs to happen (`checkRunConcurrency`). Re-emission for any jobs that changed as a side effect (e.g. reusable-workflow expansion producing new child jobs) happens **after** the transaction commits, specifically to avoid a nested-transaction deadlock under immediate-mode queue backends. `EmitJobsIfReadyByRun` is called from `PrepareRunAndInsert` (initial job graph), `UpdateTask` (a job just finished), and `PickTask` — i.e. every place a job's status can change in a way that might unblock a downstream job.
+
+## Related Pages
+
+- [Web Routers](../06-web-routers/README.md) — for the human-facing Actions UI routes (`routers/web/repo/actions/`)
+- [REST API](../07-rest-api/README.md) — for the public API surface managing runners, secrets, and variables
+- [Services Layer](../08-services/README.md) — broader service-layer conventions used across `services/actions/`
+- [Database Models](../05-database-models/README.md) — general XORM model conventions shared with `models/actions/`

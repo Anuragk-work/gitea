@@ -1,0 +1,16 @@
+=== FILE: modules/storage/testdata/minio.json ===
+=== METADATA: format=json ===
+[SUMMARY] { "version": "10", "aliases": { "s3": { "url": "https://s3.amazonaws.com", "accessKey": "ExampleAccessKeyIDMinioFile", "secretKey": "ExampleSecretAccessKeyIDMinioFile", "api": "S3v4", "path": "dns" } } }
+
+{
+        "version": "10",
+        "aliases": {
+                "s3": {
+                        "url": "https://s3.amazonaws.com",
+                        "accessKey": "ExampleAccessKeyIDMinioFile",
+                        "secretKey": "ExampleSecretAccessKeyIDMinioFile",
+                        "api": "S3v4",
+                        "path": "dns"
+                }
+        }
+}

@@ -1,0 +1,9 @@
+{
+  "source": "models/migrations/fixtures/Test_FixCommitStatusTargetURLToUseRunAndJobID/commit_status_summary.yml",
+  "format": "yml",
+  "size_bytes": 471,
+  "source_modified": "2026-07-18T06:05:26.816993+00:00",
+  "indexed_at": "2026-07-18T07:39:39.896481+00:00",
+  "text_length": 471,
+  "line_count": 20
+}

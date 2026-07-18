@@ -1,0 +1,134 @@
+# Git Backends & Cat-File Batch Processes
+
+This page is the **10 · Git Integration** section's entry point for `modules/git`'s
+dual-backend design. The deep technical write-up — including the full class
+diagram, the `gogit` vs. `nogogit` build-tag mechanics, and the catfile-batch
+subprocess protocol — lives in [`09-core-modules/git-module.md`](../09-core-modules/git-module.md);
+this page summarizes it in the context of Gitea's overall Git-integration
+architecture and links out to the canonical source.
+
+## Two Backends, One Public API
+
+Gitea never re-implements Git itself. Instead, `modules/git/` exposes a single
+Go API (`Repository`, `Commit`, `Blob`, `Tree`, `TreeEntry`, `Reference`, …)
+that is implemented **twice**, selected at compile time via a Go build tag:
+
+| Backend | Build tag | How it reads objects | Selected by default? |
+|---|---|---|---|
+| **nogogit** | `!gogit` | Shells out to the real `git` binary (`gitcmd.Command`) and streams object data through a long-lived `git cat-file --batch`/`--batch-command` subprocess | ✅ Yes — this is what ships in official Gitea binaries/containers |
+| **gogit** | `gogit` | Pure-Go [`go-git`](https://github.com/go-git/go-git) library reading packfiles/loose objects directly via a `billy.Filesystem` | Opt-in, built with `go build -tags gogit` |
+
+Every file whose behavior differs between the two is split into a
+`_gogit.go` / `_nogogit.go` pair guarded by matching `//go:build` tags (e.g.
+`repo_base_gogit.go` / `repo_base_nogogit.go`, `blob_gogit.go` /
+`blob_nogogit.go`, `commit_info_gogit.go` / `commit_info_nogogit.go`).
+Shared, backend-agnostic logic (diffing, grep, hook templates, high-level
+commit/tree helpers) lives in un-suffixed files and simply calls into
+whichever backend was compiled in.
+
+```mermaid
+flowchart TB
+    subgraph API["Shared Public API (modules/git)"]
+        Repo["Repository"]
+        Commit["Commit"]
+        Blob["Blob"]
+    end
+    Repo --> Decision{"Build tag?"}
+    subgraph NOGOGIT["!gogit (default): CLI shell-out"]
+        CLI["gitcmd.Command"] --> CatFile["git cat-file --batch/--batch-command\n(long-lived subprocess)"]
+    end
+    subgraph GOGIT["gogit: pure Go library"]
+        GoGitRepo["go-git Repository"] --> Storage["filesystem.Storage + billy.Filesystem"]
+    end
+    Decision -->|"!gogit"| CLI
+    Decision -->|"gogit"| GoGitRepo
+```
+
+Because both backends implement the identical Go interface, the rest of the
+codebase (`models/`, `services/`, `routers/`) is entirely backend-agnostic —
+it calls `repo.GetCommit(sha)`, `blob.DataAsync()`, etc., without ever
+branching on which backend is active. The only place that cares is
+`modules/git` itself (and its test suite, which skips assertions the `gogit`
+backend cannot satisfy — e.g. short-hash resolution, SHA-256 repositories).
+
+## Why Two Backends Exist
+
+- **`nogogit` (default)** gets full parity with the real `git` CLI — every
+  feature Git supports (SHA-256 repos, `git merge-tree`, `proc-receive`,
+  attribute checks, etc.) is available the moment the installed `git` binary
+  supports it, gated by version checks in `git.Features`.
+- **`gogit`** exists for environments where shelling out to an external `git`
+  binary is undesirable or impossible (e.g. certain sandboxed/embedded
+  deployments). It trades some feature completeness (no SHA-256 support, no
+  `cat-file --batch-command`, weaker diff/rename-detection parity) for zero
+  external process dependency.
+
+## The Cat-File Batch Protocol (nogogit)
+
+The single biggest performance lever in the default backend is **never
+spawning a new `git` process per object lookup**. `modules/git/catfile_batch.go`
+defines a `CatFileBatch` interface backed by one long-running
+`git cat-file --batch...` subprocess per open `Repository`, communicated with
+over stdin/stdout:
+
+```go
+// modules/git/catfile_batch.go
+type CatFileBatch interface {
+    // Info requests the <type, size> header for an object without its content
+    // Content requests the object's content
+}
+
+type CatFileBatchCloser interface {
+    CatFileBatch
+    io.Closer
+}
+
+func NewBatch(ctx context.Context, repoPath string) (CatFileBatchCloser, error) {
+    if DefaultFeatures().SupportCatFileBatchCommand {
+        return newCatFileBatchCommand(ctx, repoPath)
+    }
+    return newCatFileBatchLegacy(ctx, repoPath)
+}
+```
+
+Two concrete implementations are selected based on the installed Git version:
+
+1. **`catFileBatchCommand`** (Git ≥ 2.36) — a single `git cat-file --batch-command`
+   process that accepts interleaved textual commands (`info <obj>`,
+   `contents <obj>`) over one stdin/stdout pipe pair.
+2. **`catFileBatchLegacy`** (older Git) — two subprocesses: `git cat-file --batch`
+   for content and `git cat-file --batch-check` for metadata-only queries.
+
+`Repository.CatFileBatch(ctx)` enforces **one borrower at a time** on the
+shared, stateful subprocess: if it's already checked out, a *temporary* extra
+subprocess is spun up rather than blocking or corrupting the shared stream.
+This same infrastructure is reused outside `modules/git` proper — by LFS
+pointer scanning (`modules/lfs/pointer_scanner_nogogit.go`) and by
+`LastCommitCache` — anywhere Gitea needs to stream many small objects out of
+a repository without materializing its whole object graph in memory.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Repo as Repository.CatFileBatch()
+    participant Proc as git cat-file --batch-command (subprocess)
+    Caller->>Repo: CatFileBatch(ctx)
+    Repo-->>Caller: CatFileBatch handle + closeFunc
+    Caller->>Proc: "info <oid>\n" / "contents <oid>\n"
+    Proc-->>Caller: "<oid> <type> <size>\n<raw bytes>"
+    Caller->>Repo: closeFunc()
+```
+
+## Related Pages
+
+- [Git Module](../09-core-modules/git-module.md) — the canonical, in-depth
+  write-up of both backends, the `Commit`/`Blob`/`Tree`/`Reference`
+  abstractions, diffing, grep, and version-feature detection
+- [Git LFS & Server-Side Hooks](../09-core-modules/lfs-and-hooks.md) — how
+  the catfile-batch pipeline is reused to scan repositories for LFS pointer
+  files, and the hook lifecycle documented in full below
+- [GitRepo & Repository Access](gitrepo-and-repository-access.md) — the
+  layer above `modules/git` that resolves a database `Repository` model to
+  an on-disk path and opens/caches the underlying `git.Repository` handle
+- [Git Operations & Server-Side Hooks](git-operations-and-hooks.md) — the
+  push/receive/hook pipeline built on top of this module

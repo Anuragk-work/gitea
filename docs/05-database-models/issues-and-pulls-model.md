@@ -1,0 +1,439 @@
+# Issues & Pull Requests Model
+
+Issues and pull requests share a single underlying table in Gitea — a pull request **is** an
+`Issue` row with `IsPull = true`, extended by a linked `PullRequest` row. This page covers the
+`Issue` entity, its many satellite tables (comments, labels, milestones, reactions,
+dependencies, time tracking), the `PullRequest` extension, and the code-review model.
+
+Source: `models/issues/` (package `issues`).
+
+## The `Issue` Struct
+
+`models/issues/issue.go`:
+
+```go
+type Issue struct {
+    ID                int64                  `xorm:"pk autoincr"`
+    RepoID            int64                  `xorm:"INDEX UNIQUE(repo_index)"`
+    Repo              *repo_model.Repository `xorm:"-"`
+    Index             int64                  `xorm:"UNIQUE(repo_index)"` // per-repo issue number
+    PosterID          int64                  `xorm:"INDEX"`
+    Poster            *user_model.User       `xorm:"-"`
+    Title             string                 `xorm:"name"`
+    Content           string                 `xorm:"LONGTEXT"`
+    RenderedContent   template.HTML          `xorm:"-"`
+    ContentVersion    int                    `xorm:"NOT NULL DEFAULT 0"` // optimistic-lock counter
+    Labels            []*Label               `xorm:"-"`
+    MilestoneID       int64                  `xorm:"INDEX"`
+    Milestone         *Milestone             `xorm:"-"`
+    Projects          []*project_model.Project `xorm:"-"`
+    Priority          int
+    AssigneeID        int64            `xorm:"-"`
+    Assignee          *user_model.User `xorm:"-"`
+    IsClosed          bool             `xorm:"INDEX"`
+    IsPull            bool             `xorm:"INDEX"` // true => this row is a pull request
+    PullRequest       *PullRequest     `xorm:"-"`
+    NumComments       int
+    Ref               string // TODO: RemoveIssueRef
+
+    PinOrder     int                `xorm:"-"` // 0=not loaded, -1=loaded-not-pinned
+    DeadlineUnix timeutil.TimeStamp `xorm:"INDEX"`
+    CreatedUnix, UpdatedUnix, ClosedUnix timeutil.TimeStamp
+
+    Attachments      []*repo_model.Attachment `xorm:"-"`
+    Comments         CommentList              `xorm:"-"`
+    Reactions        ReactionList             `xorm:"-"`
+    TotalTrackedTime int64                    `xorm:"-"`
+    Assignees        []*user_model.User       `xorm:"-"`
+
+    IsLocked bool `xorm:"NOT NULL DEFAULT false"` // limits commenting to write-access users
+
+    ShowRole     RoleDescriptor `xorm:"-"` // "role" badge shown in UI (owner/member/contributor…)
+    TimeEstimate int64          `xorm:"NOT NULL DEFAULT 0"`
+}
+```
+
+Key points:
+
+- `(RepoID, Index)` is unique — `Index` is the human-visible issue/PR number (`#123`),
+  allocated per-repository via `IssueIndex` (`models/issues/issue_index.go`), which wraps
+  `db.ResourceIndex` (a per-resource atomic counter table shared with other numbered entities).
+- `IsPull` is the discriminator between "plain issue" and "pull request" — both live in the same
+  `issue` table and share comments, labels, milestones, reactions, assignees, and time tracking.
+- Most relations (`Repo`, `Poster`, `Labels`, `Milestone`, `Assignee`, `Comments`, …) are
+  `xorm:"-"` — not columns — and populated by explicit `Load*` methods
+  (`LoadRepo`, `LoadPoster`, `LoadLabels`, `LoadMilestone`, `LoadAttachments`, …), each guarded by
+  an `isXLoaded` flag to avoid redundant queries.
+- `LoadTotalTimes(ctx)` sums `TrackedTime.Time` for the issue (see Time Tracking below).
+- `IsOverdue()` compares `DeadlineUnix` against `ClosedUnix` (if closed) or "now".
+
+## Comments — `models/issues/comment.go`
+
+`Comment` is a large, general-purpose table: plain user comments, and every "event" comment
+(label change, milestone change, close/reopen, review, push notification, etc.) is stored as a
+row here, disambiguated by `Type`.
+
+```go
+type Comment struct {
+    ID               int64       `xorm:"pk autoincr"`
+    Type             CommentType `xorm:"INDEX"`
+    PosterID         int64       `xorm:"INDEX"`
+    Poster           *user_model.User `xorm:"-"`
+    IssueID          int64  `xorm:"INDEX"`
+    Issue            *Issue `xorm:"-"`
+
+    LabelID          int64
+    Label            *Label   `xorm:"-"`
+    AddedLabels      []*Label `xorm:"-"`
+    RemovedLabels    []*Label `xorm:"-"`
+
+    OldProjectID, ProjectID       int64
+    OldMilestoneID, MilestoneID  int64
+    TimeID           int64
+    Time             *TrackedTime `xorm:"-"`
+    AssigneeID       int64
+    RemovedAssignee  bool
+    Assignee         *user_model.User `xorm:"-"`
+    AssigneeTeamID   int64
+    ResolveDoerID    int64 // who resolved a code-review conversation
+
+    OldTitle, NewTitle string
+    OldRef, NewRef     string
+    DependentIssueID   int64  `xorm:"index"`
+
+    CommitID  int64
+    Line      int64  // - previous-side line / + proposed-side line, for code comments
+    TreePath  string `xorm:"VARCHAR(4000)"`
+    Content   string `xorm:"LONGTEXT"`
+    PatchQuoted string `xorm:"LONGTEXT patch"` // diff hunk snapshot for code comments
+
+    CreatedUnix, UpdatedUnix timeutil.TimeStamp
+    CommitSHA string `xorm:"VARCHAR(64)"`
+
+    Attachments []*repo_model.Attachment `xorm:"-"`
+    Reactions   ReactionList             `xorm:"-"`
+
+    Review      *Review `xorm:"-"`
+    ReviewID    int64   `xorm:"index"`
+    Invalidated bool // set true when the underlying diff line no longer exists
+
+    RefRepoID, RefIssueID, RefCommentID int64 // cross-reference tracking
+    RefAction references.XRefAction `xorm:"SMALLINT"`
+    RefIsPull bool
+
+    CommentMetaData *CommentMetaData `xorm:"JSON TEXT"`
+}
+```
+
+### Comment types
+
+`CommentType` (int enum) has ~39 values. The most important groups:
+
+| Category | Types |
+|---|---|
+| Content | `CommentTypeComment` (0, plain comment), `CommentTypeCode` (21, inline code comment), `CommentTypeReview` (22), `CommentTypeDismissReview` (32) |
+| Lifecycle | `CommentTypeReopen` (1), `CommentTypeClose` (2), `CommentTypeLock`/`Unlock` (23/24), `CommentTypePin`/`Unpin` (36/37) |
+| Cross-reference | `CommentTypeIssueRef`, `CommentTypeCommitRef`, `CommentTypeCommentRef`, `CommentTypePullRef`, `CommentTypeChangeIssueRef` |
+| Metadata change | `CommentTypeLabel`, `CommentTypeMilestone`, `CommentTypeAssignees`, `CommentTypeChangeTitle`, `CommentTypeChangeTargetBranch`, `CommentTypeProject`/`ProjectColumn`, `CommentTypeChangeTimeEstimate` |
+| Time tracking | `CommentTypeStartTracking`, `StopTracking`, `AddTimeManual`, `CancelTracking`, `DeleteTimeManual` |
+| Deadlines | `CommentTypeAddedDeadline`, `ModifiedDeadline`, `RemovedDeadline` |
+| Dependencies | `CommentTypeAddDependency`, `CommentTypeRemoveDependency` |
+| Pull-request specific | `CommentTypeReviewRequest`, `CommentTypeMergePull`, `CommentTypePullRequestPush`, `CommentTypePRScheduledToAutoMerge`, `CommentTypePRUnScheduledToAutoMerge`, `CommentTypeDeleteBranch` |
+
+Behavioral flags per type:
+
+- `HasContentSupport()` — only `Comment`, `Code`, `Review`, `DismissReview` render free-text
+  content.
+- `HasAttachmentSupport()` — `Comment`, `Code`, `Review` may carry file attachments.
+- `HasMailReplySupport()` — types that generate "reply by email" addresses.
+- `CountedAsConversation()` — only `Comment` and `Review` count toward the "N comments"
+  conversation counter shown in the issue list (event comments like label changes don't).
+
+Comments also carry a `RoleDescriptor` (`ShowRole`) computed per-view to render the "Owner /
+Member / Collaborator / Contributor / First-time contributor" badge next to the poster's name.
+
+## Labels — `models/issues/label.go`
+
+```go
+type Label struct {
+    ID              int64 `xorm:"pk autoincr"`
+    RepoID          int64 `xorm:"INDEX"` // 0 if org-level label
+    OrgID           int64 `xorm:"INDEX"` // 0 if repo-level label
+    Name            string
+    Exclusive       bool // "scoped" label, e.g. "priority/*" — only one per scope on an issue
+    ExclusiveOrder  int
+    Description     string
+    Color           string `xorm:"VARCHAR(7)"`
+    NumIssues       int
+    NumClosedIssues int
+    ArchivedUnix    timeutil.TimeStamp `xorm:"DEFAULT NULL"`
+}
+```
+
+Labels can belong to either a repository (`RepoID`) or an organization (`OrgID`) — org labels are
+selectable across every repo owned by that org. `Exclusive` + `ExclusiveOrder` implement GitHub
+-style "scoped" labels (e.g. `priority/high` vs `priority/low` are mutually exclusive on the same
+issue, determined by the substring before `/`). `IssueLabel` (in the same file) is the
+many-to-many join table between `Issue` and `Label`. Archived labels (`ArchivedUnix` set) are
+hidden from the "add label" picker but remain on issues that already have them.
+
+## Milestones — `models/issues/milestone.go`
+
+```go
+type Milestone struct {
+    ID              int64                  `xorm:"pk autoincr"`
+    RepoID          int64                  `xorm:"INDEX"`
+    Repo            *repo_model.Repository `xorm:"-"`
+    Name            string
+    Content         string        `xorm:"TEXT"`
+    IsClosed        bool
+    NumIssues       int
+    NumClosedIssues int
+    NumOpenIssues   int  `xorm:"-"`
+    Completeness    int  // 0-100, recomputed in BeforeUpdate
+    IsOverdue       bool `xorm:"-"`
+    DeadlineUnix, ClosedDateUnix timeutil.TimeStamp
+    TotalTrackedTime int64 `xorm:"-"`
+}
+```
+
+`BeforeUpdate()` recalculates `Completeness = NumClosedIssues*100/NumIssues` automatically before
+every save.
+
+## Reactions — `models/issues/reaction.go`
+
+```go
+type Reaction struct {
+    ID               int64  `xorm:"pk autoincr"`
+    Type             string `xorm:"INDEX UNIQUE(s) NOT NULL"` // emoji short-code, e.g. "+1"
+    IssueID          int64  `xorm:"INDEX UNIQUE(s) NOT NULL"`
+    CommentID        int64  `xorm:"INDEX UNIQUE(s)"` // 0 if reacting to the issue itself
+    UserID           int64  `xorm:"INDEX UNIQUE(s) NOT NULL"`
+    OriginalAuthorID int64  `xorm:"INDEX UNIQUE(s) NOT NULL DEFAULT(0)"` // for migrated/federated reactions
+    OriginalAuthor   string `xorm:"INDEX UNIQUE(s)"`
+}
+```
+
+The compound unique index `(Type, IssueID, CommentID, UserID, OriginalAuthorID)` prevents a user
+from reacting twice with the same emoji on the same target. `ErrForbiddenIssueReaction` is
+returned when the reaction short-code isn't in the site's allowed list
+(`setting.UI.Reactions`).
+
+## Dependencies — `models/issues/dependency.go`
+
+```go
+type IssueDependency struct {
+    ID           int64 `xorm:"pk autoincr"`
+    UserID       int64 `xorm:"NOT NULL"` // who created the dependency link
+    IssueID      int64 `xorm:"UNIQUE(issue_dependency) NOT NULL"`
+    DependencyID int64 `xorm:"UNIQUE(issue_dependency) NOT NULL"`
+    CreatedUnix, UpdatedUnix timeutil.TimeStamp
+}
+
+type DependencyType int
+const (
+    DependencyTypeBlockedBy DependencyType = iota
+    DependencyTypeBlocking
+)
+```
+
+A row `{IssueID: A, DependencyID: B}` means "issue A depends on (is blocked by) issue B" — B must
+be closed before A can be considered fully resolved. This feature must be enabled per-repository
+via the `IssuesConfig.EnableDependencies` flag on the `TypeIssues` repo unit (see
+[Repository Model](repository-model.md#repo-units--feature-toggle-system)).
+
+## Time Tracking — Stopwatch & TrackedTime
+
+Two cooperating tables, both gated by `IssuesConfig.EnableTimetracker` /
+`AllowOnlyContributorsToTrackTime`:
+
+```go
+// models/issues/stopwatch.go — an active, running timer
+type Stopwatch struct {
+    ID          int64
+    IssueID     int64 `xorm:"INDEX"`
+    UserID      int64 `xorm:"INDEX"`
+    CreatedUnix timeutil.TimeStamp `xorm:"created"`
+}
+func (s Stopwatch) Seconds() int64 // elapsed = now - CreatedUnix
+
+// models/issues/tracked_time.go — a finalized, recorded time entry
+type TrackedTime struct {
+    ID          int64
+    IssueID     int64  `xorm:"INDEX"`
+    Issue       *Issue `xorm:"-"`
+    UserID      int64  `xorm:"INDEX"`
+    User        *user_model.User `xorm:"-"`
+    Created     time.Time `xorm:"-"`
+    CreatedUnix int64     `xorm:"created"`
+    Time        int64     `xorm:"NOT NULL"` // seconds
+    Deleted     bool      `xorm:"NOT NULL DEFAULT false"`
+}
+```
+
+Flow: a user starts a `Stopwatch` on an issue (one active stopwatch per user+issue, enforced by
+`getStopwatch`). Stopping the stopwatch (or the "add time manually" action) inserts a
+`TrackedTime` row and deletes the `Stopwatch` row. `TrackedTime` rows are soft-deleted
+(`Deleted = true`) rather than removed, so historical time reports remain auditable.
+`Issue.LoadTotalTimes` sums non-deleted `TrackedTime.Time` for the issue.
+
+## Pull Requests — `models/issues/pull.go`
+
+A pull request is represented by an `Issue` row (`IsPull = true`) joined 1:1 to a `PullRequest`
+row via `PullRequest.IssueID`.
+
+```go
+type PullRequestStatus int
+const (
+    PullRequestStatusConflict PullRequestStatus = iota // 0
+    PullRequestStatusChecking                          // 1
+    PullRequestStatusMergeable                          // 2
+    PullRequestStatusManuallyMerged                     // 3
+    PullRequestStatusError                              // 4
+    PullRequestStatusEmpty                              // 5
+    PullRequestStatusAncestor                           // 6
+)
+
+type PullRequestFlow int
+const (
+    PullRequestFlowGithub PullRequestFlow = iota // classic head-branch -> base-branch PR
+    PullRequestFlowAGit                          // Agit-flow PR pushed directly to refs/for/*, no head branch/repo
+)
+
+type PullRequest struct {
+    ID              int64 `xorm:"pk autoincr"`
+    Type            PullRequestType   // PullRequestGitea | PullRequestGit (plain git-diff based)
+    Status          PullRequestStatus
+    ConflictedFiles []string `xorm:"TEXT JSON"`
+    CommitsAhead, CommitsBehind int
+    ChangedProtectedFiles []string `xorm:"TEXT JSON"`
+
+    IssueID int64  `xorm:"INDEX"`
+    Issue   *Issue `xorm:"-"`
+    Index   int64  // same value as Issue.Index
+
+    RequestedReviewers      []*user_model.User `xorm:"-"`
+    RequestedReviewersTeams []*org_model.Team  `xorm:"-"`
+
+    HeadRepoID int64                  `xorm:"INDEX"`
+    HeadRepo   *repo_model.Repository `xorm:"-"`
+    BaseRepoID int64                  `xorm:"INDEX"`
+    BaseRepo   *repo_model.Repository `xorm:"-"`
+    HeadBranch string
+    BaseBranch string
+    MergeBase  string `xorm:"VARCHAR(64)"`
+    AllowMaintainerEdit bool `xorm:"NOT NULL DEFAULT false"`
+
+    HasMerged      bool               `xorm:"INDEX"`
+    MergedCommitID string             `xorm:"VARCHAR(64)"`
+    MergerID       int64              `xorm:"INDEX"`
+    Merger         *user_model.User   `xorm:"-"`
+    MergedUnix     timeutil.TimeStamp `xorm:"updated INDEX"`
+
+    Flow PullRequestFlow `xorm:"NOT NULL DEFAULT 0"`
+}
+```
+
+Notes:
+
+- `HeadRepoID`/`BaseRepoID` may differ — this is what makes cross-fork pull requests possible.
+  For Agit-flow PRs, there is no separate head repo/branch: the PR was pushed directly to a
+  special ref in the base repo, so `Flow == PullRequestFlowAGit`.
+- `Status` mirrors a background "test merge" — Gitea periodically (or on push) attempts to
+  merge base+head into a temporary ref to detect conflicts and compute `CommitsAhead`/`Behind`.
+- Related tables in `models/pull` (referenced from `pull.go`) include `AutoMerge` (scheduled
+  auto-merge-when-checks-pass) and `ReviewState` (per-user "viewed files" checkbox state) —
+  both cleaned up in `DeletePullsByBaseRepoID`.
+
+## Code Review — `models/issues/review.go`
+
+```go
+type ReviewType int
+const ReviewTypeUnknown ReviewType = -1
+const (
+    ReviewTypePending ReviewType = iota // draft review, not yet submitted
+    ReviewTypeApprove
+    ReviewTypeComment
+    ReviewTypeReject                    // "request changes"
+    ReviewTypeRequest                   // a "review requested from X" marker, not a real review
+)
+
+type Review struct {
+    ID             int64 `xorm:"pk autoincr"`
+    Type           ReviewType
+    Reviewer       *user_model.User   `xorm:"-"`
+    ReviewerID     int64              `xorm:"index"`
+    ReviewerTeamID int64              `xorm:"NOT NULL DEFAULT 0"` // team review request
+    ReviewerTeam   *organization.Team `xorm:"-"`
+    Issue          *Issue `xorm:"-"`
+    IssueID        int64  `xorm:"index"`
+    Content        string `xorm:"TEXT"`
+    Official       bool   `xorm:"NOT NULL DEFAULT false"` // counts toward required-approval count
+    CommitID       string `xorm:"VARCHAR(64)"`            // which commit was reviewed
+    Stale          bool   `xorm:"NOT NULL DEFAULT false"` // new commits pushed after this review
+    Dismissed      bool   `xorm:"NOT NULL DEFAULT false"`
+    CreatedUnix, UpdatedUnix timeutil.TimeStamp
+
+    CodeComments CodeComments `xorm:"-"` // inline comments attached to this review
+    Comments     []*Comment   `xorm:"-"`
+}
+```
+
+- `Official` is what makes a review count toward branch-protection "required approvals" — it's
+  set when the reviewer is (or was, at review time) a codeowner/assigned reviewer/collaborator
+  with write access, not just anyone who commented.
+- `Stale` is flipped to `true` when new commits are pushed to the PR after the review was
+  submitted, so the UI can warn "this approval is out of date."
+- A `Review` groups zero or more inline `Comment` rows (`Type = CommentTypeCode`) via
+  `Comment.ReviewID`, plus (optionally) one summary `Comment` (`Type = CommentTypeReview`) with
+  the reviewer's general feedback text.
+- `ReviewTypeRequest` reviews are synthetic placeholder rows created when a reviewer/team is
+  requested, so the "requested reviewers" list can be queried the same way as submitted reviews.
+
+## Issue / PR / Review / Comment Relationship Diagram
+
+```mermaid
+erDiagram
+    REPOSITORY ||--o{ ISSUE : contains
+    ISSUE ||--o| PULLREQUEST : "extended by (IsPull=true)"
+    ISSUE ||--o{ COMMENT : has
+    ISSUE ||--o{ LABEL : "tagged via IssueLabel"
+    ISSUE ||--o| MILESTONE : "assigned to"
+    ISSUE ||--o{ REACTION : "reacted to"
+    ISSUE ||--o{ ISSUEDEPENDENCY : "blocked by"
+    ISSUE ||--o{ TRACKEDTIME : "time logged"
+    ISSUE ||--o{ STOPWATCH : "active timers"
+    PULLREQUEST ||--o{ REVIEW : "reviewed by"
+    REVIEW ||--o{ COMMENT : "code comments (CommentTypeCode)"
+    COMMENT ||--o{ REACTION : "reacted to"
+    USER ||--o{ COMMENT : posts
+    USER ||--o{ REVIEW : submits
+    LABEL }o--o{ ISSUE : "many-to-many"
+```
+
+```mermaid
+sequenceDiagram
+    participant Author
+    participant Repo as Base Repository
+    participant PR as PullRequest / Issue(IsPull=true)
+    participant Reviewer
+    participant Review
+
+    Author->>Repo: push branch / open PR
+    Repo->>PR: create Issue{IsPull:true} + PullRequest row
+    PR->>PR: Status = Checking -> Mergeable/Conflict (test-merge)
+    Reviewer->>Review: create Review{Type:Pending}
+    Reviewer->>Review: add CodeComments (Comment{Type:Code, ReviewID})
+    Reviewer->>Review: submit (Type: Approve/Comment/Reject)
+    Review->>PR: Comment{Type:Review} summary + Official flag set
+    Author->>PR: push new commit
+    PR->>Review: mark prior reviews Stale=true
+    Author->>PR: merge (HasMerged=true, MergedCommitID set)
+    PR->>PR: Comment{Type:MergePull} recorded
+```
+
+## Related Pages
+
+- [Repository Model](repository-model.md)
+- [Permissions Model](permissions-model.md)
+- [User & Organization Model](user-organization-model.md)
