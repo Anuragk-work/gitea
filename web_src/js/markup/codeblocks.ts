@@ -41,12 +41,19 @@ function makeCodeWrapButton(btnContainer: Element, wrapEnabled: boolean): HTMLBu
   const btn = makeCodeBlockButton('material-wrap-text', 'code-wrap auto-hide-control', {
     'title': code_toggle_wrap,
     'aria-label': code_toggle_wrap,
+    // native <button> is already keyboard-operable; "aria-pressed" additionally exposes the
+    // toggle state to assistive tech (unlike "data-active" which only drives visual styling).
+    'aria-pressed': String(wrapEnabled),
   });
   btn.toggleAttribute('data-active', wrapEnabled);
   btn.addEventListener('click', () => {
     const newWrapEnabled = !btn.hasAttribute('data-active');
     btn.toggleAttribute('data-active', newWrapEnabled);
+    btn.setAttribute('aria-pressed', String(newWrapEnabled));
     applyCodeBlockWrap(btnContainer, newWrapEnabled);
+    // the wrap preference is a single global toggle (per user decision): persist it once here,
+    // and every future `initMarkupContent()` pass (e.g.: after AJAX-loaded comments) will read
+    // it back via `localUserSettings.getBoolean()` and pre-apply it to newly rendered code blocks.
     localUserSettings.setBoolean(wrapMarkupCodeKey, newWrapEnabled);
   });
   return btn;
