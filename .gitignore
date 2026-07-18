@@ -120,3 +120,11 @@ prime/
 
 # A Makefile for custom make targets
 Makefile.local
+
+# SASVA internal (auto-added for team mode)
+.sasva/snapshots/
+.sasva/builtin-tasks/
+.sasva/migration/
+.sasva/workflows/
+.sasva/chats/
+.sasva/generated-plans/
