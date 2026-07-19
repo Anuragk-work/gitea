@@ -11,6 +11,8 @@ window.config = {
   notificationSettings: {MinTimeout: 0, TimeoutStep: 0, MaxTimeout: 0, EventSourceUpdateTime: 0},
   enableTimeTracking: true,
   mermaidMaxSourceCharacters: 5000,
-  i18n: {},
+  i18n: {
+    code_toggle_wrap: 'Toggle line wrap',
+  },
   frontendInited: false,
 };
